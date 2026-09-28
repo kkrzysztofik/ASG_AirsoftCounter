@@ -16,14 +16,14 @@ PARTS = {
     "J2": ("Heltec_J2", "Connector_Generic:Conn_01x18", "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"),
     "J3": ("Heltec_J3", "Connector_Generic:Conn_01x18", "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"),
     # Off-board connectors, JST-XH 2.50 mm vertical
-    "J_BAT": ("BAT", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
-    "J_KEY": ("KEY", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
-    "J_HBAT": ("HELTEC_BAT", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
-    "J_LCD": ("LCD", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
-    "J_NFC": ("NFC", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
-    "J_BTN_R": ("BTN_R", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
-    "J_BTN_B": ("BTN_B", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
-    "J_BUZ": ("BUZ", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
+    "J_BAT1": ("BAT", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
+    "J_KEY1": ("KEY", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
+    "J_HBAT1": ("HELTEC_BAT", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
+    "J_LCD1": ("LCD", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
+    "J_NFC1": ("NFC", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
+    "J_BTN_R1": ("BTN_R", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
+    "J_BTN_B1": ("BTN_B", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
+    "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
     # Power
     "F1": ("1A PTC", "Device:Polyfuse", "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"),
     "U1": ("MT3608", "Regulator_Switching:MT3608", "Package_TO_SOT_SMD:SOT-23-6"),
@@ -31,14 +31,14 @@ PARTS = {
     "D1": ("SS34", "Diode:SS34", "Diode_SMD:D_SMA"),
     "R_FB1": ("75k", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_FB2": ("10k", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
-    "C_IN": ("22uF 10V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
+    "C_IN1": ("22uF 10V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
     "C_OUT1": ("22uF 10V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
     "C_OUT2": ("22uF 10V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
-    "C_BULK": ("220uF 10V", "Device:C_Polarized", "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm"),
-    "C_NFC": ("100uF 10V", "Device:C_Polarized", "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm"),
+    "C_BULK1": ("220uF 10V", "Device:C_Polarized", "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm"),
+    "C_NFC1": ("100uF 10V", "Device:C_Polarized", "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm"),
     # I2C level shifter (5V-side pull-ups DNP: LCD backpack has its own)
-    "Q_SDA": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
-    "Q_SCL": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
+    "Q_SDA1": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
+    "Q_SCL1": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
     "R_SDA3": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_SCL3": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_SDA5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
@@ -54,50 +54,50 @@ AO3400A = ("Transistor_FET:AO3400A", "Package_TO_SOT_SMD:SOT-23")
 # Low-side drivers: name -> load resistor value or None
 DRIVERS = {"LR": "150R", "LB": "100R", "BZ": None}
 for n, r_load in DRIVERS.items():
-    PARTS[f"Q_{n}"] = ("AO3400A", *AO3400A)
-    PARTS[f"R_G{n}"] = ("100R", *R0805)
-    PARTS[f"R_PD{n}"] = ("100k", *R0805)
+    PARTS[f"Q_{n}1"] = ("AO3400A", *AO3400A)
+    PARTS[f"R_G{n}1"] = ("100R", *R0805)
+    PARTS[f"R_PD{n}1"] = ("100k", *R0805)
     if r_load:
-        PARTS[f"R_L{n}"] = (r_load, *R0805)
-PARTS["D_FLY"] = ("1N4148W", "Diode:1N4148W", "Diode_SMD:D_SOD-123")
+        PARTS[f"R_L{n}1"] = (r_load, *R0805)
+PARTS["D_FLY1"] = ("1N4148W", "Diode:1N4148W", "Diode_SMD:D_SOD-123")
 
 # Button inputs: 10k pull-up, 100nF, 1k series
 for t in ("R", "B"):
-    PARTS[f"R_PU{t}"] = ("10k", *R0805)
-    PARTS[f"R_S{t}"] = ("1k", *R0805)
-    PARTS[f"C_B{t}"] = ("100nF", *C0805)
+    PARTS[f"R_PU{t}1"] = ("10k", *R0805)
+    PARTS[f"R_S{t}1"] = ("1k", *R0805)
+    PARTS[f"C_B{t}1"] = ("100nF", *C0805)
 
 for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", "MountingHole:MountingHole_3.2mm_M3")
 
 # net: [ "REF.pin", ... ]
 NETS = {
-    "GND": ["J2.1", "J3.1", "J_BAT.2", "J_HBAT.2", "J_LCD.1", "J_NFC.1", "J_BTN_R.2", "J_BTN_B.2",
-            "U1.2", "R_FB2.2", "C_IN.2", "C_OUT1.2", "C_OUT2.2", "C_BULK.2", "C_NFC.2",
-            "Q_LR.2", "Q_LB.2", "Q_BZ.2", "R_PDLR.2", "R_PDLB.2", "R_PDBZ.2", "C_BR.2", "C_BB.2"],
-    "+3V3": ["J3.2", "J3.3", "J_NFC.2", "C_NFC.1", "Q_SDA.1", "Q_SCL.1", "R_SDA3.1", "R_SCL3.1", "R_PUR.1", "R_PUB.1"],
-    "VBAT_RAW": ["J_BAT.1", "F1.1"],
-    "VBAT_F": ["F1.2", "J_KEY.1"],
-    "VBAT_SW": ["J_KEY.2", "J_HBAT.1", "C_BULK.1", "C_IN.1", "U1.5", "U1.4", "L1.1"],
+    "GND": ["J2.1", "J3.1", "J_BAT1.2", "J_HBAT1.2", "J_LCD1.1", "J_NFC1.1", "J_BTN_R1.2", "J_BTN_B1.2",
+            "U1.2", "R_FB2.2", "C_IN1.2", "C_OUT1.2", "C_OUT2.2", "C_BULK1.2", "C_NFC1.2",
+            "Q_LR1.2", "Q_LB1.2", "Q_BZ1.2", "R_PDLR1.2", "R_PDLB1.2", "R_PDBZ1.2", "C_BR1.2", "C_BB1.2"],
+    "+3V3": ["J3.2", "J3.3", "J_NFC1.2", "C_NFC1.1", "Q_SDA1.1", "Q_SCL1.1", "R_SDA3.1", "R_SCL3.1", "R_PUR1.1", "R_PUB1.1"],
+    "VBAT_RAW": ["J_BAT1.1", "F1.1"],
+    "VBAT_F": ["F1.2", "J_KEY1.1"],
+    "VBAT_SW": ["J_KEY1.2", "J_HBAT1.1", "C_BULK1.1", "C_IN1.1", "U1.5", "U1.4", "L1.1"],
     "SW": ["L1.2", "U1.1", "D1.2"],
     "FB": ["U1.3", "R_FB1.2", "R_FB2.1"],
-    "+5V": ["D1.1", "C_OUT1.1", "C_OUT2.1", "R_FB1.1", "J_LCD.2", "J_BTN_R.3", "J_BTN_B.3", "J_BUZ.1",
-            "D_FLY.1", "R_SDA5.1", "R_SCL5.1"],
+    "+5V": ["D1.1", "C_OUT1.1", "C_OUT2.1", "R_FB1.1", "J_LCD1.2", "J_BTN_R1.3", "J_BTN_B1.3", "J_BUZ1.1",
+            "D_FLY1.1", "R_SDA5.1", "R_SCL5.1"],
     # I2C
-    "SDA_3V3": ["J3.15", "Q_SDA.2", "R_SDA3.2", "J_NFC.3"],
-    "SCL_3V3": ["J3.14", "Q_SCL.2", "R_SCL3.2", "J_NFC.4"],
-    "SDA_5V": ["Q_SDA.3", "R_SDA5.2", "J_LCD.3"],
-    "SCL_5V": ["Q_SCL.3", "R_SCL5.2", "J_LCD.4"],
+    "SDA_3V3": ["J3.15", "Q_SDA1.2", "R_SDA3.2", "J_NFC1.3"],
+    "SCL_3V3": ["J3.14", "Q_SCL1.2", "R_SCL3.2", "J_NFC1.4"],
+    "SDA_5V": ["Q_SDA1.3", "R_SDA5.2", "J_LCD1.3"],
+    "SCL_5V": ["Q_SCL1.3", "R_SCL5.2", "J_LCD1.4"],
     # Drivers: GPIO -> gate resistor -> gate (pull-down) ; drain -> load
-    "LED_R_G": ["J2.13", "R_GLR.1"], "Q_LR_G": ["R_GLR.2", "Q_LR.1", "R_PDLR.1"],
-    "LED_R_K": ["Q_LR.3", "R_LLR.1"], "BTN_R_LEDK": ["R_LLR.2", "J_BTN_R.4"],
-    "LED_B_G": ["J2.14", "R_GLB.1"], "Q_LB_G": ["R_GLB.2", "Q_LB.1", "R_PDLB.1"],
-    "LED_B_K": ["Q_LB.3", "R_LLB.1"], "BTN_B_LEDK": ["R_LLB.2", "J_BTN_B.4"],
-    "BUZ_G": ["J2.16", "R_GBZ.1"], "Q_BZ_G": ["R_GBZ.2", "Q_BZ.1", "R_PDBZ.1"],
-    "BUZ_K": ["Q_BZ.3", "J_BUZ.2", "D_FLY.2"],
+    "LED_R_G": ["J2.13", "R_GLR1.1"], "Q_LR_G": ["R_GLR1.2", "Q_LR1.1", "R_PDLR1.1"],
+    "LED_R_K": ["Q_LR1.3", "R_LLR1.1"], "BTN_R_LEDK": ["R_LLR1.2", "J_BTN_R1.4"],
+    "LED_B_G": ["J2.14", "R_GLB1.1"], "Q_LB_G": ["R_GLB1.2", "Q_LB1.1", "R_PDLB1.1"],
+    "LED_B_K": ["Q_LB1.3", "R_LLB1.1"], "BTN_B_LEDK": ["R_LLB1.2", "J_BTN_B1.4"],
+    "BUZ_G": ["J2.16", "R_GBZ1.1"], "Q_BZ_G": ["R_GBZ1.2", "Q_BZ1.1", "R_PDBZ1.1"],
+    "BUZ_K": ["Q_BZ1.3", "J_BUZ1.2", "D_FLY1.2"],
     # Buttons: switch pulls to GND
-    "BTN_R_SW": ["J_BTN_R.1", "R_PUR.2", "C_BR.1", "R_SR.1"], "BTN_R_IN": ["R_SR.2", "J3.17"],
-    "BTN_B_SW": ["J_BTN_B.1", "R_PUB.2", "C_BB.1", "R_SB.1"], "BTN_B_IN": ["R_SB.2", "J2.5"],
+    "BTN_R_SW": ["J_BTN_R1.1", "R_PUR1.2", "C_BR1.1", "R_SR1.1"], "BTN_R_IN": ["R_SR1.2", "J3.17"],
+    "BTN_B_SW": ["J_BTN_B1.1", "R_PUB1.2", "C_BB1.1", "R_SB1.1"], "BTN_B_IN": ["R_SB1.2", "J2.5"],
 }
 
 # Heltec header pin -> ESP32 GPIO (V4 pin map). Only pins we use or must avoid.
