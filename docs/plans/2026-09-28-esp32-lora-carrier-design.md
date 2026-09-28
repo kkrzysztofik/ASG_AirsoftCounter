@@ -13,6 +13,7 @@ per-unit LCD address tweaks, not waterproof) with:
 - **GPS** position in status reports,
 - phone configuration over **WiFi AP + web page** (IR remote dropped),
 - a **20x4 I2C LCD**,
+- **RFID/NFC cards**: player cards (score + per-player stats) and admin cards,
 - a **weatherproof enclosure** (Kradex ZP240.190.105SJp, clear PC lid, IP67),
 - firmware rewritten in **Rust** (esp-hal + Embassy).
 
@@ -85,6 +86,7 @@ Heltec 5V pin: NOT connected (it is the charger input; feeding it would loop).
 | J_LCD | 4 | GND, 5V, SDA, SCL |
 | J_BTN_R, J_BTN_B | 4 | SW, GND, LED+, LED- |
 | J_BUZ | 2 | buzzer |
+| J_NFC | 4 | GND, 3V3, SDA, SCL (3V3 side of the I2C bus, 100 µF nearby) |
 
 Heltec USB-C, LoRa u.FL and GNSS cable go straight from the Heltec to panel parts.
 Heltec sits in 2x 1x18 female headers. Parts: 0805, SOT-23, SOT-23-6, THT connectors.
@@ -120,6 +122,7 @@ Toolchain: `espup` (Xtensa Rust), `espflash`, `esp-generate`.
 | Config | sequential-storage + esp-storage | defaults when key missing |
 | Phone config | esp-radio (WiFi AP) + embassy-net + picoserve | esp-radio is beta: implemented last |
 | Auth | ccm + aes | AES-CCM, pre-shared key, per-sender sequence counter (replay protection) |
+| NFC | pn532 0.5 | verify embedded-hal 1.0 support first; fallback: own minimal driver (InListPassiveTarget + page read) |
 
 ### Layout
 
@@ -142,18 +145,51 @@ firmware/
 0. Toolchain + blinky on V4
 1. LCD + buttons + outputs: port Airsoftcoin mode, no radio
 2. Config storage + battery reading
-3. LoRa PING/STATUS between two V4s, then authenticated commands
-4. GPS in STATUS
-5. WiFi AP config page
-6. HQ firmware: USB-serial ↔ LoRa bridge on a bare V4
+3. RFID: player captures, admin menu, first-admin enrollment
+4. LoRa PING/STATUS between two V4s, then authenticated commands and capture events
+5. GPS in STATUS
+6. WiFi AP config page (incl. admin card list/remove)
+7. HQ firmware: USB-serial ↔ LoRa bridge on a bare V4
 
 Out of scope for now: laptop HQ app, OTA updates, additional game modes.
+
+## Part 5: RFID cards
+
+### Hardware
+
+- PN532 module ("NFC V3" red board) in I2C mode (DIP switches), address 0x24,
+  on the **3V3 side** of the I2C bus, powered from Heltec 3V3 (500 mA budget).
+- No IRQ/RST wires: firmware polls over I2C (GPIO43 is U0TXD and toggles at boot).
+- Mounted under the clear lid with a "tap here" mark, ≥2 cm from the LCD metal
+  frame. Expected range ~3-5 cm through 3 mm PC.
+
+### Cards
+
+- **Player card:** NTAG213/215 with NDEF text record `ASG1:<team>:<id>`,
+  team `R` or `B`, id 1-999. Written with any phone NFC app.
+- **Admin card:** identified by UID, allowlist in device config.
+- Unknown card: error beep.
+
+### Behaviour
+
+- Ready state: player card tap = capture for the card's team with player id.
+  Buttons still capture anonymously (player id 0).
+- Admin card tap (any state) opens admin menu on LCD, navigated with the two
+  buttons: Reset game / WiFi setup / Status (battery, radio, GPS).
+- First admin: when no admin is enrolled, holding both buttons while tapping a
+  card enrolls it.
+- Each capture `(team, player_id, time)` is queued and sent to HQ as an ACKed
+  event. HQ owns per-player stats.
+- RF field polled in bursts (~50 ms on / 300 ms), only in states where a card
+  does something (~20 mA average).
+- Card text parsing (NTAG pages → TLV → NDEF text → `PlayerCard`) lives in `core`.
 
 ## Open items to verify during implementation
 
 - Heltec V4 header row spacing (STEP model + paper print).
 - Heltec charger current (check V4.3 schematic PROG resistor); ok for 6000 mAh?
-- hd44780-driver embedded-hal 1.0 compatibility.
+- hd44780-driver and pn532 embedded-hal 1.0 compatibility.
+- PN532 read range through the actual lid.
 - ZP240.190.105 internal dimensions and plate hole pattern (Kradex drawing).
 - Button choice: IP67 anti-vandal buttons with 5V LED (R_LOAD values depend on it).
 - Measure idle current; MT3608 efficiency at light load.
