@@ -16,12 +16,12 @@ def check(xml_path="/tmp/carrier.xml", parts=design.PARTS, nets=design.NETS, dnp
            for node in n.iter("node")}
     want = {(net, p) for net, members in nets.items() for p in members}
     errors = [f"missing {x}" for x in sorted(want - got)] + [f"extra {x}" for x in sorted(got - want)]
-    comps = {c.get("ref"): (c.findtext("value"), c.findtext("footprint")) for c in root.iter("comp")}
+    comps = {c.attrib["ref"]: (c.findtext("value"), c.findtext("footprint")) for c in root.iter("comp")}
     for ref, (value, _, fp) in parts.items():
         if comps.get(ref) != (value, fp):
             errors.append(f"{ref}: want {(value, fp)}, got {comps.get(ref)}")
     errors += [f"unexpected component {r}" for r in sorted(comps.keys() - parts.keys())]
-    got_dnp = {c.get("ref") for c in root.iter("comp") if c.find("property[@name='dnp']") is not None}
+    got_dnp = {c.attrib["ref"] for c in root.iter("comp") if c.find("property[@name='dnp']") is not None}
     if got_dnp != dnp:
         errors.append(f"DNP: want {sorted(dnp)}, got {sorted(got_dnp)}")
     return errors
