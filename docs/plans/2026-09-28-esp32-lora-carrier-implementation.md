@@ -422,6 +422,8 @@ Port of `src/state/*.cpp`, with two deliberate fixes:
 
 **Step 3:** Implement. Final content of `game.rs` (verified: 8 tests pass, clippy clean):
 
+> **Note (post-review, commit f4b781d):** `firmware/core/src/*.rs` are now the authority. The listing below has a bug: counts of 1000 overflow the 20-character line and disappear. The committed code fixes it with `{:<16}{:>4}`, makes the fields private behind getters (`phase()`, `score()`, `left()`), and has 16 tests.
+
 ```rust
 //! Airsoftcoin game rules, ported from the Arduino state machine.
 //! Pure logic: time comes in as milliseconds, effects go out as return values.
