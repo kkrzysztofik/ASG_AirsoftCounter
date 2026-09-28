@@ -251,8 +251,9 @@ Add `check_netlist.py`: parse `/tmp/carrier.xml` (`<net name=…><node ref= pin=
 - **Heltec:** the antenna end overhangs the right edge, and USB-C faces left (-X). Pin 1 of both headers is at the USB end. J3 (GPIO1–7 side) is the **top** row, J2 (the 5V/GND side) the bottom row.
   - J3: pin 1 at (44.82, 27.00), running +X at 2.54 mm pitch to pin 18 at (88.00, 27.00).
   - J2: pin 1 at (44.82, 49.86), pin 18 at (88.00, 49.86). The rows are 22.86 mm apart, measured from Heltec's STEP model.
-  - Rotate the PinSocket footprints so pin 1 sits at the USB end and the pins run along +X. In KiCad 9, `PinSocket_1x18` pins run +Y from pin 1 at rotation 0, so use -90°. Check pin 18's position after placing.
+  - Rotate the PinSocket footprints so pin 1 sits at the USB end and the pins run along +X. In KiCad 9, `PinSocket_1x18` pins run +Y from pin 1 at rotation 0, so use -90°. Check pin 18's position after placing. *(As built: **+90°** is correct; -90° puts pin 18 at x = 1.64. `gen_pcb.py` asserts pads 1 and 18.)*
 - **Keep-outs:**
+  - *(As built: HELTEC_UNDER covers only the gap **between** the socket rows, y ≈ 28.9–48.0, because the full body area would contain the sockets themselves. ANT runs x 89.1–90 and forbids only tracks, vias and pour, because pads are at x = 88.)*
   - Rule area "HELTEC_UNDER" covering the Heltec body (x 42.7–90, y 25.7–51.2) on both copper layers: **no footprints**, tracks allowed. The battery socket on the Heltec's underside needs the space.
   - Rule area "ANT" at x 86–90, y 20–57: no copper at all, pour included. The antenna overhangs just beyond it.
 - **Initial placement** (the executor may nudge parts for routability; keep the grouping). **Take reference names from `design.PARTS`:** since commit 99a9704 every ref ends in a digit (J_BAT → J_BAT1, Q_LR → Q_LR1, …), and the names in this table are the old ones.
@@ -273,6 +274,8 @@ Add `check_netlist.py`: parse `/tmp/carrier.xml` (`<net name=…><node ref= pin=
 4. Add Edge.Cuts `PCB_SHAPE` segments and arcs, the two rule areas (`ZONE` with `SetIsRuleArea(True)` and the appropriate `SetDoNotAllow*`), and a `GND` zone on B.Cu covering the whole board (priority 0, 0.3 mm clearance, thermal reliefs). Leave it unfilled; A6 fills it after routing.
 5. Silkscreen text next to every connector with the pin names from design.md part 2, pin 1 first, e.g. `BTN_R: SW GND L+ L-`. Add `AirsoftCounter v2 carrier` and the date near the bottom-left.
 6. `pcbnew.SaveBoard("carrier.kicad_pcb", board)`.
+
+*(As built: KiCad 9 drops **all** net classes from `.kicad_pro` unless each has a `"priority"`. Design rules live only in `carrier.kicad_pro`, which `gen_sch.py` writes, because a `.kicad_pcb` can't hold them. `gen_pcb.py` saves with `aSkipSettings=True` and `verify()` asserts the rules after reloading.)*
 
 **Step 2: Parity test.**
 
