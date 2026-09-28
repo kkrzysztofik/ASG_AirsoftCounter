@@ -1,8 +1,10 @@
 # Freerouting 2.4.1 (headless)
 
-Fetch: `gh release download v2.4.1 --repo freerouting/freerouting --pattern freerouting-2.4.1.jar --dir hardware/tools`
+Run both commands from `hardware/`.
 
-Run from `hardware/`:
+Fetch: `gh release download v2.4.1 --repo freerouting/freerouting --pattern freerouting-2.4.1.jar --dir tools`
+
+Route:
 
     java -jar tools/freerouting-2.4.1.jar -de in.dsn -do out.ses -mp 100 \
       --gui.enabled=false --api_server.enabled=false \

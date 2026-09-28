@@ -1,7 +1,13 @@
 """AirsoftCounter v2 carrier board: single source of truth for parts and nets.
 
 gen_sch.py and gen_pcb.py read PARTS and NETS from here. Run this file to
-self-check the design (`python3 design.py`).
+self-check the design (`python3 design.py`). Generators must call design.check()
+at startup.
+
+check() validates structure (unique pins, known parts, no single-pin nets, no
+unconnected parts) and every Heltec header pin. It does NOT validate pin
+numbers of other parts or catch dangling 2-pin parts: gen_sch.py (symbol pin
+lookup) and KiCad ERC catch those.
 """
 
 # ref: (value, symbol "lib:name", footprint "lib:name")
@@ -35,18 +41,20 @@ PARTS = {
     "Q_SCL": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
     "R_SDA3": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_SCL3": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
-    "R_SDA5": ("4k7 DNP", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
-    "R_SCL5": ("4k7 DNP", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
+    "R_SDA5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
+    "R_SCL5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
 }
+# Do not populate: the LCD backpack has its own 5V-side pull-ups.
+DNP = {"R_SDA5", "R_SCL5"}
 
 R0805 = ("Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder")
 C0805 = ("Device:C", "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder")
-SOT23 = ("Transistor_FET:AO3400A", "Package_TO_SOT_SMD:SOT-23")
+AO3400A = ("Transistor_FET:AO3400A", "Package_TO_SOT_SMD:SOT-23")
 
-# Low-side drivers: name -> (gate GPIO net, load resistor value or None)
-DRIVERS = {"LR": ("LED_R_G", "150R"), "LB": ("LED_B_G", "100R"), "BZ": ("BUZ_G", None)}
-for n, (_, r_load) in DRIVERS.items():
-    PARTS[f"Q_{n}"] = ("AO3400A", *SOT23)
+# Low-side drivers: name -> load resistor value or None
+DRIVERS = {"LR": "150R", "LB": "100R", "BZ": None}
+for n, r_load in DRIVERS.items():
+    PARTS[f"Q_{n}"] = ("AO3400A", *AO3400A)
     PARTS[f"R_G{n}"] = ("100R", *R0805)
     PARTS[f"R_PD{n}"] = ("100k", *R0805)
     if r_load:
@@ -100,10 +108,13 @@ HELTEC_GPIO = {
     "J2.13": 47, "J2.14": 48, "J2.15": 26, "J2.16": 21, "J2.17": 20, "J2.18": 19,
 }
 # Used internally on V4-R2 or V4-R8 (FEM, GNSS, PSRAM, strapping, USB, LED/Vext, VBAT), or RST.
+# GPIO3 is a strapping pin (JTAG source select), but only if the STRAP_JTAG_SEL
+# efuse is burned. With default efuses it is safe for SCL, so it is not forbidden.
 FORBIDDEN_GPIO = {0, 1, 2, 5, 7, 19, 20, 26, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 45, 46, None}
 EXPECTED_GPIO = {"SCL_3V3": 3, "SDA_3V3": 4, "BTN_R_IN": 6, "BTN_B_IN": 44,
                  "LED_R_G": 47, "LED_B_G": 48, "BUZ_G": 21}
-HELTEC_5V_PIN = "J2.2"  # charger input: must stay unconnected
+HEADER_POWER = {"J2.1": "GND", "J3.1": "GND", "J3.2": "+3V3", "J3.3": "+3V3"}
+HEADER_NC = {"J2.2", "J2.3", "J2.4"}  # 5V charger input, Vext x2: must stay unconnected
 
 
 def check():
@@ -114,13 +125,23 @@ def check():
         assert len(members) >= 2, f"{net} has a single pin"
         for p in members:
             assert p.split(".")[0] in PARTS, f"{net}: unknown part in {p}"
-    used = [p for p in pins if p.split(".")[0] in ("J2", "J3") and p in HELTEC_GPIO]
-    for p in used:
-        assert HELTEC_GPIO[p] not in FORBIDDEN_GPIO, f"{p} is GPIO{HELTEC_GPIO[p]}, reserved on V4"
-    gpio_of_net = {net: HELTEC_GPIO[p] for net, m in NETS.items() for p in m if p in HELTEC_GPIO}
-    assert gpio_of_net == EXPECTED_GPIO, gpio_of_net
-    assert HELTEC_5V_PIN not in pins, "Heltec 5V pin must not be connected"
-    unused = [r for r in PARTS if not r.startswith("H") and not any(p.split(".")[0] == r for p in pins)]
+    assert DNP <= PARTS.keys(), f"unknown DNP parts: {DNP - PARTS.keys()}"
+    net_of = {p: net for net, m in NETS.items() for p in m}
+    for p, net in HEADER_POWER.items():
+        assert net_of.get(p) == net, f"{p} must be on {net}, is on {net_of.get(p)}"
+    for p in pins:
+        if p.split(".")[0] not in ("J2", "J3"):
+            continue
+        assert p not in HEADER_NC, f"{p} must stay unconnected"
+        assert p in HELTEC_GPIO or p in HEADER_POWER, f"{p} is not a known header pin"
+        if p in HELTEC_GPIO:
+            g = HELTEC_GPIO[p]
+            name = f"GPIO{g}" if g is not None else "RST"
+            assert g not in FORBIDDEN_GPIO, f"{p} is {name}, reserved on V4"
+    got = sorted((n, HELTEC_GPIO[p]) for n, m in NETS.items() for p in m if p in HELTEC_GPIO)
+    assert got == sorted(EXPECTED_GPIO.items()), got
+    unused = [r for r in PARTS if PARTS[r][1] != "Mechanical:MountingHole"
+              and not any(p.split(".")[0] == r for p in pins)]
     assert not unused, f"parts with no connections: {unused}"
     print(f"design ok: {len(PARTS)} parts, {len(NETS)} nets")
 
