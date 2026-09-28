@@ -27,11 +27,11 @@ PLACE = {
     "J_LCD1": (40, 6, 0), "J_NFC1": (54, 6, 0), "J_BTN_R1": (68, 6, 0),
     # Left edge: rotated so the open side faces -X, pin 1 at the bottom
     "J_BTN_B1": (6, 33, 90), "J_BUZ1": (6, 47, 90),
-    # Power: MT3608 boost; L1 -> SW -> D1 -> C_OUT and U1 SW/GND kept within ~15 mm
-    "F1": (15.5, 14, 0), "C_BULK1": (13.5, 20.5, 0),
-    "L1": (22.5, 16, 0), "D1": (30.5, 16, 180), "U1": (28, 21.8, 0), "C_IN1": (32.8, 22.8, 0),
-    "C_OUT1": (37, 15.5, 0), "C_OUT2": (37, 19.3, 0),
-    "R_FB2": (23.5, 22.5, 180), "R_FB1": (23.5, 26, 0),
+    # Power: MT3608 boost; output loop (SW -> D1 -> C_OUT -> GND) on U1's SW/GND side
+    "F1": (15.2, 14, 0), "C_BULK1": (13.5, 20.5, 0),
+    "L1": (28.5, 15.5, 180), "D1": (21.3, 16, 0), "U1": (27, 21.5, 0), "C_IN1": (31.2, 21.8, 90),
+    "C_OUT1": (21, 20, 0), "C_OUT2": (21, 22.9, 0),
+    "R_FB2": (26.5, 25.5, 0), "R_FB1": (22, 26, 0),
     # I2C level shifter + NFC bulk cap, under their connectors
     "Q_SDA1": (44, 16, 0), "R_SDA3": (44, 20, 0), "R_SDA5": (44, 23.3, 0),
     "Q_SCL1": (49.5, 16, 0), "R_SCL3": (49.5, 20, 0), "R_SCL5": (49.5, 23.3, 0),
@@ -47,6 +47,12 @@ PLACE = {
     "R_PUR1": (66, 15.5, 0), "C_BR1": (66, 19, 0), "R_SR1": (71, 17.25, 0),
 }
 
+# Reference text moved off neighbouring silk in the packed boost block: ref -> (x, y, rot)
+REF_AT = {
+    "L1": (33.3, 15.5, 90), "U1": (29.55, 21.5, 90), "C_OUT1": (21, 18.4, 0),
+    "C_OUT2": (21, 24.6, 0), "R_FB1": (18.4, 26, 0), "C_IN1": (33.05, 21.8, 90),
+}
+
 # Connector silk labels (name, pins in pin-1-first order). Pin 1 is the left pad at rot 0 and
 # the bottom pad at rot 90; text reads left-to-right / bottom-to-top, so pin 1 comes first.
 LABELS = {
@@ -54,11 +60,14 @@ LABELS = {
     "J_LCD1": ("LCD", "GND 5V SDA SCL"), "J_NFC1": ("NFC", "GND 3V3 SDA SCL"),
     "J_BTN_R1": ("BTN_R", "SW GND L+ L-"), "J_BTN_B1": ("BTN_B", "SW GND L+ L-"), "J_BUZ1": ("BUZ", "+  -"),
 }
-# free text: (text, x, y, rot, size)
+# free text: (text, x, y, rot, size, left-justified)
 TEXTS = [
-    ("AirsoftCounter v2 carrier", 9, 56.5, 0, 1.0), ("2026-09", 9, 58.3, 0, 1.0),
-    ("USB", 40.5, 38.43, 90, 1.0), ("ANT →", 84, 38.43, 0, 1.0),
+    ("AirsoftCounter v2 carrier", 9, 56.5, 0, 1.0, True), ("2026-09", 9, 58.3, 0, 1.0, True),
+    ("USB", 40.5, 38.43, 90, 1.0, False), ("ANT →", 84, 38.43, 0, 1.0, False),
 ]
+# GND pour pad connection; route.py (A6) reuses it for the F.Cu pour. Solid, not thermal
+# reliefs: reliefs starved J2.1/J3.1/XH GND pins. Cost: harder hand-soldering of THT GND pins.
+GND_PAD_CONNECTION = pcbnew.ZONE_CONNECTION_FULL
 HELTEC_PADS = {("J3", "1"): (44.82, 27.00), ("J3", "18"): (88.00, 27.00),
                ("J2", "1"): (44.82, 49.86), ("J2", "18"): (88.00, 49.86)}
 
@@ -101,9 +110,15 @@ def footprint(board, ref, nets):
     x, y, rot = PLACE[ref]
     fp.SetPosition(mm(x, y))
     fp.SetOrientationDegrees(rot)
+    if lib == "MountingHole":
+        fp.Reference().SetVisible(False)  # would sit off-board
     if rot == 180:  # keep the reference above the part, as at rot 0
         r, o = fp.Reference().GetPosition(), fp.GetPosition()
         fp.Reference().SetPosition(pcbnew.VECTOR2I(2 * o.x - r.x, 2 * o.y - r.y))
+    if ref in REF_AT:
+        rx, ry, rrot = REF_AT[ref]
+        fp.Reference().SetPosition(mm(rx, ry))
+        fp.Reference().SetTextAngleDegrees(rrot)
     # links the footprint to its schematic symbol (gen_sch's deterministic uuid)
     fp.SetPath(pcbnew.KIID_PATH("/" + gen_sch.unq(gen_sch.uid(f"sym/{ref}"))))
     fp.SetSheetname("/")
@@ -147,10 +162,10 @@ def outline(board):
         board.Add(s)
 
 
-def zone(board, name, x0, y0, x1, y1, layers):
+def zone(board, name, x0, y0, x1, y1, lset):
     z = pcbnew.ZONE(board)
     z.SetZoneName(name)
-    z.SetLayerSet(layers)
+    z.SetLayerSet(lset)
     ol = z.Outline()
     ol.NewOutline()
     for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
@@ -160,7 +175,7 @@ def zone(board, name, x0, y0, x1, y1, layers):
 
 
 def rule_area(board, name, box, no_footprints=False, no_copper=False):
-    z = zone(board, name, *box, layers(pcbnew.F_Cu, pcbnew.B_Cu))
+    z = zone(board, name, *box, lset=layers(pcbnew.F_Cu, pcbnew.B_Cu))
     z.SetIsRuleArea(True)
     z.SetDoNotAllowFootprints(no_footprints)
     z.SetDoNotAllowPads(False)
@@ -213,23 +228,24 @@ def build():
     # Nothing between the Heltec socket rows (its battery socket hangs below); tracks/vias fine
     j3 = fps["J3"].GetCourtyard(pcbnew.F_CrtYd).BBox()
     j2 = fps["J2"].GetCourtyard(pcbnew.F_CrtYd).BBox()
+    left = pcbnew.ToMM(j3.GetLeft()) - 0.275  # 42.7
     top, bottom = pcbnew.ToMM(j3.GetBottom()) + 0.05, pcbnew.ToMM(j2.GetTop()) - 0.05
-    rule_area(board, "HELTEC_UNDER", (42.7, top, W, bottom), no_footprints=True)
+    rule_area(board, "HELTEC_UNDER", (left, top, W, bottom), no_footprints=True)
     # No pour or traces under the antenna end, right of the pin-18 pads
     pad18 = max(pcbnew.ToMM(p.GetBoundingBox().GetRight()) for r in ("J2", "J3") for p in fps[r].Pads())
     rule_area(board, "ANT", (pad18 + 0.25, 0, W, H), no_copper=True)
 
-    gnd = zone(board, "GND", 0, 0, W, H, layers(pcbnew.B_Cu))
+    gnd = zone(board, "GND", 0, 0, W, H, lset=layers(pcbnew.B_Cu))
     gnd.SetNet(board.FindNet("GND"))
     gnd.SetAssignedPriority(0)
     gnd.SetLocalClearance(pcbnew.FromMM(0.3))
-    gnd.SetPadConnection(pcbnew.ZONE_CONNECTION_THERMAL)
+    gnd.SetPadConnection(GND_PAD_CONNECTION)
 
     for ref, (name, pins) in LABELS.items():
         label(board, fps[ref], name, pins)
-    for s, x, y, rot, size in TEXTS:
-        text(board, s, x, y, rot, size, left=rot == 0 and x < 40)
-    return board
+    for s, x, y, rot, size, left in TEXTS:
+        text(board, s, x, y, rot, size, left)
+    return board, len(set(net_of.values())) - len(design.NETS)
 
 
 def verify():
@@ -248,10 +264,12 @@ def verify():
 
 
 def main():
-    board = build()
-    assert pcbnew.SaveBoard(str(PCB), board, True)  # True: leave carrier.kicad_pro to gen_sch.py
+    board, n_unconnected = build()
+    if not pcbnew.SaveBoard(str(PCB), board, True):  # True: leave carrier.kicad_pro to gen_sch.py
+        raise SystemExit("save failed")
     verify()
-    print(f"wrote {PCB.name}: {len(design.PARTS)} footprints, {len(design.NETS)} nets")
+    print(f"wrote {PCB.name}: {len(design.PARTS)} footprints, "
+          f"{len(design.NETS)} design nets + {n_unconnected} unconnected-pin nets")
 
 
 if __name__ == "__main__":
