@@ -212,10 +212,10 @@ if __name__ == "__main__":
 **Step 1: Write the generator.** Requirements:
 1. `import design` for `PARTS` and `NETS`. Invert `NETS` to `pin -> net`.
 2. For each unique symbol `lib:name`, read `/usr/share/kicad/symbols/<lib>.kicad_sym` and extract the `(symbol "name" ...)` S-expression. **Flatten `(extends "Base")`:** AO3400A and BSS138 extend `Q_NMOS_GSD`, SS34 extends `SB120`, and 1N4148W extends `1N4001`. Copy the base's graphics and pins and keep the derived symbol's properties. Rename the top-level symbol to `lib:name` inside `(lib_symbols ...)`. Rename sub-symbols to `name_0_1` etc. using the derived name.
-3. Write a KiCad 9 schematic: `(kicad_sch (version 20250114) (generator "gen_sch") (uuid …) (paper "A3") (lib_symbols …) …)`. One `(symbol (lib_id "lib:name") (at x y 0) (unit 1) (property "Reference" ref) (property "Value" value) (property "Footprint" fp) (pin "N" (uuid …)) (instances (project "carrier" (path "/<root-uuid>" (reference ref) (unit 1)))))` per part. Place parts on a 25.4 mm grid in rows of 6 (Heltec headers first). Pin positions come from the symbol's `(pin … (at px py angle) (length L))`. The connection point is `(x+px, y-py)`, because symbol Y points up and schematic Y points down.
+3. Write a KiCad 9 schematic: `(kicad_sch (version 20250114) (generator "gen_sch") (uuid …) (paper "A3") (lib_symbols …) …)`. One `(symbol (lib_id "lib:name") (at x y 0) (unit 1) (property "Reference" ref) (property "Value" value) (property "Footprint" fp) (pin "N" (uuid …)) (instances (project "carrier" (path "/<root-uuid>" (reference ref) (unit 1)))))` per part. Place parts on a 25.4 mm grid in rows of 6 (Heltec headers first). *(As built: bounding-box packing, 10 per row on A3. A plain grid overlapped.)* Pin positions come from the symbol's `(pin … (at px py angle) (length L))`. The connection point is `(x+px, y-py)`, because symbol Y points up and schematic Y points down.
 4. For every connected pin, add a `(wire (pts (xy …) (xy …)))` of 2.54 mm pointing away from the body along the pin's angle, and a `(global_label "NET" (shape passive) (at end angle) …)` at its end.
 5. Put an explicit `(no_connect (at …))` on every unconnected pin of J2/J3, and on MT3608 pin 6 (NC).
-7. Call `design.check()` at startup. Mark every ref in `design.DNP` as do-not-populate: in KiCad 9 that's the symbol attributes `(dnp yes)` and `(exclude_from_bom yes)`.
+7. Call `design.check()` at startup. Mark every ref in `design.DNP` as do-not-populate: in KiCad 9 that's the symbol attributes `(dnp yes)` and `(in_bom no)`. *(`exclude_from_bom` isn't a KiCad 9 token.)*
 6. Write `carrier.kicad_pro` as minimal JSON with net classes. `Default` gets 0.25 mm track and 0.2 mm clearance. `Power` gets 0.8 mm track, 0.25 mm clearance and patterns `VBAT*`, `+5V`, `SW`, `GND`, via `net_settings.netclass_patterns`. The board rules are 0.2 mm minimum track and space, and 0.6/0.3 mm vias (JLCPCB standard).
 
 **Step 2: Test with ERC.**
@@ -255,7 +255,7 @@ Add `check_netlist.py`: parse `/tmp/carrier.xml` (`<net name=…><node ref= pin=
 - **Keep-outs:**
   - Rule area "HELTEC_UNDER" covering the Heltec body (x 42.7–90, y 25.7–51.2) on both copper layers: **no footprints**, tracks allowed. The battery socket on the Heltec's underside needs the space.
   - Rule area "ANT" at x 86–90, y 20–57: no copper at all, pour included. The antenna overhangs just beyond it.
-- **Initial placement** (the executor may nudge parts for routability; keep the grouping):
+- **Initial placement** (the executor may nudge parts for routability; keep the grouping). **Take reference names from `design.PARTS`:** since commit 99a9704 every ref ends in a digit (J_BAT → J_BAT1, Q_LR → Q_LR1, …), and the names in this table are the old ones.
 
 | Group | Parts | Area (x, y) |
 |---|---|---|
