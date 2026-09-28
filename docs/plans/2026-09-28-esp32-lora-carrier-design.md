@@ -64,6 +64,9 @@ Heltec 5V pin: NOT connected (it is the charger input; feeding it would loop).
 
 - MT3608 with fixed feedback resistors (no trimmer modules: they can ship set to 20V+).
 - Charging only happens with the key ON (known, accepted trade-off).
+- With key OFF and USB plugged in, the Heltec charger output (no battery) feeds
+  VBAT_SW, so the boost and 5V loads run from it. Chargers may cycle without a
+  battery: LCD flicker on the bench is expected and harmless.
 - Budget: ~150-250 mA from battery; 6000 mAh ≈ 24+ h.
 - Parallel cells must be matched and equalised before connecting.
 

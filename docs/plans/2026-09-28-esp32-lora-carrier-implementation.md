@@ -288,7 +288,7 @@ Expected: **0 schematic parity issues** and 0 footprint courtyard overlaps. Unco
 
 **Step 1:** `kicad-cli pcb export pdf --layers F.Cu,F.SilkS,Edge.Cuts --scale 1 -o fab/print_1to1.pdf carrier.kicad_pcb`
 
-**Step 2:** Ask the user to print it at 100% (no "fit to page"), check that a 10 mm reference line measures 10 mm, and push a real Heltec V4's header pins through the paper at J2/J3.
+**Step 2:** Ask the user to print it at 100% (no "fit to page"), check that a 10 mm reference line measures 10 mm, and push a real Heltec V4's header pins through the paper at J2/J3. Also confirm **orientation**: pin 1 (GND on both headers) must be at the USB-C end, and J3 (GPIO1–7 side) on the top row. A mirrored or reversed Heltec would put GND/3V3 on GPIO pins.
 
 **Step 3:** If the pins don't line up, fix the J2/J3 coordinates in `gen_pcb.py`, regenerate and reprint. **Don't continue to routing until the user confirms the fit.**
 
