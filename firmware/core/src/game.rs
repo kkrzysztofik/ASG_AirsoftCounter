@@ -61,10 +61,10 @@ pub enum Phase {
 }
 
 pub struct Game {
-    pub phase: Phase,
-    pub red: u16,
-    pub blue: u16,
-    pub left: u16,
+    phase: Phase,
+    red: u16,
+    blue: u16,
+    left: u16,
     cfg: Config,
 }
 
@@ -72,6 +72,19 @@ impl Game {
     pub fn new(cfg: Config, now: u64) -> Self {
         let cfg = cfg.clamped();
         Self { phase: Phase::Intro { until: now + INTRO_MS }, red: 0, blue: 0, left: cfg.block_size, cfg }
+    }
+
+    pub fn phase(&self) -> Phase {
+        self.phase
+    }
+
+    /// (red, blue) captures.
+    pub fn score(&self) -> (u16, u16) {
+        (self.red, self.blue)
+    }
+
+    pub fn left(&self) -> u16 {
+        self.left
     }
 
     /// Advance time. Returns a beep pattern to play, if any.
@@ -82,7 +95,7 @@ impl Game {
                 None
             }
             Phase::Ready { next_beep } if now >= next_beep => {
-                self.phase = Phase::Ready { next_beep: next_beep + READY_BEEP_EVERY_MS };
+                self.phase = Phase::Ready { next_beep: now + READY_BEEP_EVERY_MS };
                 Some(READY_BEEP)
             }
             Phase::Mining { mut left_s, mut next_tick } if now >= next_tick => {
@@ -130,7 +143,7 @@ impl Game {
     /// LCD backlight: blinks once per second when the point is depleted.
     pub fn backlight(&self, now: u64) -> bool {
         match self.phase {
-            Phase::Depleted { since } => ((now - since) / 1000).is_multiple_of(2),
+            Phase::Depleted { since } => (now.saturating_sub(since) / 1000).is_multiple_of(2),
             _ => true,
         }
     }
@@ -138,16 +151,16 @@ impl Game {
     /// The four 20-character LCD lines.
     pub fn lines(&self) -> [String<20>; 4] {
         let mut l: [String<20>; 4] = Default::default();
-        // Writes cannot fail: every line is at most 20 chars.
-        let _ = write!(l[0], "{:<17}{:>3}", "Czerwoni", self.red);
-        let _ = write!(l[1], "{:<17}{:>3}", "Niebiescy", self.blue);
+        // Lines are <= 20 chars for all counts <= 9999 (counts are bounded by block_size <= 1000).
+        let _ = write!(l[0], "{:<16}{:>4}", "Czerwoni", self.red);
+        let _ = write!(l[1], "{:<16}{:>4}", "Niebiescy", self.blue);
         let _ = match self.phase {
             Phase::Intro { .. } => write!(l[2], "Tryb Airsoftcoin"),
             Phase::Ready { .. } => write!(l[2], "GOTOWY"),
             Phase::Mining { left_s, .. } => write!(l[2], "Kopanie {:02}:{:02}", left_s / 60, left_s % 60),
             Phase::Depleted { .. } => write!(l[2], "PUNKT WYCZERPANY"),
         };
-        let _ = write!(l[3], "{:<17}{:>3}", "Pozostalo", self.left);
+        let _ = write!(l[3], "{:<16}{:>4}", "Pozostalo", self.left);
         l
     }
 }
@@ -180,6 +193,28 @@ mod tests {
         assert_eq!(g.tick(18000), Some(READY_BEEP));
         assert_eq!(g.tick(18001), None);
         assert_eq!(g.tick(33000), Some(READY_BEEP));
+    }
+
+    #[test]
+    fn ready_beep_skips_missed_intervals_after_a_stall() {
+        let mut g = ready_game(Config::default());
+        assert_eq!(g.tick(18_000), Some(READY_BEEP));
+        assert_eq!(g.tick(100_000), Some(READY_BEEP));
+        assert_eq!(g.tick(100_001), None);
+    }
+
+    #[test]
+    fn capture_while_depleted_does_not_count() {
+        let mut g = ready_game(Config { mining_time_s: 5, block_size: 1 });
+        assert!(g.capture(Team::Red, 5000));
+        assert!(!g.capture(Team::Blue, 6000));
+        assert_eq!((g.red, g.blue, g.left), (1, 0, 0));
+    }
+
+    #[test]
+    fn lcd_shows_four_digit_counts() {
+        let g = ready_game(Config { mining_time_s: 5, block_size: 1000 });
+        assert_eq!(g.lines()[3].as_str(), "Pozostalo       1000");
     }
 
     #[test]

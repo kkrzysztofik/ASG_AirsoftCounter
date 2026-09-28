@@ -98,6 +98,22 @@ mod tests {
     }
 
     #[test]
+    fn parses_three_byte_tlv_length() {
+        let t = tag("ASG1:R:42");
+        let mut mem: heapless::Vec<u8, 64> = heapless::Vec::new();
+        mem.extend_from_slice(&[0x03, 0xFF, 0x00, t[1]]).unwrap();
+        mem.extend_from_slice(&t[2..]).unwrap();
+        assert_eq!(parse_player_card(&mem), Some(PlayerCard { team: Team::Red, id: 42 }));
+    }
+
+    #[test]
+    fn rejects_uri_record() {
+        let mut mem = tag("ASG1:R:1");
+        mem[5] = b'U';
+        assert_eq!(parse_player_card(&mem), None);
+    }
+
+    #[test]
     fn rejects_bad_content() {
         for t in ["ASG1:G:1", "ASG1:R:0", "ASG1:R:1000", "ASG2:R:1", "ASG1:R:1:x", "hello"] {
             assert_eq!(parse_player_card(&tag(t)), None, "{t}");
