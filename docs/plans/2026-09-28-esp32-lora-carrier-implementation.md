@@ -61,6 +61,8 @@ Expected: the help text lists `-de` (input DSN), `-do` (output SES) and `-mp` (m
 
 **Step 1:** Create `hardware/design.py` with exactly this content. It was verified before planning: the self-check passes, and it correctly rejects a button moved to GPIO5.
 
+> **Note (post-review, commit ad80848):** the committed `hardware/design.py` is now the authority. It adds checks for all 36 header pins, the `DNP` set, and the renamed `AO3400A` constant; `HELTEC_5V_PIN` is gone. The listing below is the original version.
+
 ```python
 """AirsoftCounter v2 carrier board: single source of truth for parts and nets.
 
@@ -213,6 +215,7 @@ if __name__ == "__main__":
 3. Write a KiCad 9 schematic: `(kicad_sch (version 20250114) (generator "gen_sch") (uuid …) (paper "A3") (lib_symbols …) …)`. One `(symbol (lib_id "lib:name") (at x y 0) (unit 1) (property "Reference" ref) (property "Value" value) (property "Footprint" fp) (pin "N" (uuid …)) (instances (project "carrier" (path "/<root-uuid>" (reference ref) (unit 1)))))` per part. Place parts on a 25.4 mm grid in rows of 6 (Heltec headers first). Pin positions come from the symbol's `(pin … (at px py angle) (length L))`. The connection point is `(x+px, y-py)`, because symbol Y points up and schematic Y points down.
 4. For every connected pin, add a `(wire (pts (xy …) (xy …)))` of 2.54 mm pointing away from the body along the pin's angle, and a `(global_label "NET" (shape passive) (at end angle) …)` at its end.
 5. Put an explicit `(no_connect (at …))` on every unconnected pin of J2/J3, and on MT3608 pin 6 (NC).
+7. Call `design.check()` at startup. Mark every ref in `design.DNP` as do-not-populate: in KiCad 9 that's the symbol attributes `(dnp yes)` and `(exclude_from_bom yes)`.
 6. Write `carrier.kicad_pro` as minimal JSON with net classes. `Default` gets 0.25 mm track and 0.2 mm clearance. `Power` gets 0.8 mm track, 0.25 mm clearance and patterns `VBAT*`, `+5V`, `SW`, `GND`, via `net_settings.netclass_patterns`. The board rules are 0.2 mm minimum track and space, and 0.6/0.3 mm vias (JLCPCB standard).
 
 **Step 2: Test with ERC.**
@@ -352,7 +355,7 @@ fab: check
 
 **Step 2:** Run `cd hardware && rtk make all`. Expected: exits 0, and `fab/` contains `carrier_gerbers.zip`, `bom.csv`, `schematic.pdf`, `top.png` and `bottom.png`.
 
-**Step 3:** Check that `fab/bom.csv` lists R_SDA5/R_SCL5 as "4k7 DNP". If the BOM tool can't mark DNP, add a "DNP" field in `gen_sch.py` and exclude those rows.
+**Step 3:** Check that `fab/bom.csv` does **not** list R_SDA5/R_SCL5, because they are excluded from the BOM through `design.DNP`. Also check that the schematic PDF shows them as DNP.
 
 **Step 4:** Commit: `git commit -m "hardware: reproducible build and fab outputs"`
 
