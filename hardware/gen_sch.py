@@ -222,8 +222,9 @@ def placed_symbol(it, ox, oy, root):
                       at(ox + float(pa[1]), oy - float(pa[2]), float(pa[3])), child(p, "effects")])
     dnp = ref in design.DNP
     virtual = ref.startswith("#")
+    lib_bom = kids(sym, "in_bom")[0][1] if kids(sym, "in_bom") else "yes"  # "no" for MountingHole
     return ["symbol", ["lib_id", q(it["lib_id"])], at(ox, oy), ["unit", "1"],
-            ["exclude_from_sim", "no"], ["in_bom", "no" if dnp or virtual else "yes"],
+            ["exclude_from_sim", "no"], ["in_bom", "no" if dnp or virtual or lib_bom == "no" else "yes"],
             ["on_board", "no" if virtual else "yes"], ["dnp", "yes" if dnp else "no"],
             ["uuid", uid(f"sym/{ref}")], *props,
             *[["pin", q(n), ["uuid", uid(f"pin/{ref}/{n}")]] for n in pins_of(sym)],
@@ -299,8 +300,9 @@ def project(root):
         "net_settings": {
             "meta": {"version": 4},
             "classes": [
-                {"name": "Default", "track_width": 0.25, "clearance": 0.2, **via},
-                {"name": "Power", "track_width": 0.8, "clearance": 0.25, **via},
+                # KiCad 9 silently drops every class if "priority" is missing
+                {"name": "Default", "priority": 2147483647, "track_width": 0.25, "clearance": 0.2, **via},
+                {"name": "Power", "priority": 0, "track_width": 0.8, "clearance": 0.25, **via},
             ],
             "netclass_patterns": [{"netclass": "Power", "pattern": p} for p in ("VBAT*", "+5V", "SW", "GND")],
         },

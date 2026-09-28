@@ -20,6 +20,7 @@
     "classes": [
       {
         "name": "Default",
+        "priority": 2147483647,
         "track_width": 0.25,
         "clearance": 0.2,
         "via_diameter": 0.6,
@@ -27,6 +28,7 @@
       },
       {
         "name": "Power",
+        "priority": 0,
         "track_width": 0.8,
         "clearance": 0.25,
         "via_diameter": 0.6,
