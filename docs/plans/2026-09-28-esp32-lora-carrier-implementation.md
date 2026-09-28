@@ -307,6 +307,12 @@ Expected: **0 schematic parity issues** and 0 footprint courtyard overlaps. Unco
 1. Load `carrier.kicad_pcb` and call `pcbnew.ExportSpecctraDSN(board, "/tmp/carrier.dsn")`.
 2. Run `java -jar tools/freerouting-2.4.1.jar -de /tmp/carrier.dsn -do /tmp/carrier.ses -mp 100 <headless flags from A1>` with `subprocess.run(check=True)`.
 3. Reload the board, call `pcbnew.ImportSpecctraSES(board, "/tmp/carrier.ses")`, then add a GND zone on F.Cu too (same outline, lower priority than tracks) and fill all zones with `pcbnew.ZONE_FILLER(board).Fill(board.Zones())`. Save.
+4. *(From the A4 review's trial route.)*
+   - Load `hardware/carrier.kicad_pcb` **in place**, with `carrier.kicad_pro` beside it. A copy without the `.kicad_pro` silently loses its net classes, which gave 44 DRC violations.
+   - Call `gen_pcb.verify()`, or the same net-class asserts, right after `LoadBoard`.
+   - Call `pcbnew.KIID.SeedGenerator(...)` before the SES import, so the routed board is byte-stable.
+   - Use `gen_pcb.GND_PAD_CONNECTION` (solid) for the F.Cu pour; thermal reliefs gave starved_thermal errors.
+   - In the trial, Freerouting was deterministic and routed everything: 0 unrouted, 0 violations. Pre-routing the boost loop was unnecessary once A4 mirrored the boost block.
 
 **Step 2: Full DRC as the test.**
 
