@@ -58,7 +58,8 @@ def unq(tok):
 
 
 def num(v):
-    return f"{round(v, 4):g}"
+    s = f"{v:.4f}".rstrip("0").rstrip(".")
+    return "0" if s == "-0" else s
 
 
 def kids(node, head):
@@ -67,7 +68,9 @@ def kids(node, head):
 
 def child(node, head):
     found = kids(node, head)
-    return found[0] if found else None
+    if not found:
+        raise SystemExit(f"no ({head} ...) in ({' '.join(x for x in node[:2] if isinstance(x, str))} ...)")
+    return found[0]
 
 
 # --- Library symbols ---
@@ -82,6 +85,13 @@ def lib_symbols(lib):
     return _libs[lib]
 
 
+def lib_symbol(lib, name):
+    try:
+        return lib_symbols(lib)[name]
+    except KeyError:
+        raise SystemExit(f"{name} not in {lib}.kicad_sym") from None
+
+
 def rename_units(sym, old, new):
     """Sub-symbols are named <symbol>_<unit>_<style>."""
     return [["symbol", q(new + unq(s[1])[len(old):]), *s[2:]] for s in kids(sym, "symbol")]
@@ -89,13 +99,16 @@ def rename_units(sym, old, new):
 
 def flat_symbol(lib, name):
     """Symbol `name` with (extends ...) resolved: base graphics/pins, derived properties."""
-    sym = lib_symbols(lib)[name]
-    ext = child(sym, "extends")
+    sym = lib_symbol(lib, name)
+    ext = kids(sym, "extends")
     if not ext:
         return sym
-    base = flat_symbol(lib, unq(ext[1]))
+    base = flat_symbol(lib, unq(ext[0][1]))
+    # properties: derived wins, base-only ones (e.g. ki_fp_filters) are kept
     own = {unq(p[1]): p for p in kids(sym, "property")}
     props = [own.pop(unq(p[1]), p) for p in kids(base, "property")] + list(own.values())
+    # attrs (power, pin_names, in_bom, ...) and all graphics/pins come from base
+    # ponytail: derived-only top-level attrs are dropped; fine for stock KiCad 9 derived symbols
     overrides = {x[0]: x for x in sym[2:] if isinstance(x, list) and x[0] not in ("extends", "property", "symbol")}
     attrs = [overrides.get(x[0], x) for x in base[2:]
              if isinstance(x, list) and x[0] not in ("property", "symbol", "embedded_fonts")]
@@ -110,7 +123,7 @@ def embedded(lib_id):
 
 def unit_bodies(sym):
     """Sub-symbols of unit 1 / common, body style 1 (skip De Morgan alternates)."""
-    return [s for s in kids(sym, "symbol") if unq(s[1]).rsplit("_", 1)[1] in ("0", "1")]
+    return [s for s in kids(sym, "symbol") if all(k in ("0", "1") for k in unq(s[1]).rsplit("_", 2)[1:])]
 
 
 def pins_of(sym):
@@ -140,6 +153,7 @@ def stub_dir(angle):
     return -round(math.cos(a)), round(math.sin(a))
 
 
+# Layout estimates only (approx glyph width at 1.27 mm font, 1.5 mm half label height); safe to tweak.
 def label_width(net):
     return 0.85 * 1.27 * len(net) + 3
 
@@ -191,7 +205,7 @@ def font(*extra):
     return ["effects", ["font", ["size", "1.27", "1.27"]], *extra]
 
 
-def at(x, y, a=0):
+def at(x, y, a=0.0):
     return ["at", num(x), num(y), num(a)]
 
 
@@ -204,7 +218,7 @@ def placed_symbol(it, ox, oy, root):
         if name.startswith("ki_"):
             continue
         pa = child(p, "at")
-        props.append(["property", q(name), q(values.get(name, unq(p[2]))),
+        props.append(["property", q(name), q(values[name]) if name in values else p[2],
                       at(ox + float(pa[1]), oy - float(pa[2]), float(pa[3])), child(p, "effects")])
     dnp = ref in design.DNP
     virtual = ref.startswith("#")

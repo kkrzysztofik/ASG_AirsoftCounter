@@ -9,10 +9,10 @@ import xml.etree.ElementTree as ET
 import design
 
 
-def check(xml_path="/tmp/carrier.xml", parts=design.PARTS, nets=design.NETS):
+def check(xml_path="/tmp/carrier.xml", parts=design.PARTS, nets=design.NETS, dnp=design.DNP):
     root = ET.parse(xml_path).getroot()
-    got = {(n.get("name").lstrip("/"), f"{node.get('ref')}.{node.get('pin')}")
-           for n in root.iter("net") if not n.get("name").startswith("unconnected-")
+    got = {(n.attrib["name"].lstrip("/"), f"{node.get('ref')}.{node.get('pin')}")
+           for n in root.iter("net") if not n.attrib["name"].startswith("unconnected-")
            for node in n.iter("node")}
     want = {(net, p) for net, members in nets.items() for p in members}
     errors = [f"missing {x}" for x in sorted(want - got)] + [f"extra {x}" for x in sorted(got - want)]
@@ -21,6 +21,9 @@ def check(xml_path="/tmp/carrier.xml", parts=design.PARTS, nets=design.NETS):
         if comps.get(ref) != (value, fp):
             errors.append(f"{ref}: want {(value, fp)}, got {comps.get(ref)}")
     errors += [f"unexpected component {r}" for r in sorted(comps.keys() - parts.keys())]
+    got_dnp = {c.get("ref") for c in root.iter("comp") if c.find("property[@name='dnp']") is not None}
+    if got_dnp != dnp:
+        errors.append(f"DNP: want {sorted(dnp)}, got {sorted(got_dnp)}")
     return errors
 
 
