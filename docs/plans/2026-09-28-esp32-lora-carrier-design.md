@@ -1,0 +1,159 @@
+# AirsoftCounter v2: Heltec V4 + LoRa carrier board and Rust firmware
+
+Date: 2026-09-28
+Status: design approved, implementation not started
+
+## Goal
+
+Replace the hand-wired Arduino Nano build (soldered point-to-point, hot glue,
+per-unit LCD address tweaks, not waterproof) with:
+
+- a KiCad carrier PCB for a **Heltec WiFi LoRa 32 V4 (no-display build, R2 or R8)**,
+- LoRa **remote control from HQ** (start/stop/configure + status reports),
+- **GPS** position in status reports,
+- phone configuration over **WiFi AP + web page** (IR remote dropped),
+- a **20x4 I2C LCD**,
+- a **weatherproof enclosure** (Kradex ZP240.190.105SJp, clear PC lid, IP67),
+- firmware rewritten in **Rust** (esp-hal + Embassy).
+
+Existing Nano units are left as they are; no Nano carrier is planned.
+
+## Part 1: MCU board, pins, power
+
+### Heltec V4 facts (verified from Heltec pin maps and Meshtastic variants)
+
+- J2 and J3 are 1x18 2.54 mm headers, identical physical layout on V3/V4.
+  V4 adds a separate 4-pin strip (GPIO15-18) at the antenna end: not used.
+- Native USB (no USB-UART chip). 5V pin is powered **only from USB** (max 500 mA).
+- Battery: SH1.25 2-pin socket, onboard charger. VBAT sense on GPIO1 via
+  100k/390k divider (R2 needs ADC_Ctrl GPIO37 HIGH; R8 has no ADC_Ctrl).
+- Internally used GPIOs:
+  - 2, 5, 7: LoRa front end (KCT8103L CSD, CTX, LDO power) on V4.3
+  - 8-14: SX1262 (NSS, SCK, MOSI, MISO, RST, BUSY, DIO1)
+  - 38-42: GNSS connector (TX 38, RX 39, PPS 41; EN 34/RST 42/STANDBY 40 on R2, EN 42 on R8)
+  - 33-37: octal PSRAM on R8
+  - 35/36 (R2) or 46/40 (R8): LED / Vext
+  - 0, 45, 46: strapping; 19/20: USB; 26: PSRAM CS
+- All EU868 V4s are the 28 dBm high-power version.
+
+### GPIO assignment (valid on both no-display V4-R2 and V4-R8)
+
+| Signal | GPIO | Header pin |
+|---|---|---|
+| I2C SDA (LCD) | 4 | J3-15 |
+| I2C SCL (LCD) | 3 | J3-14 |
+| Red button in | 6 | J3-17 |
+| Blue button in | 44 | J2-5 (U0RXD; firmware must not use UART0) |
+| Red LED out | 47 | J2-13 |
+| Blue LED out | 48 | J2-14 |
+| Buzzer out | 21 | J2-16 |
+| Battery sense | 1 | onboard |
+| GPS | 38/39/41/42 (+40 R2) | Heltec GNSS connector, no carrier involvement |
+
+Spare: GPIO43 and the top 4-pin strip. Left unconnected.
+
+### Power path
+
+```
+1S Li-ion (2x18650 parallel) ─J_BAT─ PTC 1A ─ key switch (J_KEY) ─ VBAT_SW ─┬─ J_HBAT ─> Heltec SH1.25 battery socket
+                                                                            ├─ 220 µF bulk
+                                                                            └─ MT3608 boost ─> 5V_AUX (LCD, button LEDs, buzzer)
+Heltec 5V pin: NOT connected (it is the charger input; feeding it would loop).
+```
+
+- MT3608 with fixed feedback resistors (no trimmer modules: they can ship set to 20V+).
+- Charging only happens with the key ON (known, accepted trade-off).
+- Budget: ~150-250 mA from battery; 6000 mAh ≈ 24+ h.
+- Parallel cells must be matched and equalised before connecting.
+
+## Part 2: I/O circuits and connectors
+
+- **Output drivers (x3: LED R, LED B, buzzer):** AO3400A low-side, 100 Ω gate
+  series, 100k gate pull-down (keeps loads off during boot). R_LOAD footprint in
+  series with load: 150 Ω (red), 100 Ω (blue), 0 Ω for buzzer or 5V-LED buttons.
+  1N4148W flyback across buzzer.
+- **Button inputs (x2):** 10k pull-up to 3V3, 100 nF to GND, 1k series to GPIO.
+- **I2C level shift:** 2x BSS138, 4.7k pull-ups on 3V3 side; 5V-side pull-ups
+  footprinted, DNP (backpack already has them).
+- **Connectors:** JST-XH 2.54 vertical, silkscreen-labelled with pin names.
+
+| Ref | Pins | To |
+|---|---|---|
+| J_BAT | 2 | battery holder |
+| J_KEY | 2 | key switch |
+| J_HBAT | 2 | Heltec battery socket (SH1.25 to XH pigtail) |
+| J_LCD | 4 | GND, 5V, SDA, SCL |
+| J_BTN_R, J_BTN_B | 4 | SW, GND, LED+, LED- |
+| J_BUZ | 2 | buzzer |
+
+Heltec USB-C, LoRa u.FL and GNSS cable go straight from the Heltec to panel parts.
+Heltec sits in 2x 1x18 female headers. Parts: 0805, SOT-23, SOT-23-6, THT connectors.
+
+## Part 3: PCB and enclosure
+
+- 2-layer, 1.6 mm, solid ground pour on bottom. 80 x 50 mm, 4x M3 holes 3.5 mm from corners.
+- Heltec along one long edge, USB-C at board edge; antenna end overhangs the
+  outline (no copper under the antennas). Connectors along the opposite edge,
+  same orientation. Power section grouped in one corner, away from u.FL.
+- **Header row spacing is not dimensioned in the datasheet:** measure from
+  Heltec STEP model, then verify with a 1:1 paper print against a real board.
+- Enclosure: **Kradex ZP240.190.105SJp** (240 x 191 x 106 mm, clear PC lid, IP67,
+  brass inserts) + **ZP240.190-PCB** mounting plate.
+  - Lid: 20x4 LCD behind clear lid (no window), 2x IP67 anti-vandal 5V-LED pushbuttons.
+  - Walls: IP65 key switch, IP67 capped USB-C panel extension, SMA bulkhead with O-ring (high on a wall).
+  - Floor plate: carrier on M3 standoffs, 2x18650 holder, cable ties.
+  - L76K GNSS module on a standoff near the lid, away from the LCD frame and battery.
+
+## Part 4: Rust firmware
+
+### Stack
+
+esp-hal 1.2 + Embassy (embassy-executor 0.10, esp-rtos 0.4), no_std.
+Toolchain: `espup` (Xtensa Rust), `espflash`, `esp-generate`.
+
+| Concern | Crate | Notes |
+|---|---|---|
+| HAL | esp-hal | |
+| Radio | lora-phy 3.0 (SX1262) | TCXO 1.8V via DIO3, DIO2 as RF switch; FEM pins 7/2/5 driven manually |
+| LCD | hd44780-driver 0.4 | verify embedded-hal 1.0 support first; fallback: own PCF8574 driver. Probe 0x27/0x3F |
+| GPS | nmea 0.8 | UART1 on 38/39 |
+| Config | sequential-storage + esp-storage | defaults when key missing |
+| Phone config | esp-radio (WiFi AP) + embassy-net + picoserve | esp-radio is beta: implemented last |
+| Auth | ccm + aes | AES-CCM, pre-shared key, per-sender sequence counter (replay protection) |
+
+### Layout
+
+```
+firmware/
+├── core/    no_std, host-testable: game state machine, protocol encode/decode, auth, config types
+└── device/  esp32s3 binary: tasks, drivers, pin map; features v4-r2 / v4-r8
+```
+
+### Radio protocol (raw LoRa, star)
+
+- Packet: `[net_id, dev_id, seq, type, payload, tag]`, AES-CCM authenticated.
+- HQ → device: START, STOP, CONFIG, PING. Device → HQ: STATUS (state, score, battery, GPS), ACK.
+- Commands are ACKed and retried.
+- Channel 869.525 MHz (g3 sub-band, 10% duty, ≤500 mW ERP). TX power set
+  explicitly in code; never rely on driver defaults (hardware can do 28 dBm).
+
+### Milestones
+
+0. Toolchain + blinky on V4
+1. LCD + buttons + outputs: port Airsoftcoin mode, no radio
+2. Config storage + battery reading
+3. LoRa PING/STATUS between two V4s, then authenticated commands
+4. GPS in STATUS
+5. WiFi AP config page
+6. HQ firmware: USB-serial ↔ LoRa bridge on a bare V4
+
+Out of scope for now: laptop HQ app, OTA updates, additional game modes.
+
+## Open items to verify during implementation
+
+- Heltec V4 header row spacing (STEP model + paper print).
+- Heltec charger current (check V4.3 schematic PROG resistor); ok for 6000 mAh?
+- hd44780-driver embedded-hal 1.0 compatibility.
+- ZP240.190.105 internal dimensions and plate hole pattern (Kradex drawing).
+- Button choice: IP67 anti-vandal buttons with 5V LED (R_LOAD values depend on it).
+- Measure idle current; MT3608 efficiency at light load.
