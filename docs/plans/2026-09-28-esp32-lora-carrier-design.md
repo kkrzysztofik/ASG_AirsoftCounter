@@ -76,7 +76,7 @@ Heltec 5V pin: NOT connected (it is the charger input; feeding it would loop).
 - **Button inputs (x2):** 10k pull-up to 3V3, 100 nF to GND, 1k series to GPIO.
 - **I2C level shift:** 2x BSS138, 4.7k pull-ups on 3V3 side; 5V-side pull-ups
   footprinted, DNP (backpack already has them).
-- **Connectors:** JST-XH 2.54 vertical, silkscreen-labelled with pin names.
+- **Connectors:** JST-XH 2.50 mm vertical, silkscreen-labelled with pin names.
 
 | Ref | Pins | To |
 |---|---|---|
@@ -93,12 +93,12 @@ Heltec sits in 2x 1x18 female headers. Parts: 0805, SOT-23, SOT-23-6, THT connec
 
 ## Part 3: PCB and enclosure
 
-- 2-layer, 1.6 mm, solid ground pour on bottom. 80 x 50 mm, 4x M3 holes 3.5 mm from corners.
+- 2-layer, 1.6 mm, solid ground pour on bottom. 90 x 60 mm (holes must clear the Heltec), 4x M3 holes 3.5 mm from corners.
 - Heltec along one long edge, USB-C at board edge; antenna end overhangs the
   outline (no copper under the antennas). Connectors along the opposite edge,
   same orientation. Power section grouped in one corner, away from u.FL.
-- **Header row spacing is not dimensioned in the datasheet:** measure from
-  Heltec STEP model, then verify with a 1:1 paper print against a real board.
+- **Header row spacing: 22.86 mm** (measured from Heltec STEP: 2x18 holes, 2.54 pitch); still verify
+  with a 1:1 paper print against a real board.
 - Enclosure: **Kradex ZP240.190.105SJp** (240 x 191 x 106 mm, clear PC lid, IP67,
   brass inserts) + **ZP240.190-PCB** mounting plate.
   - Lid: 20x4 LCD behind clear lid (no window), 2x IP67 anti-vandal 5V-LED pushbuttons.
@@ -186,7 +186,7 @@ Out of scope for now: laptop HQ app, OTA updates, additional game modes.
 
 ## Open items to verify during implementation
 
-- Heltec V4 header row spacing (STEP model + paper print).
+- Heltec V4 header fit (paper print; 22.86 mm row spacing measured on V3 STEP).
 - Heltec charger current (check V4.3 schematic PROG resistor); ok for 6000 mAh?
 - hd44780-driver and pn532 embedded-hal 1.0 compatibility.
 - PN532 read range through the actual lid.
