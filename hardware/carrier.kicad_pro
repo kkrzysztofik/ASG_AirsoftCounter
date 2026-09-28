@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "filename": "carrier.kicad_pro",
+    "version": 3
+  },
+  "board": {
+    "design_settings": {
+      "rules": {
+        "min_track_width": 0.2,
+        "min_clearance": 0.2,
+        "min_via_diameter": 0.6,
+        "min_through_hole_diameter": 0.3
+      }
+    }
+  },
+  "net_settings": {
+    "meta": {
+      "version": 4
+    },
+    "classes": [
+      {
+        "name": "Default",
+        "track_width": 0.25,
+        "clearance": 0.2,
+        "via_diameter": 0.6,
+        "via_drill": 0.3
+      },
+      {
+        "name": "Power",
+        "track_width": 0.8,
+        "clearance": 0.25,
+        "via_diameter": 0.6,
+        "via_drill": 0.3
+      }
+    ],
+    "netclass_patterns": [
+      {
+        "netclass": "Power",
+        "pattern": "VBAT*"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "+5V"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "SW"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "GND"
+      }
+    ]
+  },
+  "sheets": [
+    [
+      "f1541609-4ef0-59ea-a93e-722af8b68ae0",
+      "Root"
+    ]
+  ]
+}
