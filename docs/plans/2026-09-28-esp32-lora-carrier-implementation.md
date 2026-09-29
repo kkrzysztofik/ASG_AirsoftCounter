@@ -908,7 +908,7 @@ espup install --targets esp32s3
 cargo +esp --version
 ```
 
-Expected: an `esp` toolchain version is printed.
+Expected: an `esp` toolchain version is printed. *(Done 2026-09-29: Xtensa Rust 1.97.0, espflash 4.6.0, esp-generate 1.4.0; `asg-core` builds for `xtensa-esp32s3-none-elf`.)*
 
 **Step 2:** Generate the project. Run `esp-generate --help` first and use the headless options for: chip esp32s3, embassy, defmt or log, probe-rs off, and no WiFi yet. Then:
 
@@ -921,15 +921,27 @@ cd firmware && esp-generate --chip esp32s3 --headless <options from --help> devi
 **Step 4:** Create `device/src/board.rs` with the pin map from design part 1. It's the only place GPIO numbers appear:
 
 ```rust
-//! Heltec WiFi LoRa 32 V4 (no display) + AirsoftCounter carrier. See design doc part 1.
+//! Heltec WiFi LoRa 32 V4 (no display) + AirsoftCounter carrier. See design doc parts 1 and 6.
 pub const I2C_SDA: u8 = 4;
 pub const I2C_SCL: u8 = 3;
-pub const BTN_RED: u8 = 6;
-pub const BTN_BLUE: u8 = 44; // U0RXD: never enable UART0
-pub const LED_RED: u8 = 47;
-pub const LED_BLUE: u8 = 48;
-pub const BUZZER: u8 = 21;
+pub const EXP_INT: u8 = 6; // TCA9534 INT, active low, 10k pull-up on the carrier
+pub const I2S_BCLK: u8 = 47;
+pub const I2S_LRCLK: u8 = 48;
+pub const I2S_DIN: u8 = 21;
 pub const VBAT_ADC: u8 = 1;
+// GPIO44 (U0RXD) and GPIO43 (U0TXD) are spare and unconnected; never enable UART0.
+
+/// TCA9534 expander (I2C 0x20) pin map.
+pub mod exp {
+    pub const ADDR: u8 = 0x20;
+    pub const BTN_RED: u8 = 0; // input, active low
+    pub const BTN_BLUE: u8 = 1; // input, active low
+    pub const LED_RED: u8 = 2;
+    pub const LED_BLUE: u8 = 3;
+    pub const BUZZER: u8 = 4;
+    pub const AMP_SD: u8 = 5; // high = amp on (left channel), low = shutdown
+    // P6, P7 unconnected: configure as outputs driven low.
+}
 #[cfg(feature = "v4-r2")] pub const ONBOARD_LED: u8 = 35;
 #[cfg(feature = "v4-r8")] pub const ONBOARD_LED: u8 = 46;
 #[cfg(feature = "v4-r2")] pub const VEXT: u8 = 36; // active low
@@ -946,18 +958,27 @@ pub const VBAT_ADC: u8 = 1;
 
 **Step 7:** Commit: `git commit -m "device: toolchain and blinky on Heltec V4"`
 
-### Task C2: Outputs (LEDs + buzzer) as tasks
+### Task C2: TCA9534 expander driver + outputs (LEDs, buzzer) as tasks
+
+*(Revised for A10: LEDs, buzzer and buttons are on the TCA9534 expander at I2C 0x20, not on native GPIOs.)*
 
 **Files:**
-- Create: `device/src/outputs.rs`
+- Create: `device/src/expander.rs` and `device/src/outputs.rs`
 
-**Step 1:**
-- A `led_task` receives `asg_core::game::Leds` over an `embassy_sync::signal::Signal` and drives both LED GPIOs: `On`, `Off`, or `Blink` at 300 ms on / 300 ms off.
-- A `buzzer_task` receives `Beep` over a `Channel<_, Beep, 4>` and plays `times` x (`on_ms` high, `off_ms` low).
+**Step 1: `expander.rs`**, a small TCA9534 driver over the shared async I2C bus (`embassy-embedded-hal` shared bus or a `Mutex`).
+- Registers: 0 input, 1 output, 2 polarity, 3 config (1 = input).
+- `init()` **writes output = 0x00 first, then config = 0b0000_0011** (P0/P1 inputs; P2–P7 outputs driven low, including the unused P6/P7).
+- `set(pin, bool)` keeps a shadow copy of the output register. `read_inputs()` returns the input register.
+- The expander pin map lives in `board::exp`.
 
-**Step 2:** Hardware test on the carrier, or on a bare V4 with LEDs and a buzzer on the pins through a MOSFET. At boot, send `Leds::Blink` and one `READY_BEEP`. Expected: both LEDs blink and you hear 3 short beeps. **The buzzer must stay silent during reset** (this checks the gate pull-downs).
+**Step 2: `outputs.rs`.**
+- A `led_task` receives `asg_core::game::Leds` over a `Signal` and drives P2/P3 through the expander: `On`, `Off`, or `Blink` at 300/300 ms.
+- A `buzzer_task` receives `Beep` over a `Channel<_, Beep, 4>` and toggles P4.
+- I2C writes at these rates are trivial.
 
-**Step 3:** Commit: `git commit -m "device: LED and buzzer tasks"`
+**Step 3:** Hardware test on the carrier. At boot, send `Leds::Blink` and one `READY_BEEP`. Expected: both LEDs blink and 3 beeps sound. **Nothing lights or beeps during reset or boot**: the TCA9534 powers up as all-inputs and the gate pull-downs hold the MOSFETs off.
+
+**Step 4:** Commit: `git commit -m "device: TCA9534 driver, LED and buzzer tasks"`
 
 ### Task C3: LCD driver + address probe
 
@@ -980,7 +1001,12 @@ pub const VBAT_ADC: u8 = 1;
 - Create: `device/src/buttons.rs`
 - Modify: `device/src/main.rs`
 
-**Step 1:** `buttons.rs`: one task per button. Use `Input` with no internal pull, because the carrier has 10k pull-ups. `wait_for_falling_edge().await`, then send `Team::Red` / `Team::Blue` into a `Channel<_, Team, 4>`. After each edge, `Timer::after_millis(50)` as a software guard on top of the RC filter.
+**Step 1:** `buttons.rs`, *(revised for A10: buttons are expander inputs P0/P1)*. One task:
+- Wait on GPIO6 (`EXP_INT`, active low, carrier pull-up; `Input` with no internal pull) with `wait_for_falling_edge().await`.
+- Then `read_inputs()`, which also clears INT, and compare with the previous state.
+- A high→low transition on P0 sends `Team::Red` and on P1 sends `Team::Blue`, into a `Channel<_, Team, 4>`.
+- After each event, `Timer::after_millis(50)` as a software guard on top of the RC filter.
+- Also poll `read_inputs()` every 200 ms as a fallback in case an INT edge is missed.
 
 **Step 2:** Game loop in `main`: every 50 ms, or when a button event arrives (`select`):
 - Call `game.tick(now_ms)` and send any returned beep to the buzzer.
@@ -1046,6 +1072,32 @@ Use `Config::default()` for now.
 **Step 6:** Commit: `git commit -m "device: RFID player captures and admin menu (milestone 3)"`
 
 ---
+
+### Task C7 (new): Speaker audio over I2S
+
+*(Added for A10.)*
+
+**Files:**
+- Create: `device/src/audio.rs` and `device/assets/*.raw`
+- Modify: `asg-core` (add a `Sound` event)
+
+**Step 1: core, test-first.**
+- `Game::tick`/`capture` return an optional `Sound`: `Captured`, `MiningDone`, `Depleted` or `Ready`, alongside the existing `Beep`.
+- Host tests pin which events produce which sound.
+
+**Step 2: `audio.rs`.**
+- I2S TX with DMA on BCLK=GPIO47, LRCLK=GPIO48, DIN=GPIO21.
+- 16 kHz, 16-bit stereo frames, with the mono sample duplicated into both slots (the amp plays the left channel).
+- Before playback, `AMP_SD` (expander P5) goes high and the task waits about 10 ms; about 100 ms after the last sample, `AMP_SD` goes low again.
+- Clips are raw 16 kHz mono PCM embedded with `include_bytes!` (a few seconds each; the 16 MB flash is ample). A software volume scale is applied.
+
+**Step 3: brownout guard.**
+- Scale the volume down when the battery voltage (C5) is low.
+- Don't start a clip while a LoRa TX is in progress (milestone 4).
+
+**Step 4:** Hardware test with the Visaton 8 Ω speaker: each game event plays its clip, and nothing is heard at boot.
+
+**Step 5:** Commit: `git commit -m "device: I2S speaker audio"`
 
 ## Milestones 4–7 (separate plans later)
 
