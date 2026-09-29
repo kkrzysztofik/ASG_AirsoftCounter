@@ -197,6 +197,20 @@ def layout(items):
     return placed
 
 
+# (name, width, height) in mm, landscape; the drawing frame and title block need margins
+PAPERS = [("A3", 420, 297), ("A2", 594, 420), ("A1", 841, 594)]
+
+
+def paper_for(placed):
+    """Smallest sheet whose frame holds every part, clear of the bottom title block."""
+    w = max(ox + it["bbox"][2] for it, ox, _ in placed)
+    h = max(oy + it["bbox"][3] for it, _, oy in placed)
+    for name, pw, ph in PAPERS:
+        if w <= pw - 15 and h <= ph - 45:
+            return name
+    raise SystemExit(f"schematic content {w:.0f}x{h:.0f} mm does not fit on A1")
+
+
 # --- Schematic items ---
 
 def uid(key):
@@ -289,7 +303,7 @@ def schematic():
     body += [placed_symbol(it, ox, oy, root) for it, ox, oy in placed]
     body += [["sheet_instances", ["path", q("/"), ["page", q("1")]]], ["embedded_fonts", "no"]]
     return ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")],
-            ["generator_version", q("9.0")], ["uuid", q(root)], ["paper", q("A3")], *body], root
+            ["generator_version", q("9.0")], ["uuid", q(root)], ["paper", q(paper_for(placed))], *body], root
 
 
 # KiCad 9 default ERC pin conflict matrix (0 ok, 1 warning, 2 error), rows/columns: input, output,

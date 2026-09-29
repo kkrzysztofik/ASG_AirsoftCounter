@@ -3,7 +3,7 @@
 	(generator "gen_sch")
 	(generator_version "9.0")
 	(uuid "f1541609-4ef0-59ea-a93e-722af8b68ae0")
-	(paper "A3")
+	(paper "A2")
 	(lib_symbols
 		(symbol "Audio:MAX98357A"
 			(exclude_from_sim no)
