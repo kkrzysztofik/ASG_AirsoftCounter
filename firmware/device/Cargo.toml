@@ -1,11 +1,11 @@
 [package]
 edition      = "2024"
-name         = "device"
+name         = "asg-device"
 rust-version = "1.95"
 version      = "0.1.0"
 
 [[bin]]
-name = "device"
+name = "asg-device"
 path = "./src/bin/main.rs"
 
 [dependencies]
@@ -25,7 +25,6 @@ esp-backtrace = { version = "0.20.0", features = [
 ] }
 esp-println = { version = "0.18.0", features = ["esp32s3", "log-04"] }
 
-critical-section = "1.2.0"
 static_cell      = "2.1.1"
 
 asg-core = { path = "../core" }

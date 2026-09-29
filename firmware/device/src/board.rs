@@ -12,7 +12,7 @@ pub const I2S_BCLK: u8 = 47;
 pub const I2S_LRCLK: u8 = 48;
 pub const I2S_DIN: u8 = 21;
 pub const VBAT_ADC: u8 = 1;
-// GPIO44 (U0RXD) and GPIO43 (U0TXD) are spare and unconnected; never enable UART0.
+// GPIO44 (U0RXD) and GPIO43 (U0TXD) are spare and unconnected on this carrier revision.
 
 /// TCA9534 expander (I2C 0x20) pin map.
 pub mod exp {

@@ -43,6 +43,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "asg-device"
+version = "0.1.0"
+dependencies = [
+ "asg-core",
+ "embassy-executor",
+ "embassy-time",
+ "esp-backtrace",
+ "esp-bootloader-esp-idf",
+ "esp-hal",
+ "esp-println",
+ "esp-rtos",
+ "log",
+ "static_cell",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -322,23 +338,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
-]
-
-[[package]]
-name = "device"
-version = "0.1.0"
-dependencies = [
- "asg-core",
- "critical-section",
- "embassy-executor",
- "embassy-time",
- "esp-backtrace",
- "esp-bootloader-esp-idf",
- "esp-hal",
- "esp-println",
- "esp-rtos",
- "log",
- "static_cell",
 ]
 
 [[package]]

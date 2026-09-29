@@ -972,6 +972,12 @@ pub mod exp {
 **Files:**
 - Create: `device/src/expander.rs` and `device/src/outputs.rs`
 
+**Conventions from the C1 review (apply from C2 on):**
+- **`Board` fields use concrete pin types** for pins that are the same on both variants (`GPIO4`, `GPIO3`, `GPIO6`, `GPIO1`, `GPIO47`, `GPIO48`, `GPIO21`). `AnyPin` is only for variant-dependent pins (LED, VEXT, `adc_ctrl: Option<AnyPin>`). esp-hal's ADC needs concrete `GPIOn` types.
+- Add fields one task at a time: `i2c: I2C0, sda: GPIO4, scl: GPIO3` (C2), `exp_int: GPIO6` (C4), `adc1, vbat: GPIO1, adc_ctrl, flash: FLASH` (C5), `i2s: I2S0, dma: DMA_CH0, bclk: GPIO47, lrclk: GPIO48, din: GPIO21` (C7).
+- Keep it one flat struct, and delete each `u8` constant once its typed field exists.
+- **Shared I2C, decided:** one place builds `I2c::new(..).with_sda().with_scl().into_async()` at **100 kHz** (for the PCF8574 and the level shifter). It goes in a `StaticCell<Mutex<NoopRawMutex, _>>`. Each driver (expander, LCD, PN532) gets an `embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice`. Dependencies: embassy-sync, embassy-embedded-hal.
+
 **Step 1: `expander.rs`**, a small TCA9534 driver over the shared async I2C bus (`embassy-embedded-hal` shared bus or a `Mutex`).
 - Registers: 0 input, 1 output, 2 polarity, 3 config (1 = input).
 - `init()` **writes output = 0x00 first, then config = 0b0000_0011** (P0/P1 inputs; P2–P7 outputs driven low, including the unused P6/P7).
