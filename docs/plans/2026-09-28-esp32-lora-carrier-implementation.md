@@ -1033,6 +1033,8 @@ Use `Config::default()` for now.
 
 ### Task C5 (Milestone 2): Config storage + battery
 
+*(From C1: espflash assumes 4 MB of flash by default, but the Heltec V4 has **16 MB**. First confirm it with `espflash board-info` on real hardware, then set the flash size (`espflash --flash-size 16mb` or `[flash]` in espflash.toml) and add a partition table with an `nvs`-type data partition for config and room for audio clips in C7.)*
+
 **Files:**
 - Create: `device/src/storage.rs`, `device/src/battery.rs`
 
