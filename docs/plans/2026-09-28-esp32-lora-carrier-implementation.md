@@ -958,6 +958,13 @@ pub mod exp {
 
 **Step 7:** Commit: `git commit -m "device: toolchain and blinky on Heltec V4"`
 
+*As built (2026-09-29), steps 2–5 and 7 done, step 6 (flash) pending hardware:*
+- Generated with `cd firmware && esp-generate --headless -s -o esp32s3 -o unstable-hal -o embassy -o log -o esp-backtrace -O . device`. `embassy` requires `unstable-hal` (the generator refuses without it); no probe-rs, defmt, alloc or radio.
+- Versions (Cargo.lock): esp-hal 1.2.2 (`unstable`), esp-rtos 0.4.0 (`embassy`), embassy-executor 0.10.0, embassy-time 0.5.1, esp-bootloader-esp-idf 0.6.0, esp-println 0.18.0 + log 0.4, esp-backtrace 0.20.0. Edition 2024, `rust-toolchain.toml` = `esp`.
+- esp-hal hands out typed pins, so `board.rs` keeps the numeric constants as documentation and adds `Board::new(Peripherals) -> Board` (by-role fields: `onboard_led: AnyPin`, plus `timg0`/`sw_int0` for the scheduler). Later tasks add their peripherals to `Board`. `lib.rs` has a `compile_error!` unless exactly one of `v4-r2`/`v4-r8` is enabled.
+- `main.rs` logs `asg_core::game::Config::default().block_size` (proves the dependency links), then blinks the LED (500 ms on / 500 ms off) and logs `alive` every second.
+- `cargo build --release` (R2) and `--no-default-features --features v4-r8` both build; `cargo clippy --release -- -D warnings` is clean for both. The app image (`espflash save-image`) is about 99 KB. Added `-Wl,--no-warn-rwx-segments` to `.cargo/config.toml` to silence a harmless linker warning from the template.
+
 ### Task C2: TCA9534 expander driver + outputs (LEDs, buzzer) as tasks
 
 *(Revised for A10: LEDs, buzzer and buttons are on the TCA9534 expander at I2C 0x20, not on native GPIOs.)*
