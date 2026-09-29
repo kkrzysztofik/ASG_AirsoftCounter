@@ -75,7 +75,7 @@ Heltec 5V pin: NOT connected (it is the charger input; feeding it would loop).
 
 - **Output drivers (x3: LED R, LED B, buzzer):** AO3400A low-side, 100 Ω gate
   series, 100k gate pull-down (keeps loads off during boot). R_LOAD footprint in
-  series with load: 150 Ω (red), 100 Ω (blue), 0 Ω for buzzer or 5V-LED buttons.
+  series with load: 150 Ω (red), 100 Ω (blue), 0 Ω for buzzer or 5V-LED buttons. *(As built: 0 Ω for both, because the chosen ONPOW LAS1-AGQ 6 V buttons have built-in LED resistors; see hardware/fab/OFFBOARD_PARTS.md.)*
   1N4148W flyback across buzzer.
 - **Button inputs (x2):** 10k pull-up to 3V3, 100 nF to GND, 1k series to GPIO.
 - **I2C level shift:** 2x BSS138, 4.7k pull-ups on 3V3 side; 5V-side pull-ups
