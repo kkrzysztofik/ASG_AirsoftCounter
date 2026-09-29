@@ -66,7 +66,7 @@ You can get a price quote now. **Don't pay until the 1:1 paper fit check has pas
 
 JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.csv` (parts with LCSC numbers) and `fab/jlc_cpl.csv` (placements). Both are written and checked by `make all` (`jlc.py`). The DNP pull-ups R_SDA5/R_SCL5 and the mounting holes are left out on purpose.
 
-**Service.** Use **Economic** PCBA. It handles through-hole parts (wave soldering) and 2 to 30 boards (some JLC pages say 50). Standard PCBA needs a board of at least 70 x 70 mm, and at 90 x 60 mm this one only fits as a panel. Sources: https://jlcpcb.com/capabilities/pcb-assembly-capabilities and https://jlcpcb.com/help/article/pcb-assembly-faqs
+**Service.** Use **Economic** PCBA. It solders through-hole parts by wave soldering and takes 2 to 50 boards (older JLC pages say 30). Standard PCBA needs a board of at least 70 x 70 mm, and at 90 x 60 mm this one only fits as a panel. Sources: https://jlcpcb.com/capabilities/pcb-assembly-capabilities and https://jlcpcb.com/help/article/pcb-assembly-faqs
 
 **Steps**
 
@@ -76,7 +76,7 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 4. Check the parts matching. There are 21 BOM lines, and each should match the LCSC number in its row with stock for your quantity. Nothing should be left unmatched or skipped.
 5. Open the 3D placement preview and do the checks below before you confirm.
 
-**Through-hole parts are included**: J2/J3 (1x18 sockets), the 8 JST-XH headers, C_BULK1 and C_NFC1. JLC solders them by wave or by hand, and charges per THT joint on top of the SMD assembly. The price shows on the form.
+**Through-hole parts are included**: J2/J3 (1x18 sockets), the 8 JST-XH headers, C_BULK1 and C_NFC1. JLC solders them by wave soldering and charges per THT joint on top of the SMD assembly. The price shows on the form.
 
 **Setup fees.** Economic PCBA charges a setup (feeder loading) fee for each **Extended** part type. Basic and Preferred Extended parts don't have this fee. This board has:
 
@@ -84,7 +84,7 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 - **2 Preferred Extended types (no fee):** BSS138 (Q_SDA1/Q_SCL1, C7420339) and the 75k resistor (R_FB1, C17819).
 - **11 Basic types:** everything else.
 
-**Placement preview checks.** The CPL uses KiCad's rotations with no JLC corrections. Sources disagree on the SOT-23 offset (180° or −90°), and JLC's engineers correct rotation using the silkscreen polarity marks. Mid X/Y is the centre of each part's pads, so the through-hole parts sit on their holes. In the preview, check:
+**Placement preview checks.** The CPL uses KiCad's rotations with no JLC corrections. Sources disagree on the SOT-23 offset (180° or −90°), and JLC's engineers correct rotation using the silkscreen polarity marks. Mid X/Y is the centre of each part's courtyard, so the through-hole parts sit on their holes. In the preview, check:
 
 | Part | What to check |
 |---|---|
@@ -97,7 +97,7 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 
 If a part is wrong, fix its `Rotation` in `fab/jlc_cpl.csv` (degrees, counter-clockwise positive) and upload the file again. You can also leave it and note it in the order, because JLC's engineers follow the silkscreen polarity marks. Don't edit the CSVs by hand as a long-term fix: `make all` rewrites them.
 
-**Stock.** The J2/J3 socket (about 2.8k in stock) and L1 (about 3.2k) are the parts most likely to run out. Verified backups: socket C2897381, JST-XH clones C20079 (2-pin) and C37815 (4-pin), BSS138 C82045, PTC C5358568. To switch, change the number in `LCSC` in `design.py` and run `make all`. Check the new part's package and pinout on its LCSC page first.
+**Stock.** The J2/J3 socket (about 2.8k in stock) and L1 (about 3.2k), as of 2026-09-29, are the parts most likely to run out. Verified backups: socket C2897381, JST-XH clones C20079 (2-pin) and C37815 (4-pin), BSS138 C82045, PTC C5358568. To switch, change the number in `LCSC` in `design.py` and run `make all`. Check the new part's package and pinout on its LCSC page first.
 
 ## 6. Parts
 

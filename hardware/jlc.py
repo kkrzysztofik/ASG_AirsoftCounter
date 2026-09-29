@@ -4,17 +4,17 @@ fab/jlc_bom.csv  Comment,Designator,Footprint,LCSC Part #   one row per LCSC num
 fab/jlc_cpl.csv  Designator,Mid X,Mid Y,Layer,Rotation      one row per placed part (SMD and THT)
 Placed parts are design.assembled(): no DNP parts, no mounting holes.
 
-Coordinates come from `kicad-cli pcb export pos` (raw file in build/pos.csv). Like the Gerbers it
-uses the page origin with Y negated, so the board spans X 0..90, Y -60..0 mm in both and JLC lines
-them up. Mid X/Y is the centre of the pads, not the footprint anchor: THT footprints (pin sockets,
-JST-XH, radial caps) are anchored on pin 1, which would put J2/J3 21.6 mm off in JLC's preview.
-Rotation is KiCad's, with no JLC correction (ORDERING.md lists the parts to check in the preview).
+Placements come from the board via pcbnew. Coordinates are in the Gerber convention: board X, board
+Y negated (the board is Y-down with its origin at the top-left corner, the Gerbers are Y-up), so the
+board spans X 0..90, Y -60..0 mm in both and JLC lines them up. Mid X/Y is the centre of the F.CrtYd
+courtyard, not the footprint anchor: THT footprints (pin sockets, JST-XH, radial caps) are anchored
+on pin 1, which would put J2/J3 21.6 mm off in JLC's preview. Rotation is KiCad's, with no JLC
+correction (ORDERING.md lists the parts to check in the preview).
 
 /usr/bin/python3 jlc.py   (after `make fab` has built the Gerber zip)
 """
 import csv
 import re
-import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -25,7 +25,6 @@ import design
 
 HERE = Path(__file__).parent
 PCB = HERE / "carrier.kicad_pcb"
-POS = HERE / "build/pos.csv"
 ZIP = HERE / "fab/carrier_gerbers_jlcpcb.zip"
 BOM = HERE / "fab/jlc_bom.csv"
 CPL = HERE / "fab/jlc_cpl.csv"
@@ -58,33 +57,23 @@ def board_outline():
 
 
 def cpl_rows():
-    subprocess.run(["kicad-cli", "pcb", "export", "pos", "--format", "csv", "--units", "mm", "--side", "both",
-                    "-o", str(POS), str(PCB)], check=True, capture_output=True)
-    with open(POS, newline="") as f:
-        pos = list(csv.DictReader(f))
     placed = set(design.assembled())
-    pos = [p for p in pos if p["Ref"] in placed]
-    refs = [p["Ref"] for p in pos]
+    fps = [fp for fp in pcbnew.LoadBoard(str(PCB)).GetFootprints() if fp.GetReference() in placed]
+    refs = [fp.GetReference() for fp in fps]
     dupes = {r for r in refs if refs.count(r) > 1}
-    assert not dupes and set(refs) == placed, \
-        f"pos file: duplicates {dupes}, missing {placed - set(refs)}"
-
-    fps = {fp.GetReference(): fp for fp in pcbnew.LoadBoard(str(PCB)).GetFootprints()}
+    assert not dupes and set(refs) == placed, f"board: duplicates {dupes}, missing {placed - set(refs)}"
     xmin, xmax, ymin, ymax = board_outline()
     rows = []
-    for p in sorted(pos, key=lambda p: natural(p["Ref"])):
-        fp = fps[p["Ref"]]
-        # pos export = board coordinates with Y negated; confirm before mixing in pcbnew data
-        anchor = (fp.GetPosition().x / 1e6, -fp.GetPosition().y / 1e6)
-        assert abs(anchor[0] - float(p["PosX"])) < 1e-3 and abs(anchor[1] - float(p["PosY"])) < 1e-3, \
-            f"{p['Ref']}: pos {p['PosX']},{p['PosY']} is not board {anchor} with Y negated"
-        px = [pad.GetPosition().x / 1e6 for pad in fp.Pads()]
-        py = [-pad.GetPosition().y / 1e6 for pad in fp.Pads()]
-        x, y = (min(px) + max(px)) / 2, (min(py) + max(py)) / 2
+    for fp in sorted(fps, key=lambda fp: natural(fp.GetReference())):
+        ref = fp.GetReference()
+        crtyd = fp.GetCourtyard(pcbnew.F_CrtYd)
+        assert crtyd.OutlineCount(), f"{ref} has no F.CrtYd courtyard"
+        c = crtyd.BBox().Centre()
+        x, y = c.x / 1e6, -c.y / 1e6
         assert xmin < x < xmax and ymin < y < ymax, \
-            f"{p['Ref']} at ({x}, {y}) is outside the Gerber outline {xmin}..{xmax} x {ymin}..{ymax}"
-        layer = {"top": "Top", "bottom": "Bottom"}[p["Side"]]
-        rows.append([p["Ref"], f"{x:.4f}mm", f"{y:.4f}mm", layer, f"{float(p['Rot']) % 360:g}"])
+            f"{ref} at ({x}, {y}) is outside the Gerber outline {xmin}..{xmax} x {ymin}..{ymax}"
+        layer = "Bottom" if fp.IsFlipped() else "Top"
+        rows.append([ref, f"{x:.4f}mm", f"{y:.4f}mm", layer, f"{fp.GetOrientationDegrees() % 360:g}"])
     return rows
 
 
@@ -96,6 +85,7 @@ def write(path, header, rows):
 
 
 def main():
+    design.check()
     bom, cpl = bom_rows(), cpl_rows()
     assert all(re.fullmatch(r"C\d+", row[3]) for row in bom), "BOM row without an LCSC number"
     bom_refs = [r for row in bom for r in row[1].split(",")]

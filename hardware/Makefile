@@ -34,7 +34,7 @@ check: route
 # pads come from the F.Fab sketch instead.
 # jlc.py writes the JLCPCB assembly BOM + CPL (fab/jlc_*.csv) and checks them against the zip.
 fab: check
-	rm -rf fab/gerbers $(ZIP)
+	rm -rf fab/gerbers $(ZIP) fab/jlc_*.csv
 	mkdir -p fab/gerbers
 	kicad-cli pcb export gerbers -l $(GERBER_LAYERS) -o fab/gerbers/ carrier.kicad_pcb
 	kicad-cli pcb export drill --format excellon -u mm --excellon-separate-th \
