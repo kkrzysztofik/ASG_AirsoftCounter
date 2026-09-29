@@ -29,7 +29,7 @@ PLACE = {
     "J_BTN_B1": (6, 33, 90), "J_BUZ1": (6, 47, 90),
     # Power: MT3608 boost; output loop (SW -> D1 -> C_OUT -> GND) on U1's SW/GND side
     "F1": (15.2, 14, 0), "C_BULK1": (13.5, 20.5, 0),
-    "L1": (28.5, 15.5, 180), "D1": (21.3, 16, 0), "U1": (27, 21.5, 0), "C_IN1": (31.2, 21.8, 90),
+    "L1": (28.5, 15.5, 180), "D1": (21.3, 16, 0), "U1": (27, 21.5, 0), "C_IN1": (31.2, 21.8, 270),
     "C_OUT1": (21, 20, 0), "C_OUT2": (21, 22.9, 0),
     "R_FB2": (26.5, 25.5, 0), "R_FB1": (22, 26, 0),
     # I2C level shifter + NFC bulk cap, under their connectors
@@ -106,7 +106,7 @@ def footprint(board, ref, nets):
     fp.SetReference(ref)
     fp.SetValue(value)
     fp.Reference().SetTextSize(mm(0.8, 0.8))
-    fp.Reference().SetTextThickness(pcbnew.FromMM(0.12))
+    fp.Reference().SetTextThickness(pcbnew.FromMM(0.15))
     x, y, rot = PLACE[ref]
     fp.SetPosition(mm(x, y))
     fp.SetOrientationDegrees(rot)
@@ -170,6 +170,7 @@ def zone(board, name, x0, y0, x1, y1, lset):
     ol.NewOutline()
     for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
         ol.Append(mm(x, y))
+    z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
     board.Add(z)
     return z
 
@@ -189,7 +190,7 @@ def text(board, s, x, y, rot=0, size=1.0, left=False, top=False):
     t.SetText(s)
     t.SetLayer(pcbnew.F_SilkS)
     t.SetTextSize(mm(size, size))
-    t.SetTextThickness(pcbnew.FromMM(0.15 * size))
+    t.SetTextThickness(pcbnew.FromMM(max(0.15, 0.15 * size)))
     t.SetPosition(mm(x, y))
     t.SetTextAngleDegrees(rot)
     if left:

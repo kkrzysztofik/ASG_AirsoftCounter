@@ -34,15 +34,14 @@ def freeroute(board, tmp):
     with open(log, "w") as f:
         try:
             subprocess.run(cmd, check=True, stdout=f, stderr=subprocess.STDOUT, timeout=TIMEOUT_S)
-        except subprocess.SubprocessError as e:
+        except (OSError, subprocess.SubprocessError) as e:
             raise SystemExit(f"freerouting failed ({e}):\n{log.read_text()[-3000:]}")
     text = log.read_text()
+    # Regex tied to Freerouting 2.4.1 log wording; the post-import unconnected check is the real gate
     done = re.findall(r"Auto-routing stage completed: .*?final score: ([\d.]+) \((\d+) unrouted", text)
     if not done or done[-1][1] != "0" or not ses.exists():
         raise SystemExit(f"freerouting left unrouted connections or no SES:\n{text[-3000:]}")
-    passes = len(re.findall(r"Auto-routing pass #", text))
-    elapsed = re.findall(r"elapsed: ([\d.]+) seconds", text)
-    print(f"freerouting: {passes} passes, score {done[-1][0]}, 0 unrouted, {elapsed[-1] if elapsed else '?'} s")
+    print(f"freerouting: {len(re.findall('Auto-routing pass #', text))} passes, score {done[-1][0]}, 0 unrouted")
     return ses
 
 
@@ -58,7 +57,8 @@ def main():
             raise SystemExit("SES import failed")
 
     b_gnd = [z for z in board.Zones() if z.GetZoneName() == "GND"]
-    assert len(b_gnd) == 1, "expected one GND pour from gen_pcb.py"
+    if len(b_gnd) != 1:
+        raise SystemExit(f"expected one GND pour from gen_pcb.py, found {len(b_gnd)}")
     f_gnd = gen_pcb.zone(board, "GND_F", 0, 0, gen_pcb.W, gen_pcb.H, lset=gen_pcb.layers(pcbnew.F_Cu))
     f_gnd.SetNet(board.FindNet("GND"))
     f_gnd.SetAssignedPriority(0)
