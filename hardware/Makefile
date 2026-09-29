@@ -38,8 +38,9 @@ fab: check
 	kicad-cli sch export pdf -o fab/schematic.pdf carrier.kicad_sch
 	kicad-cli pcb render --side top -o fab/top.png carrier.kicad_pcb
 	kicad-cli pcb render --side bottom -o fab/bottom.png carrier.kicad_pcb
-	kicad-cli pcb export pdf --layers F.Cu,F.Silkscreen,F.Fab,Edge.Cuts --mode-single --black-and-white \
-		--drill-shape-opt 2 -o fab/print_1to1.pdf carrier.kicad_pcb
+	# no F.Cu: the GND pour would print solid black and hide the labels; pads come from F.Fab sketch
+	kicad-cli pcb export pdf --layers F.Fab,F.Silkscreen,Edge.Cuts --sketch-pads-on-fab-layers --mode-single \
+		--black-and-white --drill-shape-opt 2 -o fab/print_1to1.pdf carrier.kicad_pcb
 
 clean:
 	rm -rf fab/gerbers $(ZIP)

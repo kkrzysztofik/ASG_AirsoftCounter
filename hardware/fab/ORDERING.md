@@ -60,7 +60,7 @@ You can get a price quote now. **Don't pay until the 1:1 paper fit check has pas
 
 1. Print `fab/print_1to1.pdf` at 100 % (no "fit to page"). Check the scale on the J2/J3 header holes: the centres of the first and last hole in a row are **43.2 mm** apart (17 x 2.54 mm), and the two header rows are **22.86 mm** apart. The board is plotted from the page's top-left corner, so the top and left board edges may not print. That is expected, so don't use the outline as the scale reference.
 2. Push the Heltec header pins through the paper at J2/J3. All 18 pins of each row should go straight through.
-3. Orientation: the Heltec's USB-C end goes at the **left** end of the header rows (pin 1, towards the middle of the board), and the antenna end points at the right board edge. **J3 (GPIO1–7) is the top row**; the print labels the rows "Heltec_J3" and "Heltec_J2" at their right ends. A mirrored or reversed module would put GND/3V3 on GPIO pins. The black-and-white print doesn't show the "USB" and "ANT →" silkscreen labels because they sit on the GND pour, but they will be on the real board.
+3. Orientation: the Heltec's USB-C end goes at the **"USB"** label (the left end of the header rows, where pin 1 is the **square** pad in each row), and the antenna end points at **"ANT →"** and the right board edge. **J3 (GPIO1–7) is the top row**; the rows are labelled J3/J2 at the left and "Heltec_J3"/"Heltec_J2" at the right. A mirrored or reversed module would put GND/3V3 on GPIO pins.
 
 ## 5. Parts
 
