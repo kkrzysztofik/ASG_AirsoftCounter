@@ -362,7 +362,7 @@ fab: check
 	kicad-cli pcb render --side bottom -o fab/bottom.png carrier.kicad_pcb
 ```
 
-**Step 2:** Run `cd hardware && rtk make all`. Expected: exits 0, and `fab/` contains `carrier_gerbers.zip`, `bom.csv`, `schematic.pdf`, `top.png` and `bottom.png`.
+**Step 2:** Run `cd hardware && rtk make all`. Expected: exits 0, and `fab/` contains `carrier_gerbers_jlcpcb.zip`, `bom.csv`, `schematic.pdf`, `top.png` and `bottom.png`.
 
 **Step 3:** Check that `fab/bom.csv` does **not** list R_SDA5/R_SCL5, because they are excluded from the BOM through `design.DNP`. Also check that the schematic PDF shows them as DNP.
 
@@ -372,7 +372,7 @@ fab: check
 
 **Step 1:** Show the user `fab/top.png`, `fab/bottom.png`, `fab/schematic.pdf` and the BOM.
 
-**Step 2:** Once they approve, they upload `fab/carrier_gerbers.zip` to JLCPCB (2 layers, 1.6 mm, HASL, any colour, 5 pcs). Parts come from TME or LCSC following `bom.csv`, plus the off-board parts listed in design part 3 and part 5. **Ordering is the user's action.** Don't place orders.
+**Step 2:** Once they approve, they upload `fab/carrier_gerbers_jlcpcb.zip` to JLCPCB (2 layers, 1.6 mm, HASL, any colour, 5 pcs). Parts come from TME or LCSC following `bom.csv`, plus the off-board parts listed in design part 3 and part 5. **Ordering is the user's action.** Don't place orders.
 
 ### Task A9: JLCPCB assembly package (PCBA, SMD + THT)
 

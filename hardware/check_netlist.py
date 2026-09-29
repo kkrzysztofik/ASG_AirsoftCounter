@@ -1,15 +1,19 @@
 """Assert the exported KiCad netlist matches design.py.
 
-kicad-cli sch export netlist --format kicadxml -o /tmp/carrier.xml carrier.kicad_sch
-/usr/bin/python3 check_netlist.py [/tmp/carrier.xml]
+kicad-cli sch export netlist --format kicadxml -o build/carrier.xml carrier.kicad_sch
+/usr/bin/python3 check_netlist.py [build/carrier.xml]
 """
 import sys
+from pathlib import Path
 import xml.etree.ElementTree as ET
 
 import design
 
 
-def check(xml_path="/tmp/carrier.xml", parts=design.PARTS, nets=design.NETS, dnp=design.DNP):
+XML = Path(__file__).resolve().parent / "build" / "carrier.xml"
+
+
+def check(xml_path=XML, parts=design.PARTS, nets=design.NETS, dnp=design.DNP):
     root = ET.parse(xml_path).getroot()
     got = {(n.attrib["name"].lstrip("/"), f"{node.get('ref')}.{node.get('pin')}")
            for n in root.iter("net") if not n.attrib["name"].startswith("unconnected-")

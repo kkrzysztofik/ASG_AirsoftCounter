@@ -6,7 +6,7 @@ Regenerate everything with `cd hardware && make all` (it exits non-zero if ERC, 
 
 Go to https://jlcpcb.com/, click "Order now" and upload **`fab/carrier_gerbers_jlcpcb.zip`** (9 Gerber layers + PTH/NPTH Excellon drill files).
 JLC should detect **90 x 60 mm, 2 layers** on its own. If it shows a different size or layer count, stop and don't order.
-Check the Gerber viewer: the outline has rounded corners, there are 4 mounting holes 3.5 mm from the corners, and both sides have a GND pour.
+Check the Gerber viewer: the outline has rounded corners, there are 4 mounting holes 3.5 mm in from each edge, and both sides have a GND pour.
 
 ## 2. Form settings
 
@@ -25,7 +25,7 @@ Check the Gerber viewer: the outline has rounded corners, there are 4 mounting h
 | Surface finish | LeadFree HASL (recommended) or HASL with lead | Leaded HASL is the cheapest and a bit easier to hand-solder. Lead-free is RoHS, which suits an EU build and lead-free solder. ENIG is not needed. |
 | Outer copper weight | 1 oz | |
 | Via covering | Tented | This is the standard option for small vias. |
-| Min via hole size/diameter | 0.3 mm (0.6 mm pad) | |
+| Min via hole size/diameter | 0.3mm/(0.4/0.45mm), the default | The design uses 0.3 mm drill vias with a 0.6 mm pad. |
 | Board outline tolerance | ±0.2 mm (Regular) | |
 | Mark on PCB | Default (order number) | JLC prints its order number somewhere on the silkscreen. Placing it at a chosen spot needs a marker text on the board, which this design doesn't have. Removing it is a paid option. It is harmless for this board. |
 | Electrical test | Flying Probe Fully Test | Free for small boards. |
@@ -81,4 +81,4 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 - M3 standoffs
 - Kradex ZP240.190.105SJp enclosure and ZP240.190-PCB mounting plate
 
-Other files in `fab/`: `schematic.pdf`, `top.png`/`bottom.png` (3D renders), `gerbers/` (the unzipped Gerbers plus drill maps and a Gerber job file, which are not in the zip).
+Other files in `fab/`: `schematic.pdf`, `top.png`/`bottom.png` (3D renders), `gerbers/` (created by `make all` and not committed: the unzipped Gerbers plus drill maps and a Gerber job file, which are not in the zip).
