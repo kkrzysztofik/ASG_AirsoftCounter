@@ -806,8 +806,8 @@ mod tests {
 
 **Behaviour:**
 - `Menu::new()` starts on item 0 of `[Reset, WifiSetup, Status, Exit]`.
-- `Menu::press(Button::Red)` moves to the next item, wrapping around.
-- `Menu::press(Button::Blue)` returns `Some(Action)` for the selected item.
+- `Menu::press(Team::Red)` moves to the next item, wrapping around.
+- `Menu::press(Team::Blue)` returns `Some(Item)` for the selected item. *(As built: reuses `game::Team` for the buttons; `admin::Item` is both the menu entry and the returned action.)*
 - `lines()` renders a 20x4 screen: title `ADMIN`, the previous, current (prefixed `>`) and next item.
 
 **Step 1:** Write tests covering: next wraps from Exit to Reset; select returns the right action; `lines()[2]` starts with `>`; every line is at most 20 chars. Run them and expect FAIL.
@@ -958,7 +958,7 @@ Use `Config::default()` for now.
 
 **Step 4:** Game integration:
 - `CardEvent::Player(c)` → `game.capture(c.team, now)`. Log the player id; LoRa sends it in milestone 4.
-- `CardEvent::Admin` → switch the display and buttons to `asg_core::admin::Menu`.
+- `CardEvent::Admin` → switch the display and buttons to a new `asg_core::admin::Menu` (feed button edges to `press(Team)`, act on the returned `Item`).
 - `Reset` → `Game::new(config, now)`; `Status` → show battery voltage; `Exit` → back to the game. `WifiSetup` logs "not yet" until milestone 6.
 
 **Step 5:** Hardware test (PN532 in I2C mode, cards written with a phone app):
