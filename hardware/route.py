@@ -37,6 +37,8 @@ def freeroute(board, tmp):
     planes = re.findall(r"^\s*\(plane GND .*\n", text, re.M)
     if len(planes) != 1:
         raise SystemExit(f"expected one GND plane in the DSN, found {len(planes)}")
+    if planes[0].count("(") != planes[0].count(")"):  # the regex only strips a one-line stanza
+        raise SystemExit("GND plane spans several lines in the DSN: extend the stripping")
     dsn.write_text(text.replace(planes[0], ""))
     cmd = ["java", "-jar", str(JAR), "-de", str(dsn), "-do", str(ses), "-mp", str(PASSES),
            "--gui.enabled=false", "--api_server.enabled=false",

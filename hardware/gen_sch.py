@@ -323,8 +323,9 @@ def project(root):
     return {
         "meta": {"filename": "carrier.kicad_pro", "version": 3},
         "board": {"design_settings": {"rules": {
-            # 0.15 mm (JLCPCB 2-layer minimum is 0.127 mm): Freerouting necks GND down to ~0.19 mm
-            # into the U1/U2/U3 fine-pitch pads. Net-class widths (0.25 / 0.8 mm) are unchanged.
+            # 0.15 mm (JLCPCB 2-layer minimum is 0.127 mm): headroom for Freerouting neck-downs into
+            # the U1/U2/U3 fine-pitch pads (earlier routes necked to ~0.19 mm; the current narrowest
+            # track is 0.25 mm). Net-class widths (0.25 / 0.8 mm) are unchanged.
             "min_track_width": 0.15, "min_clearance": 0.2,
             "min_via_diameter": 0.6, "min_through_hole_diameter": 0.3},
             # gen_pcb.py loads every footprint fresh from the library, so the only possible mismatch
@@ -339,7 +340,8 @@ def project(root):
                 # a VBAT_SW track down into its VDD pads at the default clearance
                 {"name": "Power", "priority": 0, "track_width": 0.8, "clearance": 0.2, **VIA},
             ],
-            # GND is not Power: both layers are solid GND pours, and a 0.8 mm GND track can't reach
+            # GND is not Power: both layers carry GND pours (route.py routes GND as a normal net, so
+            # pours only add connectivity), and a 0.8 mm GND track can't reach
             # U3's GND pins (0.5 mm pitch, one of them between OUTN and a NC pin) or U2's A0-A2.
             "netclass_patterns": [{"netclass": "Power", "pattern": p} for p in ("VBAT*", "+5V", "SW")],
         },
