@@ -374,6 +374,23 @@ fab: check
 
 **Step 2:** Once they approve, they upload `fab/carrier_gerbers.zip` to JLCPCB (2 layers, 1.6 mm, HASL, any colour, 5 pcs). Parts come from TME or LCSC following `bom.csv`, plus the off-board parts listed in design part 3 and part 5. **Ordering is the user's action.** Don't place orders.
 
+### Task A9: JLCPCB assembly package (PCBA, SMD + THT)
+
+*(Added 2026-09-29 at the user's request: full assembly, including through-hole parts.)*
+
+**Files:**
+- Modify: `hardware/design.py`: add an `LCSC` map from `(value, footprint)` to an LCSC part number. `check()` asserts that every part except DNP parts and mounting holes has one.
+- Create: `hardware/jlc.py`, which writes `fab/jlc_bom.csv` (Comment, Designator, Footprint, LCSC Part #) from `design.py`, and `fab/jlc_cpl.csv` (Designator, Mid X, Mid Y, Layer, Rotation) from `kicad-cli pcb export pos --format csv --units mm`. It includes a per-footprint rotation-correction table.
+- Modify: `hardware/Makefile` (the fab target runs `jlc.py`) and `fab/ORDERING.md` (an assembly section).
+
+**Steps:**
+1. Research the parts. For each BOM line, find an in-stock LCSC part in the JLCPCB library whose package matches our footprint, and **verify the part number from a live source**, never from memory. Prefer Basic parts over Extended. Record the sources in the commit message or a comment.
+2. Write a failing `check()` test: a part with no LCSC entry must fail. Add the map and make it pass.
+3. Write `jlc.py` and add it to `make fab`. Validate that every non-DNP footprint appears in the CPL exactly once, that the CPL designators equal the BOM designators, and that the coordinates are inside 90 × 60 mm.
+4. Rotations: start with a correction of 0 everywhere. Research the known KiCad → JLCPCB offsets for our footprints (SOT-23, SOT-23-6, SMA, SOD-123, CP_Radial, JST-XH, PinSocket). Apply them only if a source confirms them, and list in `ORDERING.md` the parts the user must check in JLCPCB's placement preview.
+5. `ORDERING.md` assembly section: which files to upload, which JLCPCB assembly service supports THT, top-side assembly, and which parts to check in the preview. No prices.
+6. Commit: "hardware: JLCPCB assembly BOM + CPL".
+
 ---
 
 ## Phase B: firmware/core (host-tested game logic)
