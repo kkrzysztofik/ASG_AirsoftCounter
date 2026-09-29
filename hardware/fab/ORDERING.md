@@ -44,8 +44,8 @@ Leave the other fields at their defaults. Price and lead time follow from these 
 |---|---|
 | Size / layers | 90 x 60 mm, 2 copper layers, rounded corners |
 | Material / thickness | FR-4, 1.6 mm, 1 oz outer copper |
-| Min track / clearance | 0.25 mm signal / 0.8 mm power tracks, necked to 0.19 mm at the fine-pitch U1/U2/U3 pads (0.15 mm rule); 0.2 mm clearance |
-| Vias | 0.6 mm pad / 0.3 mm drill, tented (43 vias), plus 4 thermal vias of the same size in U3's exposed pad |
+| Min track / clearance | 0.25 mm signal / 0.8 mm power tracks (0.15 mm rule, for necks into the fine-pitch U1/U2/U3 pads); 0.2 mm clearance |
+| Vias | 0.6 mm pad / 0.3 mm drill, tented (47 vias, 10 of them GND), plus 4 thermal vias of the same size in U3's exposed pad |
 | Plated component holes | 0.95 / 1.0 mm (the U3 thermal vias are 0.3 mm, like the vias) |
 | Non-plated holes | 4 x 3.2 mm (M3 mounting), in the NPTH drill file |
 | Copper to board edge | 0.5 mm |

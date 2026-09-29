@@ -23,9 +23,9 @@ route: pcb
 	$(PY) route.py
 
 check: route
-	kicad-cli sch erc --severity-error --exit-code-violations -o build/erc.rpt carrier.kicad_sch \
+	kicad-cli sch erc --severity-all --exit-code-violations -o build/erc.rpt carrier.kicad_sch \
 		|| { echo "ERC failed: see build/erc.rpt"; exit 1; }
-	kicad-cli pcb drc --schematic-parity --severity-error --exit-code-violations -o build/drc.rpt carrier.kicad_pcb \
+	kicad-cli pcb drc --schematic-parity --severity-all --exit-code-violations -o build/drc.rpt carrier.kicad_pcb \
 		|| { echo "DRC failed: see build/drc.rpt"; exit 1; }
 
 # fab/gerbers/ is gitignored scratch; the zip built from it is the upload. A zip that fails

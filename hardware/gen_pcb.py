@@ -73,6 +73,13 @@ TEXTS = [
 # GND pour pad connection; route.py (A6) reuses it for the F.Cu pour. Solid, not thermal
 # reliefs: reliefs starved J2.1/J3.1/XH GND pins. Cost: harder hand-soldering of THT GND pins.
 GND_PAD_CONNECTION = pcbnew.ZONE_CONNECTION_FULL
+# Locked GND vias gen_pcb places before routing (route.py keeps them): (x, y, pad it is tied to).
+# C_AMP1/C_AMP2 get a via beside their GND pad, so the amp decoupling returns straight to the B.Cu
+# pour instead of through a long F.Cu detour (the F.Cu pour around U3 is cut up by traces).
+# The untied three stitch the pours along the I2S corridor, next to where the I2S lines change layer
+# and cross B.Cu traces (+5V/LED_B_G, +3V3, BTN_B_IN), so their return current can follow them.
+GND_VIAS = [(18.0, 14.2, ("C_AMP1", "2")), (17.5, 18.4, ("C_AMP2", "2")),
+            (21.4, 28.3, None), (29.0, 43.6, None), (37.2, 45.5, None)]
 HELTEC_PADS = {("J3", "1"): (44.82, 27.00), ("J3", "18"): (88.00, 27.00),
                ("J2", "1"): (44.82, 49.86), ("J2", "18"): (88.00, 49.86)}
 
@@ -120,10 +127,13 @@ def footprint(board, ref, nets):
     if rot == 180:  # keep the reference above the part, as at rot 0
         r, o = fp.Reference().GetPosition(), fp.GetPosition()
         fp.Reference().SetPosition(pcbnew.VECTOR2I(2 * o.x - r.x, 2 * o.y - r.y))
-    for p in fp.Pads():  # library thermal vias (U3) are 0.2 mm; JLCPCB's 2-layer minimum is 0.3 mm
-        if p.GetAttribute() == pcbnew.PAD_ATTRIB_PTH and p.GetDrillSize().x < pcbnew.FromMM(0.3):
-            p.SetDrillSize(mm(0.3, 0.3))
-            p.SetSize(pcbnew.F_Cu, mm(0.6, 0.6))
+    # Any footprint's plated holes under the via drill become vias (JLCPCB's 2-layer minimum is
+    # 0.3 mm). Today that is only U3's 0.2 mm thermal vias.
+    drill, dia = gen_sch.VIA["via_drill"], gen_sch.VIA["via_diameter"]
+    for p in fp.Pads():
+        if p.GetAttribute() == pcbnew.PAD_ATTRIB_PTH and p.GetDrillSize().x < pcbnew.FromMM(drill):
+            p.SetDrillSize(mm(drill, drill))
+            p.SetSize(pcbnew.F_Cu, mm(dia, dia))
     if ref in REF_AT:
         rx, ry, rrot = REF_AT[ref]
         fp.Reference().SetPosition(mm(rx, ry))
@@ -233,6 +243,29 @@ def build():
     for (ref, n), want in HELTEC_PADS.items():
         got = [pcbnew.ToMM(p.GetPosition()) for p in fps[ref].Pads() if p.GetNumber() == n][0]
         assert all(abs(g - w) < 1e-3 for g, w in zip(got, want)), f"{ref}.{n} at {got}, want {want}"
+
+    gnd_net = board.FindNet("GND")
+    drill, dia = gen_sch.VIA["via_drill"], gen_sch.VIA["via_diameter"]
+    for x, y, tie in GND_VIAS:
+        v = pcbnew.PCB_VIA(board)
+        v.SetPosition(mm(x, y))
+        v.SetWidth(pcbnew.FromMM(dia))
+        v.SetDrill(pcbnew.FromMM(drill))
+        v.SetNet(gnd_net)
+        v.SetLocked(True)
+        board.Add(v)
+        if tie:
+            ref, n = tie
+            pad = next(p for p in fps[ref].Pads() if p.GetNumber() == n)
+            assert pad.GetNetname() == "GND", f"{ref}.{n} is not GND"
+            t = pcbnew.PCB_TRACK(board)
+            t.SetStart(pad.GetPosition())
+            t.SetEnd(mm(x, y))
+            t.SetWidth(pcbnew.FromMM(0.5))
+            t.SetLayer(pcbnew.F_Cu)
+            t.SetNet(gnd_net)
+            t.SetLocked(True)
+            board.Add(t)
 
     outline(board)
     # Nothing between the Heltec socket rows (its battery socket hangs below); tracks/vias fine

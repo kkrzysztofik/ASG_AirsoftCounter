@@ -11,21 +11,32 @@ numbers of other parts or catch dangling 2-pin parts: gen_sch.py (symbol pin
 lookup) and KiCad ERC catch those.
 """
 
+# Footprints (and symbol + footprint pairs) shared by PARTS and LCSC below
+R0805 = ("Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder")
+C0805 = ("Device:C", "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder")
+AO3400A = ("Transistor_FET:AO3400A", "Package_TO_SOT_SMD:SOT-23")
+C1206 = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
+TSSOP16 = "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
+TQFN16 = "Package_DFN_QFN:TQFN-16-1EP_3x3mm_P0.5mm_EP1.23x1.23mm_ThermalVias"
+XH2 = "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"
+XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
+SOCKET18 = "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"
+
 # ref: (value, symbol "lib:name", footprint "lib:name")
 PARTS = {
     # Heltec WiFi LoRa 32 V4 headers (pin 1 at USB end). Rows are 22.86 mm apart.
-    "J2": ("Heltec_J2", "Connector_Generic:Conn_01x18", "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"),
-    "J3": ("Heltec_J3", "Connector_Generic:Conn_01x18", "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"),
+    "J2": ("Heltec_J2", "Connector_Generic:Conn_01x18", SOCKET18),
+    "J3": ("Heltec_J3", "Connector_Generic:Conn_01x18", SOCKET18),
     # Off-board connectors, JST-XH 2.50 mm vertical
-    "J_BAT1": ("BAT", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
-    "J_KEY1": ("KEY", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
-    "J_HBAT1": ("HELTEC_BAT", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
-    "J_LCD1": ("LCD", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
-    "J_NFC1": ("NFC", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
-    "J_BTN_R1": ("BTN_R", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
-    "J_BTN_B1": ("BTN_B", "Connector_Generic:Conn_01x04", "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"),
-    "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
-    "J_SPK1": ("SPK", "Connector_Generic:Conn_01x02", "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"),
+    "J_BAT1": ("BAT", "Connector_Generic:Conn_01x02", XH2),
+    "J_KEY1": ("KEY", "Connector_Generic:Conn_01x02", XH2),
+    "J_HBAT1": ("HELTEC_BAT", "Connector_Generic:Conn_01x02", XH2),
+    "J_LCD1": ("LCD", "Connector_Generic:Conn_01x04", XH4),
+    "J_NFC1": ("NFC", "Connector_Generic:Conn_01x04", XH4),
+    "J_BTN_R1": ("BTN_R", "Connector_Generic:Conn_01x04", XH4),
+    "J_BTN_B1": ("BTN_B", "Connector_Generic:Conn_01x04", XH4),
+    "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x02", XH2),
+    "J_SPK1": ("SPK", "Connector_Generic:Conn_01x02", XH2),
     # Power
     "F1": ("2A PTC", "Device:Polyfuse", "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"),
     "U1": ("MT3608", "Regulator_Switching:MT3608", "Package_TO_SOT_SMD:SOT-23-6"),
@@ -33,18 +44,17 @@ PARTS = {
     "D1": ("SS34", "Diode:SS34", "Diode_SMD:D_SMA"),
     "R_FB1": ("75k", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_FB2": ("10k", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
-    "C_IN1": ("22uF 25V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
-    "C_OUT1": ("22uF 25V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
-    "C_OUT2": ("22uF 25V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
-    "C_BULK1": ("47uF 10V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
-    "C_BULK2": ("47uF 10V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
-    "C_NFC1": ("100uF 6.3V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
+    "C_IN1": ("22uF 25V", "Device:C", C1206),
+    "C_OUT1": ("22uF 25V", "Device:C", C1206),
+    "C_OUT2": ("22uF 25V", "Device:C", C1206),
+    "C_BULK1": ("47uF 10V", "Device:C", C1206),
+    "C_BULK2": ("47uF 10V", "Device:C", C1206),
+    "C_NFC1": ("100uF 6.3V", "Device:C", C1206),
     # I2C GPIO expander (address 0x20) for buttons, LED/buzzer drivers and the amp's SD_MODE
-    "U2": ("TCA9534PWR", "Interface_Expansion:TCA9534", "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"),
+    "U2": ("TCA9534PWR", "Interface_Expansion:TCA9534", TSSOP16),
     # I2S class-D amp on VBAT_SW, BTL output to J_SPK1, 12 dB (GAIN_SLOT to GND)
-    "U3": ("MAX98357A", "Audio:MAX98357A",
-           "Package_DFN_QFN:TQFN-16-1EP_3x3mm_P0.5mm_EP1.23x1.23mm_ThermalVias"),
-    "C_AMP1": ("22uF 25V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
+    "U3": ("MAX98357A", "Audio:MAX98357A", TQFN16),
+    "C_AMP1": ("22uF 25V", "Device:C", C1206),
     # I2C level shifter (5V-side pull-ups DNP: LCD backpack has its own)
     "Q_SDA1": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
     "Q_SCL1": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
@@ -56,9 +66,6 @@ PARTS = {
 # Do not populate: the LCD backpack has its own 5V-side pull-ups.
 DNP = {"R_SDA5", "R_SCL5"}
 
-R0805 = ("Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder")
-C0805 = ("Device:C", "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder")
-AO3400A = ("Transistor_FET:AO3400A", "Package_TO_SOT_SMD:SOT-23")
 
 # Low-side drivers: name -> load resistor value or None. The ONPOW LAS1-AGQ-11E/x/6V button LEDs
 # have a built-in resistor, so R_LLR1/R_LLB1 are 0R jumpers (footprint kept as a brightness knob).
@@ -90,10 +97,6 @@ for i in range(1, 5):
 # fails check() until a new part is picked (editing the shared R0805/C0805/AO3400A tuples moves
 # their keys along). All verified live against JLCPCB's parts API on 2026-09-29.
 # Type: B = Basic, P = Preferred Extended (no setup fee), E = Extended.
-C1206 = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
-TQFN16 = "Package_DFN_QFN:TQFN-16-1EP_3x3mm_P0.5mm_EP1.23x1.23mm_ThermalVias"
-XH2 = "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"
-XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 LCSC = {
     ("100nF", C0805[1]): "C49678",  # B YAGEO CC0805KRX7R9BB104 50V X7R
     ("22uF 25V", C1206): "C12891",  # B Samsung CL31A226KAHNNNE X5R
@@ -102,7 +105,7 @@ LCSC = {
     ("SS34", "Diode_SMD:D_SMA"): "C8678",  # B MDD SS34
     ("1N4148W", "Diode_SMD:D_SOD-123"): "C81598",  # B ST Semtech 1N4148W
     ("2A PTC", "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"): "C22374899",  # E LUTE 1206L200/16NR 2A hold 16V
-    ("TCA9534PWR", "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"): "C783615",  # E TI TCA9534PWR
+    ("TCA9534PWR", TSSOP16): "C783615",  # E TI TCA9534PWR
     ("MAX98357A", TQFN16): "C910544",  # E Maxim MAX98357AETE+T
     ("10uH 2A", "Inductor_SMD:L_Bourns_SRN6045TA"): "C2046332",  # E Bourns SRN6045TA-100M
     ("MT3608", "Package_TO_SOT_SMD:SOT-23-6"): "C84817",  # E XI'AN Aerosemi MT3608 (1 SW 2 GND 3 FB 4 EN 5 VIN)
@@ -115,8 +118,8 @@ LCSC = {
     ("100k", R0805[1]): "C149504",  # B 0805W8F1003T5E
     ("1k", R0805[1]): "C17513",  # B 0805W8F1001T5E
     ("4k7", R0805[1]): "C17673",  # B 0805W8F4701T5E
-    ("Heltec_J2", "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"): "C2905422",  # E Kinghelm KH-2.54FH-1X18P-H8.5
-    ("Heltec_J3", "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"): "C2905422",
+    ("Heltec_J2", SOCKET18): "C2905422",  # E Kinghelm KH-2.54FH-1X18P-H8.5
+    ("Heltec_J3", SOCKET18): "C2905422",
 }
 # Connector values are names, so every name maps to the same part.
 LCSC |= {(v, XH2): "C158012" for v in ("BAT", "KEY", "HELTEC_BAT", "BUZ", "SPK")}  # E JST B2B-XH-A(LF)(SN)

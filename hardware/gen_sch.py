@@ -301,15 +301,25 @@ PIN_MAP = [[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2], [0, 2, 0, 1, 0, 0, 1, 0, 2, 2, 
            [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 2], [0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 2],
            [0, 2, 1, 2, 0, 0, 1, 0, 2, 2, 2, 2], [0, 2, 0, 1, 0, 0, 1, 0, 2, 0, 0, 2],
            [0, 2, 1, 1, 0, 0, 1, 0, 2, 0, 0, 2], [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]]
-# The MAX98357A exposed pad (U3.17) is the design's only Unspecified pin (library typing) and goes
-# to GND: treat Unspecified like Passive so it doesn't warn against the GND pins.
-PIN_MAP[6] = PIN_MAP[4][:]
+PASSIVE, UNSPEC = 4, 6
+# The MAX98357A exposed pad (U3.17) is typed Unspecified in the library and goes to GND: treat
+# Unspecified like Passive so it doesn't warn against the GND pins. project() asserts it stays the
+# only Unspecified pin, so a new one can't be silently treated as Passive.
+UNSPEC_OK = {"U3.17"}
+PIN_MAP[UNSPEC] = PIN_MAP[PASSIVE][:]
 for row in PIN_MAP:
-    row[6] = row[4]
+    row[UNSPEC] = row[PASSIVE]
+VIA = {"via_diameter": 0.6, "via_drill": 0.3}  # JLCPCB standard; gen_pcb.py reuses it
+
+
+def unspecified_pins():
+    return {f"{ref}.{unq(child(p, 'number')[1])}" for ref, (_, lib_id, _) in design.PARTS.items()
+            for body in unit_bodies(flat_symbol(*lib_id.split(":"))) for p in kids(body, "pin")
+            if p[1] == "unspecified"}
 
 
 def project(root):
-    via = {"via_diameter": 0.6, "via_drill": 0.3}
+    assert unspecified_pins() == UNSPEC_OK, f"Unspecified pins {unspecified_pins()}: review PIN_MAP"
     return {
         "meta": {"filename": "carrier.kicad_pro", "version": 3},
         "board": {"design_settings": {"rules": {
@@ -324,10 +334,10 @@ def project(root):
             "meta": {"version": 4},
             "classes": [
                 # KiCad 9 silently drops every class if "priority" is missing
-                {"name": "Default", "priority": 2147483647, "track_width": 0.25, "clearance": 0.2, **via},
+                {"name": "Default", "priority": 2147483647, "track_width": 0.25, "clearance": 0.2, **VIA},
                 # 0.2 mm, not 0.25: the U3 (TQFN) pad gaps are 0.25 mm, so Freerouting can only neck
                 # a VBAT_SW track down into its VDD pads at the default clearance
-                {"name": "Power", "priority": 0, "track_width": 0.8, "clearance": 0.2, **via},
+                {"name": "Power", "priority": 0, "track_width": 0.8, "clearance": 0.2, **VIA},
             ],
             # GND is not Power: both layers are solid GND pours, and a 0.8 mm GND track can't reach
             # U3's GND pins (0.5 mm pitch, one of them between OUTN and a NC pin) or U2's A0-A2.

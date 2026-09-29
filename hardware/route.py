@@ -1,7 +1,8 @@
 """Autoroute carrier.kicad_pcb with Freerouting, add the F.Cu GND pour, fill zones, save in place.
 
-Input must be the unrouted board straight from gen_pcb.py: a board that already has tracks is
-refused (re-run gen_pcb.py first) rather than stripped, so a half-routed board never gets reused.
+Input must be the unrouted board straight from gen_pcb.py: a board that already has unlocked tracks
+or vias is refused (re-run gen_pcb.py first) rather than stripped, so a half-routed board never gets
+reused. gen_pcb.py's locked GND vias and ties go to Freerouting as fixed wiring and are kept.
 Loads the board in place so KiCad picks up the net classes from carrier.kicad_pro beside it.
 Run from anywhere: /usr/bin/python3 route.py
 """
@@ -28,6 +29,15 @@ def freeroute(board, tmp):
     dsn, ses, log = tmp / "carrier.dsn", tmp / "carrier.ses", tmp / "freerouting.log"
     if not pcbnew.ExportSpecctraDSN(board, str(dsn)):
         raise SystemExit("DSN export failed")
+    # KiCad exports the B.Cu GND pour as a Specctra plane, and Freerouting then counts every THT GND
+    # pin and via as connected through it without routing them, while cutting that pour with its own
+    # B.Cu traces (J3.1 ended up on an island). Without the plane it routes GND like any net, so the
+    # pours added afterwards can only add connections.
+    text = dsn.read_text()
+    planes = re.findall(r"^\s*\(plane GND .*\n", text, re.M)
+    if len(planes) != 1:
+        raise SystemExit(f"expected one GND plane in the DSN, found {len(planes)}")
+    dsn.write_text(text.replace(planes[0], ""))
     cmd = ["java", "-jar", str(JAR), "-de", str(dsn), "-do", str(ses), "-mp", str(PASSES),
            "--gui.enabled=false", "--api_server.enabled=false",
            "--usage_and_diagnostic_data.disable_analytics=true"]
@@ -47,7 +57,7 @@ def freeroute(board, tmp):
 
 def main():
     board = load()
-    if len(board.GetTracks()) or any(z.GetZoneName() == "GND_F" for z in board.Zones()):
+    if any(not t.IsLocked() for t in board.GetTracks()) or any(z.GetZoneName() == "GND_F" for z in board.Zones()):
         raise SystemExit(f"{gen_pcb.PCB.name} is already routed: run gen_pcb.py first")
     with tempfile.TemporaryDirectory(prefix="route-") as tmp:
         ses = freeroute(board, Path(tmp))
