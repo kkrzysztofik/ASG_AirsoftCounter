@@ -58,13 +58,27 @@ Leave the other fields at their defaults. Price and lead time follow from these 
 
 You can get a price quote now. **Don't pay until the 1:1 paper fit check has passed** with a real Heltec V4:
 
-1. Print `fab/print_1to1.pdf` at 100 % (no "fit to page"). Check that the board outline measures 90 x 60 mm.
-2. Push the Heltec header pins through the paper at J2/J3. The first and last holes of each header row are **43.2 mm** apart.
-3. Orientation: the USB-C connector goes at the "USB" label, and **J3 (GPIO1–7 row) is the top row**. A mirrored or reversed module would put GND/3V3 on GPIO pins.
+1. Print `fab/print_1to1.pdf` at 100 % (no "fit to page"). Check the scale on the J2/J3 header holes: the centres of the first and last hole in a row are **43.2 mm** apart (17 x 2.54 mm), and the two header rows are **22.86 mm** apart. The board is plotted from the page's top-left corner, so the top and left board edges may not print. That is expected, so don't use the outline as the scale reference.
+2. Push the Heltec header pins through the paper at J2/J3. All 18 pins of each row should go straight through.
+3. Orientation: the Heltec's USB-C end goes at the **left** end of the header rows (pin 1, towards the middle of the board), and the antenna end points at the right board edge. **J3 (GPIO1–7) is the top row**; the print labels the rows "Heltec_J3" and "Heltec_J2" at their right ends. A mirrored or reversed module would put GND/3V3 on GPIO pins. The black-and-white print doesn't show the "USB" and "ANT →" silkscreen labels because they sit on the GND pour, but they will be on the real board.
 
 ## 5. Parts
 
 The board ships bare. `fab/bom.csv` lists the on-board parts to buy separately, grouped by value and footprint. The DNP pull-ups R_SDA5/R_SCL5 are left out on purpose.
-The off-board parts are in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`: Part 3 (enclosure, buttons, key switch, USB-C/SMA bulkheads, 18650 holder, GNSS) and Part 5 (PN532 NFC module, cards). You also need the Heltec V4 itself.
+Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`, Parts 1–3 and 5):
+
+- Heltec WiFi LoRa 32 V4 (no display, EU868) and an L76K GNSS module
+- PN532 NFC module ("NFC V3", I2C mode)
+- 20x4 I2C LCD with PCF8574 backpack
+- 2x IP67 anti-vandal pushbuttons with 5 V LED
+- Active 5 V buzzer
+- IP65 key switch
+- 2x18650 holder and matched cells
+- IP67 USB-C panel extension
+- u.FL-to-SMA bulkhead pigtail and an 868 MHz antenna
+- SH1.25-to-XH battery pigtail (for the Heltec battery input)
+- JST-XH housings and crimps
+- M3 standoffs
+- Kradex ZP240.190.105SJp enclosure and ZP240.190-PCB mounting plate
 
 Other files in `fab/`: `schematic.pdf`, `top.png`/`bottom.png` (3D renders), `gerbers/` (the unzipped Gerbers plus drill maps and a Gerber job file, which are not in the zip).

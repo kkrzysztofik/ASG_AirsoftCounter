@@ -35,7 +35,9 @@ def check(path="fab/carrier_gerbers_jlcpcb.zip"):
         errors.append("Edge.Cuts: expected mm, 4.6 format")
     xs = [int(x) / 1e6 for x in re.findall(r"X(-?\d+)", edge)]
     ys = [int(y) / 1e6 for y in re.findall(r"Y(-?\d+)", edge)]
-    size = (round(max(xs) - min(xs), 3), round(max(ys) - min(ys), 3)) if xs and ys else None
+    if not xs or not ys:
+        raise SystemExit("gerber check FAILED: Edge.Cuts has no coordinates")
+    size = (round(max(xs) - min(xs), 3), round(max(ys) - min(ys), 3))
     if size != SIZE_MM:
         errors.append(f"Edge.Cuts extent {size}, want {SIZE_MM}")
 
