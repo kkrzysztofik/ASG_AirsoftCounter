@@ -209,7 +209,7 @@ so every slow signal moves to an I2C GPIO expander.
 ### Expander (8 I/O, 3V3 side of the I2C bus)
 - Inputs: BTN_R, BTN_B. The 10k pull-up, 100 nF and 1k series RC stay.
 - Outputs: LED_R, LED_B and BUZ gate drives (same AO3400A low-side drivers with
-  100 Ω + 100k), plus AMP_EN, which drives the amplifier's shutdown pin so it stays
+  100 Ω + 100k), plus AMP_SD (through a 1k resistor), which drives the amplifier's shutdown pin so it stays
   off during boot and while silent.
 - Two spare I/O.
 - Its I2C address must not collide with the PN532 (0x24) or the LCD backpack (0x27/0x3F).
@@ -217,21 +217,24 @@ so every slow signal moves to an I2C GPIO expander.
 ### Speaker path
 - MAX98357A-class I2S class-D amplifier, **powered from VBAT_SW (3.0–4.2 V)**, not the
   5 V boost. That gives about 1.5–2 W into 4 Ω and keeps audio peaks off the 5 V rail
-  (no LCD flicker). Gain-select resistor footprint.
+  (no LCD flicker). GAIN_SLOT is tied to GND (12 dB); volume is set digitally in firmware.
 - The output is BTL: the new 2-pin XH connector `J_SPK` must never be tied to GND
   (silkscreen note).
-- Off-board: a weatherproof 4 Ω 2–3 W speaker in the enclosure wall, plus an ePTFE
-  acoustic vent if needed.
+- Off-board: Visaton K 50 WP (8 Ω, 2 W, IP65) in the enclosure wall behind a grille
+  with a front gasket (see `hardware/fab/OFFBOARD_PARTS.md`). About 1 W into 8 Ω from
+  VBAT.
 
 ### Power changes
-- Polyfuse raised to about 1.5–2 A hold, for LoRa TX + audio peaks + boost.
-- Bulk capacitance moves from THT electrolytics to multiples of the Basic 22 µF 1206
-  ceramic (C12891) where the research confirms that's adequate.
-- Boost, inductor and fuse become Basic or Preferred parts where available. Exact
-  parts come from live JLCPCB research and are recorded in `design.py`.
+- Polyfuse raised to 2 A hold (1206L200/16NR, C22374899), for LoRa TX + audio peaks + boost.
+- Bulk capacitance moves from THT electrolytics to Basic 1206 ceramics: 2x 47 µF 10 V
+  (C96123) on VBAT_SW and 100 µF 6.3 V (C15008) on +3V3.
+- The boost (MT3608), inductor and fuse have no Basic/Preferred equivalent at JLCPCB
+  (the whole libraries were searched). The MT3608 stays, because 5 V loads remain
+  about 200 mA.
 
 ### Firmware impact
-- An expander driver handles buttons (via INT), LEDs, the buzzer and AMP_EN.
+- An expander driver handles buttons (via INT), LEDs, the buzzer and AMP_SD. P6/P7
+  must be set as outputs driven low (the TCA9534 has no internal pull-ups).
 - An audio task streams clips over I2S DMA from flash (beeps, siren, spoken lines).
 - `core` gets a `Sound` event next to `Beep`.
 

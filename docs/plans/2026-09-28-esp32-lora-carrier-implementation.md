@@ -445,7 +445,7 @@ JLCPCB Basic and Preferred libraries.
 
 **Firmware follow-up (update C2/C4 when reached):** buttons, LEDs and the buzzer go
 through a TCA9534 driver (write 0 to the output register before setting pins as
-outputs; button presses via INT on GPIO6). New audio milestone: I2S TX DMA on
+outputs; set the unused P6/P7 as outputs driven low; button presses via INT on GPIO6). New audio milestone: I2S TX DMA on
 47/48/21, AMP_SD via the expander, clips in flash.
 
 ---
