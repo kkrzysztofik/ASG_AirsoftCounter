@@ -10,9 +10,7 @@ pub struct PlayerCard {
 }
 
 pub fn parse_player_card(mem: &[u8]) -> Option<PlayerCard> {
-    parse_text(ndef_message(mem)?)
-        .and_then(|t| core::str::from_utf8(t).ok())
-        .and_then(parse_asg)
+    parse_text(ndef_message(mem)?).and_then(|t| core::str::from_utf8(t).ok()).and_then(parse_asg)
 }
 
 /// Walk the TLV blocks and return the NDEF message body.
@@ -20,8 +18,8 @@ fn ndef_message(mem: &[u8]) -> Option<&[u8]> {
     let mut i = 0;
     while i < mem.len() {
         match mem[i] {
-            0x00 => i += 1,       // NULL TLV
-            0xFE => return None,  // terminator before any NDEF TLV
+            0x00 => i += 1,      // NULL TLV
+            0xFE => return None, // terminator before any NDEF TLV
             tag => {
                 let (len, hdr) = match *mem.get(i + 1)? {
                     0xFF => (u16::from_be_bytes([*mem.get(i + 2)?, *mem.get(i + 3)?]) as usize, 4),

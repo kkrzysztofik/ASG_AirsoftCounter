@@ -25,10 +25,7 @@ impl Default for Config {
 impl Config {
     /// Limits from the original IR config menu.
     pub fn clamped(self) -> Self {
-        Self {
-            mining_time_s: self.mining_time_s.clamp(5, 30000),
-            block_size: self.block_size.clamp(1, 1000),
-        }
+        Self { mining_time_s: self.mining_time_s.clamp(5, 30000), block_size: self.block_size.clamp(1, 1000) }
     }
 }
 
@@ -262,7 +259,10 @@ mod tests {
     fn config_is_clamped() {
         let g = Game::new(Config { mining_time_s: 1, block_size: 0 }, 0);
         assert_eq!(g.left, 1);
-        assert_eq!(Config { mining_time_s: 60000, block_size: 5000 }.clamped(), Config { mining_time_s: 30000, block_size: 1000 });
+        assert_eq!(
+            Config { mining_time_s: 60000, block_size: 5000 }.clamped(),
+            Config { mining_time_s: 30000, block_size: 1000 }
+        );
     }
 
     #[test]
