@@ -26,23 +26,26 @@ PLACE = {
     "J_BAT1": (10, 6, 0), "J_KEY1": (19, 6, 0), "J_HBAT1": (28, 6, 0),
     "J_LCD1": (40, 6, 0), "J_NFC1": (54, 6, 0), "J_BTN_R1": (68, 6, 0),
     # Left edge: rotated so the open side faces -X, pin 1 at the bottom
-    "J_BTN_B1": (6, 33, 90), "J_BUZ1": (6, 47, 90),
+    "J_SPK1": (6, 20.75, 90), "J_BTN_B1": (6, 35, 90), "J_BUZ1": (6, 47, 90),
+    # I2S amp beside J_SPK1 (outputs face it at 180 deg), VDD caps above it on VBAT_SW
+    "U3": (15.2, 22.9, 180), "C_AMP2": (15.2, 18.4, 0), "C_AMP1": (15.2, 14.9, 0),
     # Power: MT3608 boost; output loop (SW -> D1 -> C_OUT -> GND) on U1's SW/GND side
-    "F1": (15.2, 14, 0), "C_BULK1": (13.5, 20.5, 0),
+    "F1": (15.2, 11.3, 0), "C_BULK1": (37, 17, 90), "C_BULK2": (40.5, 17, 90),
     "L1": (28.5, 15.5, 180), "D1": (21.3, 16, 0), "U1": (27, 21.5, 0), "C_IN1": (31.2, 21.8, 270),
     "C_OUT1": (21, 20, 0), "C_OUT2": (21, 22.9, 0),
     "R_FB2": (26.5, 25.5, 0), "R_FB1": (22, 26, 0),
-    # I2C level shifter + NFC bulk cap, under their connectors
+    # I2C level shifter, NFC bulk cap and GPIO expander, under their connectors
     "Q_SDA1": (44, 16, 0), "R_SDA3": (44, 20, 0), "R_SDA5": (44, 23.3, 0),
     "Q_SCL1": (49.5, 16, 0), "R_SCL3": (49.5, 20, 0), "R_SCL5": (49.5, 23.3, 0),
-    "C_NFC1": (55.5, 18, 0),
+    "C_NFC1": (55.5, 15.3, 0), "R_SD1": (54.5, 21.5, 90),
+    "U2": (60.2, 21, 0), "C_EXP1": (60.5, 15.6, 0), "R_INT1": (66, 22.8, 0),
     # Low-side drivers, one column each (top to bottom R_G, R_PD, Q, R_L): gate pads on one
     # vertical line at x+1, GND pads at x-1, drain straight down into R_L
     "R_GLB1": (16, 29, 0), "R_PDLB1": (16, 32, 180), "Q_LB1": (16, 35.5, 270), "R_LLB1": (16, 39.5, 270),
     "R_GBZ1": (24, 29, 0), "R_PDBZ1": (24, 32, 180), "Q_BZ1": (24, 35.5, 270),
     "R_GLR1": (32, 29, 0), "R_PDLR1": (32, 32, 180), "Q_LR1": (32, 35.5, 270), "R_LLR1": (32, 39.5, 270),
     "D_FLY1": (15, 45, 0),
-    # Button RC: BTN_B near its connector, BTN_R near J_BTN_R1 (its GPIO is on J3, top right)
+    # Button RC: BTN_B near its connector, BTN_R near J_BTN_R1 and the expander
     "R_PUB1": (20, 49, 0), "C_BB1": (20, 52.5, 0), "R_SB1": (25, 50.75, 0),
     "R_PUR1": (66, 15.5, 0), "C_BR1": (66, 19, 0), "R_SR1": (71, 17.25, 0),
 }
@@ -51,6 +54,7 @@ PLACE = {
 REF_AT = {
     "L1": (33.3, 15.5, 90), "U1": (29.55, 21.5, 90), "C_OUT1": (21, 18.4, 0),
     "C_OUT2": (21, 24.6, 0), "R_FB1": (18.4, 26, 0), "C_IN1": (33.05, 21.8, 90),
+    "F1": (18.6, 11.3, 0),  # F1 sits right under the top connector labels
 }
 
 # Connector silk labels (name, pins in pin-1-first order). Pin 1 is the left pad at rot 0 and
@@ -59,6 +63,7 @@ LABELS = {
     "J_BAT1": ("BAT", "+  -"), "J_KEY1": ("KEY", ""), "J_HBAT1": ("HELTEC BAT", "+  -"),
     "J_LCD1": ("LCD", "GND 5V SDA SCL"), "J_NFC1": ("NFC", "GND 3V3 SDA SCL"),
     "J_BTN_R1": ("BTN_R", "SW GND L+ L-"), "J_BTN_B1": ("BTN_B", "SW GND L+ L-"), "J_BUZ1": ("BUZ", "+  -"),
+    "J_SPK1": ("SPK (BTL, not GND)", "OUT- OUT+"),
 }
 # free text: (text, x, y, rot, size, left-justified)
 TEXTS = [
@@ -115,6 +120,10 @@ def footprint(board, ref, nets):
     if rot == 180:  # keep the reference above the part, as at rot 0
         r, o = fp.Reference().GetPosition(), fp.GetPosition()
         fp.Reference().SetPosition(pcbnew.VECTOR2I(2 * o.x - r.x, 2 * o.y - r.y))
+    for p in fp.Pads():  # library thermal vias (U3) are 0.2 mm; JLCPCB's 2-layer minimum is 0.3 mm
+        if p.GetAttribute() == pcbnew.PAD_ATTRIB_PTH and p.GetDrillSize().x < pcbnew.FromMM(0.3):
+            p.SetDrillSize(mm(0.3, 0.3))
+            p.SetSize(pcbnew.F_Cu, mm(0.6, 0.6))
     if ref in REF_AT:
         rx, ry, rrot = REF_AT[ref]
         fp.Reference().SetPosition(mm(rx, ry))
@@ -254,11 +263,11 @@ def verify():
     b = pcbnew.LoadBoard(str(PCB))
     ds = b.GetDesignSettings()
     got = [pcbnew.ToMM(v) for v in (ds.m_MinClearance, ds.m_TrackMinWidth, ds.m_ViasMinSize, ds.m_MinThroughDrill)]
-    assert got == [0.2, 0.2, 0.6, 0.3], f"project rules {got}"
+    assert got == [0.2, 0.15, 0.6, 0.3], f"project rules {got}"
     ns = ds.m_NetSettings
     # KiCad 9 names pattern-matched classes "Power,Default" (Default fills unset fields): check values
-    for net, want in (("VBAT_SW", [0.8, 0.25]), ("GND", [0.8, 0.25]), ("+5V", [0.8, 0.25]),
-                      ("SW", [0.8, 0.25]), ("SDA_3V3", [0.25, 0.2])):
+    for net, want in (("VBAT_SW", [0.8, 0.2]), ("GND", [0.25, 0.2]), ("+5V", [0.8, 0.2]),
+                      ("SW", [0.8, 0.2]), ("SPK_P", [0.25, 0.2]), ("SDA_3V3", [0.25, 0.2])):
         nc = ns.GetEffectiveNetClass(net)
         got = [pcbnew.ToMM(nc.GetTrackWidth()), pcbnew.ToMM(nc.GetClearance())]
         assert got == want, f"{net} ({nc.GetName()}): track/clearance {got}, want {want}"

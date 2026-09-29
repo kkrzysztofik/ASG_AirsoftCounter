@@ -20,7 +20,9 @@ STUB = 2.54
 PER_ROW = 10
 FLAG_NETS = ["GND", "+3V3", "+5V", "VBAT_SW"]
 NC_PARTS = {"J2", "J3"}  # every unconnected pin gets a no-connect flag
-NC_PINS = {"U1.6"}  # MT3608 NC
+NC_PINS = {"U1.6",  # MT3608 NC
+           "U2.11", "U2.12",  # TCA9534 P6/P7 spare
+           "U3.5", "U3.6", "U3.12", "U3.13"}  # MAX98357A NC
 
 
 # --- S-expressions: atoms stay raw tokens (quoted strings keep their quotes) ---
@@ -290,22 +292,48 @@ def schematic():
             ["generator_version", q("9.0")], ["uuid", q(root)], ["paper", q("A3")], *body], root
 
 
+# KiCad 9 default ERC pin conflict matrix (0 ok, 1 warning, 2 error), rows/columns: input, output,
+# bidirectional, tri-state, passive, free, unspecified, power in, power out, open collector,
+# open emitter, no connect.
+PIN_MAP = [[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2], [0, 2, 0, 1, 0, 0, 1, 0, 2, 2, 2, 2],
+           [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 2], [0, 1, 0, 0, 0, 0, 1, 1, 2, 1, 1, 2],
+           [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+           [1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 2], [0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 2],
+           [0, 2, 1, 2, 0, 0, 1, 0, 2, 2, 2, 2], [0, 2, 0, 1, 0, 0, 1, 0, 2, 0, 0, 2],
+           [0, 2, 1, 1, 0, 0, 1, 0, 2, 0, 0, 2], [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]]
+# The MAX98357A exposed pad (U3.17) is the design's only Unspecified pin (library typing) and goes
+# to GND: treat Unspecified like Passive so it doesn't warn against the GND pins.
+PIN_MAP[6] = PIN_MAP[4][:]
+for row in PIN_MAP:
+    row[6] = row[4]
+
+
 def project(root):
     via = {"via_diameter": 0.6, "via_drill": 0.3}
     return {
         "meta": {"filename": "carrier.kicad_pro", "version": 3},
         "board": {"design_settings": {"rules": {
-            "min_track_width": 0.2, "min_clearance": 0.2,
-            "min_via_diameter": 0.6, "min_through_hole_diameter": 0.3}}},
+            # 0.15 mm (JLCPCB 2-layer minimum is 0.127 mm): Freerouting necks GND down to ~0.19 mm
+            # into the U1/U2/U3 fine-pitch pads. Net-class widths (0.25 / 0.8 mm) are unchanged.
+            "min_track_width": 0.15, "min_clearance": 0.2,
+            "min_via_diameter": 0.6, "min_through_hole_diameter": 0.3},
+            # gen_pcb.py loads every footprint fresh from the library, so the only possible mismatch
+            # is its deliberate one: U3's thermal vias widened from 0.2 to 0.3 mm drill for JLCPCB.
+            "rule_severities": {"lib_footprint_mismatch": "ignore"}}},
         "net_settings": {
             "meta": {"version": 4},
             "classes": [
                 # KiCad 9 silently drops every class if "priority" is missing
                 {"name": "Default", "priority": 2147483647, "track_width": 0.25, "clearance": 0.2, **via},
-                {"name": "Power", "priority": 0, "track_width": 0.8, "clearance": 0.25, **via},
+                # 0.2 mm, not 0.25: the U3 (TQFN) pad gaps are 0.25 mm, so Freerouting can only neck
+                # a VBAT_SW track down into its VDD pads at the default clearance
+                {"name": "Power", "priority": 0, "track_width": 0.8, "clearance": 0.2, **via},
             ],
-            "netclass_patterns": [{"netclass": "Power", "pattern": p} for p in ("VBAT*", "+5V", "SW", "GND")],
+            # GND is not Power: both layers are solid GND pours, and a 0.8 mm GND track can't reach
+            # U3's GND pins (0.5 mm pitch, one of them between OUTN and a NC pin) or U2's A0-A2.
+            "netclass_patterns": [{"netclass": "Power", "pattern": p} for p in ("VBAT*", "+5V", "SW")],
         },
+        "erc": {"pin_map": PIN_MAP},
         "sheets": [[root, "Root"]],
     }
 
