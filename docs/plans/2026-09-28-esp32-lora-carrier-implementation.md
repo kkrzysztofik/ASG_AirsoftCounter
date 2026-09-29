@@ -393,6 +393,50 @@ fab: check
 
 *As built (2026-09-29):* `jlc.py` has no rotation-correction table. Sources disagree on SOT-23 (180° or −90°), and JLC's engineers correct rotation from the silkscreen polarity marks, so `ORDERING.md` lists the parts to check in the preview instead. The CPL comes from pcbnew alone, not from `kicad-cli pcb export pos`: pcbnew gives the reference, rotation (normalised to 0–360) and side, with the coordinates in the Gerber convention (board Y negated). Checked against the pos file, all 43 parts matched. Mid X/Y is the centre of the F.CrtYd courtyard, not the footprint anchor. The THT footprints are anchored on pin 1, which would put J2/J3 21.6 mm off, and the pad centre would still leave the JST-XH bodies 0.525 mm off. The red step of step 2 is the `check()` assertion in `design.py` (an empty `LCSC` failed for all 43 assembled parts). There is no separate test file. The 10 V capacitor values became the ratings of the parts picked: 22uF 25V, 220uF 16V, 100uF 25V.
 
+### Task A10: Speaker (I2S amp), I2C GPIO expander, Basic bulk caps
+
+*(Added 2026-09-29. Design doc Part 6.)* Parts were verified live against the complete
+JLCPCB Basic and Preferred libraries.
+
+**Netlist changes (`hardware/design.py`), with everything regenerated through `make all`:**
+- New U2 **TCA9534PWR** (C783615, TSSOP-16) on +3V3, address **0x20** (A0–A2 to GND),
+  100 nF (C49678) decoupling. INT goes to **GPIO6** (J3.17) with a 10k (C17414) pull-up
+  to +3V3.
+  - P0 = BTN_R_IN and P1 = BTN_B_IN, each after the existing 1k series resistor with its
+    10k/100nF RC.
+  - P2/P3/P4 drive the existing LED_R/LED_B/BUZ gate resistors.
+  - P5 = AMP_SD.
+  - P6/P7 are unconnected.
+- New U3 **MAX98357AETE+T** (C910544, TQFN-16-EP 3x3), VDD on **VBAT_SW**, with 22 µF
+  (C12891) + 100 nF (C49678) at VDD.
+  - DIN = **GPIO21** (J2.16), BCLK = **GPIO47** (J2.13), LRCLK = **GPIO48** (J2.14).
+  - GAIN_SLOT tied to GND (12 dB). SD_MODE = AMP_SD (a 3.3 V high selects the left
+    channel, low is shutdown).
+  - EP and all GND pins to GND with thermal vias. OUTP/OUTN go to new **J_SPK**
+    (B2B-XH, C158012). Silkscreen: `SPK (BTL, not GND)`.
+- Remove the old direct GPIO nets (buttons on GPIO6/44, LEDs on 47/48, buzzer on 21).
+  GPIO44 and GPIO43 are left unconnected. Update `EXPECTED_GPIO`.
+- Bulk caps:
+  - C_BULK1 (220 µF THT) becomes 2x **47 µF 10 V 1206 C96123** (C_BULK1, C_BULK2) on
+    VBAT_SW.
+  - C_NFC1 (100 µF THT) becomes **100 µF 6.3 V 1206 C15008** on +3V3.
+- F1 becomes **2 A hold 1206L200/16NR C22374899** (same 1206 footprint).
+- MT3608, L1 (Bourns), connectors and sockets are unchanged.
+
+**Steps:**
+1. `check()` first: update the expected GPIO map and add the new parts' LCSC entries.
+   Check that `check()` fails on the old map, then passes.
+2. `gen_pcb.py` PLACE: put the amp near J_SPK and VBAT_SW with short OUTP/OUTN, and the
+   expander near J3 and the button RCs. Keep the boost loop untouched.
+3. `make all`: ERC/DRC/parity must be clean, the autoroute complete, gerbers ok, jlc ok.
+4. Update `ORDERING.md` (Extended list, speaker note) and the renders.
+5. Commit: "hardware: I2S speaker amp, TCA9534 expander, ceramic bulk caps".
+
+**Firmware follow-up (update C2/C4 when reached):** buttons, LEDs and the buzzer go
+through a TCA9534 driver (write 0 to the output register before setting pins as
+outputs; button presses via INT on GPIO6). New audio milestone: I2S TX DMA on
+47/48/21, AMP_SD via the expander, clips in flash.
+
 ---
 
 ## Phase B: firmware/core (host-tested game logic)
