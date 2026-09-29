@@ -32,6 +32,7 @@ check: route
 # check_gerbers.py is deleted so it can't be uploaded by mistake.
 # print_1to1.pdf leaves out F.Cu: the GND pour would print solid black and hide the labels;
 # pads come from the F.Fab sketch instead.
+# jlc.py writes the JLCPCB assembly BOM + CPL (fab/jlc_*.csv) and checks them against the zip.
 fab: check
 	rm -rf fab/gerbers $(ZIP)
 	mkdir -p fab/gerbers
@@ -40,6 +41,7 @@ fab: check
 		--generate-map --map-format gerberx2 -o fab/gerbers/ carrier.kicad_pcb
 	zip -jqX $(ZIP) fab/gerbers/* -x '*drl_map*' '*.gbrjob'
 	$(PY) check_gerbers.py $(ZIP) || { rm -f $(ZIP); exit 1; }
+	$(PY) jlc.py
 	kicad-cli sch export bom --exclude-dnp --fields 'Reference,Value,Footprint,$${QUANTITY}' \
 		--labels 'Refs,Value,Footprint,Qty' --group-by Value,Footprint -o fab/bom.csv carrier.kicad_sch
 	kicad-cli sch export pdf -o fab/schematic.pdf carrier.kicad_sch

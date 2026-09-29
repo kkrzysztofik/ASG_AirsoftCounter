@@ -2609,7 +2609,7 @@
 				)
 			)
 		)
-		(property "Value" "220uF 10V"
+		(property "Value" "220uF 16V"
 			(at 1.25 4.4 0)
 			(layer "F.Fab")
 			(uuid "0b32a57d-41dc-4ad0-bfbc-f0f51c73fae4")
@@ -4220,7 +4220,7 @@
 				)
 			)
 		)
-		(property "Value" "22uF 10V"
+		(property "Value" "22uF 25V"
 			(at 0 1.85 0)
 			(layer "F.Fab")
 			(uuid "5e52fdeb-fe06-40d6-8e4e-bcc17df62c7f")
@@ -6954,7 +6954,7 @@
 				)
 			)
 		)
-		(property "Value" "22uF 10V"
+		(property "Value" "22uF 25V"
 			(at 0 1.85 0)
 			(layer "F.Fab")
 			(uuid "7aab8769-9022-4e69-9e6f-d66e2a507bc7")
@@ -7092,7 +7092,7 @@
 				)
 			)
 		)
-		(property "Value" "22uF 10V"
+		(property "Value" "22uF 25V"
 			(at 0 1.85 270)
 			(layer "F.Fab")
 			(uuid "98aa6d8e-ad5e-4ec2-ba3d-e4aad19f5015")
@@ -10965,7 +10965,7 @@
 				)
 			)
 		)
-		(property "Value" "100uF 10V"
+		(property "Value" "100uF 25V"
 			(at 1.25 4.4 0)
 			(layer "F.Fab")
 			(uuid "d7eb65d6-b1b8-4783-aff7-0e723a784ef2")

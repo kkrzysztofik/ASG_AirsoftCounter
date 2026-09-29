@@ -7068,7 +7068,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF 10V"
+		(property "Value" "22uF 25V"
 			(at 153.035 101.6 0)
 			(effects
 				(font
@@ -7137,7 +7137,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF 10V"
+		(property "Value" "22uF 25V"
 			(at 168.275 96.52 0)
 			(effects
 				(font
@@ -7206,7 +7206,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF 10V"
+		(property "Value" "22uF 25V"
 			(at 183.515 96.52 0)
 			(effects
 				(font
@@ -7275,7 +7275,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "220uF 10V"
+		(property "Value" "220uF 16V"
 			(at 201.295 101.6 0)
 			(effects
 				(font
@@ -7344,7 +7344,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "100uF 10V"
+		(property "Value" "100uF 25V"
 			(at 33.655 142.24 0)
 			(effects
 				(font

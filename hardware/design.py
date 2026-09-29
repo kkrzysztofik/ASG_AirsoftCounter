@@ -5,7 +5,8 @@ self-check the design (`python3 design.py`). Generators must call design.check()
 at startup.
 
 check() validates structure (unique pins, known parts, no single-pin nets, no
-unconnected parts) and every Heltec header pin. It does NOT validate pin
+unconnected parts), every Heltec header pin, and that every assembled part has
+an LCSC number (jlc.py builds the JLCPCB assembly files from LCSC). It does NOT validate pin
 numbers of other parts or catch dangling 2-pin parts: gen_sch.py (symbol pin
 lookup) and KiCad ERC catch those.
 """
@@ -31,11 +32,11 @@ PARTS = {
     "D1": ("SS34", "Diode:SS34", "Diode_SMD:D_SMA"),
     "R_FB1": ("75k", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_FB2": ("10k", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
-    "C_IN1": ("22uF 10V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
-    "C_OUT1": ("22uF 10V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
-    "C_OUT2": ("22uF 10V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
-    "C_BULK1": ("220uF 10V", "Device:C_Polarized", "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm"),
-    "C_NFC1": ("100uF 10V", "Device:C_Polarized", "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm"),
+    "C_IN1": ("22uF 25V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
+    "C_OUT1": ("22uF 25V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
+    "C_OUT2": ("22uF 25V", "Device:C", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"),
+    "C_BULK1": ("220uF 16V", "Device:C_Polarized", "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm"),
+    "C_NFC1": ("100uF 25V", "Device:C_Polarized", "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm"),
     # I2C level shifter (5V-side pull-ups DNP: LCD backpack has its own)
     "Q_SDA1": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
     "Q_SCL1": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
@@ -69,6 +70,40 @@ for t in ("R", "B"):
 
 for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", "MountingHole:MountingHole_3.2mm_M3")
+
+# JLCPCB assembly: (value, footprint) -> LCSC part number. Keyed by value and footprint so
+# changing either fails check() until a new part is picked. All verified live against JLCPCB's
+# parts API on 2026-09-29. Type: B = Basic, P = Preferred Extended (no setup fee), E = Extended.
+R = "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"
+CP63 = "Capacitor_THT:CP_Radial_D6.3mm_P2.50mm"
+SOT23 = "Package_TO_SOT_SMD:SOT-23"
+XH2 = "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"
+XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
+LCSC = {
+    ("100nF", "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"): "C49678",  # B YAGEO CC0805KRX7R9BB104 50V X7R
+    ("22uF 25V", "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"): "C12891",  # B Samsung CL31A226KAHNNNE X5R
+    ("220uF 16V", CP63): "C43340",  # E CX KS227M016E07RR0VH2FP0, D6.3x7 P2.5
+    ("100uF 25V", CP63): "C44587",  # E CX KS107M025E07RR0VH2FP0, D6.3x7 P2.5
+    ("SS34", "Diode_SMD:D_SMA"): "C8678",  # B MDD SS34
+    ("1N4148W", "Diode_SMD:D_SOD-123"): "C81598",  # B ST Semtech 1N4148W
+    ("1A PTC", "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"): "C7542957",  # E LUTE 1206L100/24NR 1A/1.8A 24V
+    ("10uH 2A", "Inductor_SMD:L_Bourns_SRN6045TA"): "C2046332",  # E Bourns SRN6045TA-100M
+    ("MT3608", "Package_TO_SOT_SMD:SOT-23-6"): "C84817",  # E XI'AN Aerosemi MT3608 (1 SW 2 GND 3 FB 4 EN 5 VIN)
+    ("AO3400A", SOT23): "C20917",  # B AOS AO3400A
+    ("BSS138", SOT23): "C7420339",  # P hongjiacheng BSS138 (G=1 S=2 D=3)
+    ("75k", R): "C17819",  # P UNI-ROYAL 0805W8F7502T5E
+    ("10k", R): "C17414",  # B 0805W8F1002T5E
+    ("100R", R): "C17408",  # B 0805W8F1000T5E
+    ("150R", R): "C17471",  # B 0805W8F1500T5E
+    ("100k", R): "C149504",  # B 0805W8F1003T5E
+    ("1k", R): "C17513",  # B 0805W8F1001T5E
+    ("4k7", R): "C17673",  # B 0805W8F4701T5E
+    ("Heltec_J2", "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"): "C2905422",  # E Kinghelm KH-2.54FH-1X18P-H8.5
+    ("Heltec_J3", "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"): "C2905422",
+}
+# Connector values are names, so every name maps to the same part.
+LCSC |= {(v, XH2): "C158012" for v in ("BAT", "KEY", "HELTEC_BAT", "BUZ")}  # E JST B2B-XH-A(LF)(SN)
+LCSC |= {(v, XH4): "C144395" for v in ("LCD", "NFC", "BTN_R", "BTN_B")}  # E JST B4B-XH-A(LF)(SN)
 
 # net: [ "REF.pin", ... ]
 NETS = {
@@ -117,6 +152,11 @@ HEADER_POWER = {"J2.1": "GND", "J3.1": "GND", "J3.2": "+3V3", "J3.3": "+3V3"}
 HEADER_NC = {"J2.2", "J2.3", "J2.4"}  # 5V charger input, Vext x2: must stay unconnected
 
 
+def assembled():
+    """Refs JLCPCB places: everything except DNP parts and mounting holes."""
+    return [r for r, (_, sym, _) in PARTS.items() if r not in DNP and sym != "Mechanical:MountingHole"]
+
+
 def check():
     pins = [p for members in NETS.values() for p in members]
     dupes = {p for p in pins if pins.count(p) > 1}
@@ -143,6 +183,10 @@ def check():
     unused = [r for r in PARTS if PARTS[r][1] != "Mechanical:MountingHole"
               and not any(p.split(".")[0] == r for p in pins)]
     assert not unused, f"parts with no connections: {unused}"
+    missing = sorted(r for r in assembled() if (PARTS[r][0], PARTS[r][2]) not in LCSC)
+    assert not missing, f"assembled parts without an LCSC number: {missing}"
+    stale = LCSC.keys() - {(PARTS[r][0], PARTS[r][2]) for r in assembled()}
+    assert not stale, f"LCSC entries no assembled part uses: {stale}"
     print(f"design ok: {len(PARTS)} parts, {len(NETS)} nets")
 
 

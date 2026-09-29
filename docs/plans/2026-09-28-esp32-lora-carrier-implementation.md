@@ -391,6 +391,8 @@ fab: check
 5. `ORDERING.md` assembly section: which files to upload, which JLCPCB assembly service supports THT, top-side assembly, and which parts to check in the preview. No prices.
 6. Commit: "hardware: JLCPCB assembly BOM + CPL".
 
+*As built (2026-09-29):* `jlc.py` has no rotation-correction table. Sources disagree on SOT-23 (180° or −90°), and JLC's engineers correct rotation from the silkscreen polarity marks, so `ORDERING.md` lists the parts to check in the preview instead. The CPL Mid X/Y is the centre of each part's pads, taken from pcbnew, not the pos-file anchor. The THT footprints are anchored on pin 1, which would put J2/J3 21.6 mm off. The pos export is still the source for the designator list, side and rotation, and `jlc.py` checks that its anchors equal the board coordinates with Y negated, the same convention as the Gerbers. The 10 V capacitor values became the ratings of the parts picked: 22uF 25V, 220uF 16V, 100uF 25V.
+
 ---
 
 ## Phase B: firmware/core (host-tested game logic)
