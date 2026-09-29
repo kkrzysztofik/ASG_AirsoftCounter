@@ -14,6 +14,7 @@ per-unit LCD address tweaks, not waterproof) with:
 - phone configuration over **WiFi AP + web page** (IR remote dropped),
 - a **20x4 I2C LCD**,
 - **RFID/NFC cards**: player cards (score + per-player stats) and admin cards,
+- a **loudspeaker** (I2S class-D amp) in addition to the buzzer, with GPIOs freed by an **I2C GPIO expander** (Part 6),
 - a **weatherproof enclosure** (Kradex ZP240.190.105SJp, clear PC lid, IP67),
 - firmware rewritten in **Rust** (esp-hal + Embassy).
 
@@ -186,6 +187,53 @@ Out of scope for now: laptop HQ app, OTA updates, additional game modes.
 - RF field polled in bursts (~50 ms on / 300 ms), only in states where a card
   does something (~20 mA average).
 - Card text parsing (NTAG pages → TLV → NDEF text → `PlayerCard`) lives in `core`.
+
+## Part 6: Audio, GPIO expander, fewer Extended parts (approved 2026-09-29)
+
+### Why
+The user asked for a real loudspeaker in addition to the buzzer, and for Basic JLCPCB
+parts wherever possible. I2S needs 3 fast GPIOs and none are free on both V4 variants,
+so every slow signal moves to an I2C GPIO expander.
+
+### Native GPIO map (supersedes Part 1 for these pins)
+
+| GPIO | Signal |
+|---|---|
+| 3 / 4 | I2C SCL / SDA (LCD via the level shifter, PN532, expander) |
+| 47 | I2S BCLK |
+| 48 | I2S LRCLK |
+| 21 | I2S DIN |
+| 6 | Expander INT (active low, open-drain, pull-up on the carrier) |
+| 44, 43 | Spare, not connected on this revision |
+
+### Expander (8 I/O, 3V3 side of the I2C bus)
+- Inputs: BTN_R, BTN_B. The 10k pull-up, 100 nF and 1k series RC stay.
+- Outputs: LED_R, LED_B and BUZ gate drives (same AO3400A low-side drivers with
+  100 Ω + 100k), plus AMP_EN, which drives the amplifier's shutdown pin so it stays
+  off during boot and while silent.
+- Two spare I/O.
+- Its I2C address must not collide with the PN532 (0x24) or the LCD backpack (0x27/0x3F).
+
+### Speaker path
+- MAX98357A-class I2S class-D amplifier, **powered from VBAT_SW (3.0–4.2 V)**, not the
+  5 V boost. That gives about 1.5–2 W into 4 Ω and keeps audio peaks off the 5 V rail
+  (no LCD flicker). Gain-select resistor footprint.
+- The output is BTL: the new 2-pin XH connector `J_SPK` must never be tied to GND
+  (silkscreen note).
+- Off-board: a weatherproof 4 Ω 2–3 W speaker in the enclosure wall, plus an ePTFE
+  acoustic vent if needed.
+
+### Power changes
+- Polyfuse raised to about 1.5–2 A hold, for LoRa TX + audio peaks + boost.
+- Bulk capacitance moves from THT electrolytics to multiples of the Basic 22 µF 1206
+  ceramic (C12891) where the research confirms that's adequate.
+- Boost, inductor and fuse become Basic or Preferred parts where available. Exact
+  parts come from live JLCPCB research and are recorded in `design.py`.
+
+### Firmware impact
+- An expander driver handles buttons (via INT), LEDs, the buzzer and AMP_EN.
+- An audio task streams clips over I2S DMA from flash (beeps, siren, spoken lines).
+- `core` gets a `Sound` event next to `Beep`.
 
 ## Open items to verify during implementation
 
