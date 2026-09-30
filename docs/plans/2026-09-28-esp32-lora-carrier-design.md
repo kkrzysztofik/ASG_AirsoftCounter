@@ -269,6 +269,8 @@ every variant because the LEDs, buzzer and buttons sit behind it.
   disables its task instead of failing.
 - `cargo` features only for what cannot be probed: speaker fitted, buttons fitted, GPS fitted.
 - No buttons: set expander P0/P1 as outputs (no pull-ups fitted, floating inputs would toggle INT).
+- No speaker: the I2S nets (GPIO 47/48/21) and `AMP_SD` (expander P5, `U2.10`) have nothing fitted on the board.
+  Firmware must leave GPIO 47/48/21 as inputs or unused (never drive them) and must not start the audio task.
 - STATUS omits position without GPS. The buzzer is present in every variant.
 
 ### Open

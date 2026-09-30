@@ -100,6 +100,15 @@ If a part is wrong, fix its `Rotation` in `fab/jlc_cpl.csv` (degrees, counter-cl
 
 **Stock.** The J2/J3 socket (about 2.8k in stock) and L1 (about 3.2k), as of 2026-09-29, are the parts most likely to run out. Verified backups: socket C2897381, JST-XH clones C20079 (2-pin) and C37815 (4-pin), BSS138 C82045. (The old PTC backup C5358568 is a 1 A part and no longer fits F1.) To switch, change the number in `LCSC` in `design.py` and run `make all`. Check the new part's package and pinout on its LCSC page first.
 
+**Budget variant.** The same board, assembled without the speaker and NFC modules (see `design.py` `VARIANTS`
+and `COSTS.md`). Order the same Gerber zip, then upload **`fab/jlc_bom_budget.csv`** and
+**`fab/jlc_cpl_budget.csv`** instead. Differences from the steps above:
+
+- 22 BOM lines and 46 placements (Deluxe: 23 and 52). Nothing else in the form changes.
+- **7 Extended types**, not 8: U3 (MAX98357A, C910544) is not fitted, so its setup fee is gone. Preferred (2) and Basic (13) counts are unchanged.
+- Not fitted: U3, C_AMP1, C_AMP2, R_SD1, J_SPK1 and J_NFC1. In the placement preview, check that none of them appear.
+- Buy the speaker and the PN532 only if you add those modules later; the footprints stay empty on the board.
+
 ## 6. Parts
 
 A bare board ships without parts. `fab/bom.csv` lists the on-board parts to buy separately, grouped by value and footprint. The DNP pull-ups R_SDA5/R_SCL5 are left out on purpose.
