@@ -11,20 +11,34 @@ values, not checked against the exact LCSC parts. JLCPCB stock/price was not che
   still well above the BSS138 threshold for ~15 mA loads. Costs about 0.3 mA per active driver.
 - Both parts were Basic, so this saves no setup fee, only BOM lines.
 
-## Open: battery protection (not resolved)
+## Battery protection (validated and fixed 2026-09-30)
 
-- `F1` (2 A hold PTC, 1206L200/16NR) is the only protection on the unprotected 18650 cells.
-  PTC hold current drops with temperature: typically about 1.4 A at 60 C, against a worst-case
-  load of about 1.5 A (LoRa TX + 1 W speaker + 5 V loads). A hot closed enclosure could cause nuisance
-  trips. A 2.5-3 A hold part in the same 1206 footprint would add margin; no LCSC part checked.
-- No under-voltage cutoff is on this board. `VBAT_SW` feeds the boost (`U1`, EN tied to VIN, so it is
-  always on while the key switch is on) and the amp directly. Whether the Heltec V4 cuts off a
-  discharged cell is **unverified**: Heltec's datasheets were unreachable from the build environment.
-  Check the V4 schematic.
-- Options if the Heltec does not protect: fit protected 18650 cells (check they fit the holders, they
-  are longer); or add a firmware cutoff on the VBAT sense (GPIO1) that turns off the speaker
-  (`AMP_SD`) and LCD and goes to deep sleep. The boost cannot be shut off in firmware today. Wiring `U1`
-  EN to a spare expander pin (P6/P7, `U2.11`/`U2.12`) with a pull-up to `VBAT_SW` would allow that.
+**Fixed:** `U4` XB8089D (C79928, Extended) sits in the cell's negative lead, with `R_PROT1` 1k and `C_PROT1`
+100nF (both existing BOM lines). It is a single-chip version of option (a) below: DW01 + 8205 would
+have meant two Extended parts plus a new 100R line. Thresholds: 2.5 V over-discharge (release 3.0 V),
+4.25 V overcharge, 10 A overcurrent, 20 mOhm. Firmware should still shut down cleanly well above 2.5 V.
+
+Findings:
+
+- **Heltec V4 has no under-voltage cutoff** (checked in Heltec's V4.2 schematic,
+  resource.heltec.cn/download/WiFi_LoRa_32_V4/Schematic/WiFi_LoRa_32_V4.2.pdf). JP2 goes straight to
+  VBAT. Q4 (AO3400A, gate pulled to VBAT through 1k) in the battery's negative lead is reverse-polarity
+  protection only. There is no DW01 or 8205. The charger is a CN3165 (linear, solar-capable) set to
+  540 mA (R13 2.2k); it pre-charges deeply discharged cells, it does not protect them. Field reports
+  (Linuxslate forum, Meshtastic #9911) show boot loops and over-discharged cells.
+- **Consequence:** with the key left on, nothing stops the cells being drained to 0 V, and the CN3165
+  will then try to recharge them. With the key off, nothing draws current.
+- **The boost-EN idea does not fix it.** A disabled MT3608 still passes VIN to +5V through L1 and D1, so
+  the LCD, LEDs and buzzer stay powered at about VBAT - 0.4 V. It only saves the converter's own
+  current. Cutting +5V completely would also stall I2C: the 5 V-side pull-ups of the level shifter
+  would pull both buses low.
+- **F1 is fine.** The Littelfuse 1206L200 table gives 1.50 A hold at 60 C (1.45 A at 70 C), and trip is
+  3.5 A at 20 C. The ~1.5 A worst case is short peaks (LoRa TX, speaker, WiFi), not a steady load.
+- Options: (a) DW01 + 8205 on the board, between J_BAT1's negative pin and GND (the same circuit
+  protected cells carry; C14213 DW01+G is discontinued at LCSC, C61503 DW01A-G Extended; C32254 FS8205
+  SOT-23-6); (b) protected cells, which need longer holders than the Botland DNG-16516;
+  (c) a firmware low-battery shutdown on VBAT sense (GPIO1), useful with either (a) or (b) but not
+  protection by itself.
 
 ## Checked, no change
 

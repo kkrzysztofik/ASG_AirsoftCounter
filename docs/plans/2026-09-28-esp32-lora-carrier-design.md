@@ -280,7 +280,7 @@ budget generic-part prices: tracked in `hardware/fab/COSTS.md`.
 ## Open items to verify during implementation
 
 - Heltec V4 header fit (paper print; 22.86 mm row spacing measured on V3 STEP).
-- Heltec charger current (check V4.3 schematic PROG resistor); ok for 6000 mAh?
+- Heltec charger current: 540 mA (CN3165, R13 2.2k, V4.2 schematic); about 0.08C for 2x3400 mAh, slow but safe. Check again for V4.3.
 - hd44780-driver and pn532 embedded-hal 1.0 compatibility.
 - PN532 read range through the actual lid.
 - ZP240.190.105 internal dimensions and plate hole pattern (Kradex drawing).

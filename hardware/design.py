@@ -20,6 +20,7 @@ TSSOP16 = "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
 TQFN16 = "Package_DFN_QFN:TQFN-16-1EP_3x3mm_P0.5mm_EP1.23x1.23mm_ThermalVias"
 XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 SOCKET18 = "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"
+SOIC8EP = "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.41x3.3mm"
 
 # ref: (value, symbol "lib:name", footprint "lib:name")
 PARTS = {
@@ -37,6 +38,10 @@ PARTS = {
     "J_BTN_B1": ("BTN_B", "Connector_Generic:Conn_01x04", XH4),
     "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x04", XH4),
     "J_SPK1": ("SPK", "Connector_Generic:Conn_01x04", XH4),
+    # Cell protection in the negative lead (the Heltec V4 has no under-voltage cutoff, see
+    # fab/PARTS_REVIEW.md): 2.5 V over-discharge, 4.25 V overcharge, 10 A overcurrent, short circuit.
+    # Board GND is the protected pack negative (VM); only J_BAT1.2 sees the raw cell negative.
+    "U4": ("XB8089D", "local:XB8089D", SOIC8EP),
     # Power
     "F1": ("2A PTC", "Device:Polyfuse", "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"),
     "U1": ("MT3608", "Regulator_Switching:MT3608", "Package_TO_SOT_SMD:SOT-23-6"),
@@ -91,6 +96,9 @@ PARTS["C_AMP2"] = ("100nF", *C0805)  # U3 VDD decoupling (next to C_AMP1)
 # SD_MODE series resistor: 3V3 logic high into SD_MODE (abs max VDD + 0.3 V) when VBAT_SW sags below
 # ~3 V; datasheet asks for ~2k, 1k reuses a BOM line and still reads as logic high (100k pull-down inside).
 PARTS["R_SD1"] = ("1k", *R0805)
+# U4 supply filter from the datasheet application circuit: 1k from BAT+, 100nF to the cell negative
+PARTS["R_PROT1"] = ("1k", *R0805)
+PARTS["C_PROT1"] = ("100nF", *C0805)
 
 for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", "MountingHole:MountingHole_3.2mm_M3")
@@ -108,6 +116,7 @@ LCSC = {
     ("1N4148W", "Diode_SMD:D_SOD-123"): "C81598",  # B ST Semtech 1N4148W
     ("2A PTC", "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"): "C22374899",  # E LUTE 1206L200/16NR 2A hold 16V
     ("TCA9534PWR", TSSOP16): "C783615",  # E TI TCA9534PWR
+    ("XB8089D", SOIC8EP): "C79928",  # E XySemi XB8089D (checked on jlcpcb.com/lcsc.com 2026-09-30)
     ("MAX98357A", TQFN16): "C910544",  # E Maxim MAX98357AETE+T
     ("10uH 2A", "Inductor_SMD:L_Bourns_SRN6045TA"): "C2046332",  # E Bourns SRN6045TA-100M
     ("MT3608", "Package_TO_SOT_SMD:SOT-23-6"): "C84817",  # E XI'AN Aerosemi MT3608 (1 SW 2 GND 3 FB 4 EN 5 VIN)
@@ -125,14 +134,16 @@ LCSC |= {(v, XH4): "C144395" for v in ("BAT", "KEY", "HELTEC_BAT", "BUZ", "SPK",
 
 # net: [ "REF.pin", ... ]
 NETS = {
-    "GND": ["J2.1", "J3.1", "J_BAT1.2", "J_HBAT1.2", "J_LCD1.1", "J_NFC1.1", "J_BTN_R1.2", "J_BTN_B1.2",
+    "GND": ["J2.1", "J3.1", "U4.1", "U4.2", "U4.3", "U4.4", "J_HBAT1.2", "J_LCD1.1", "J_NFC1.1", "J_BTN_R1.2", "J_BTN_B1.2",
             "U1.2", "R_FB2.2", "C_IN1.2", "C_OUT1.2", "C_OUT2.2", "C_BULK1.2", "C_BULK2.2", "C_NFC1.2",
             "Q_LR1.2", "Q_LB1.2", "Q_BZ1.2", "R_PDLR1.2", "R_PDLB1.2", "R_PDBZ1.2", "C_BR1.2", "C_BB1.2",
             "U2.1", "U2.2", "U2.3", "U2.8", "C_EXP1.2",  # A0-A2 low: address 0x20
             "U3.2", "U3.3", "U3.11", "U3.15", "U3.17", "C_AMP1.2", "C_AMP2.2"],  # GAIN_SLOT low: 12 dB
     "+3V3": ["J3.2", "J3.3", "J_NFC1.2", "C_NFC1.1", "Q_SDA1.1", "Q_SCL1.1", "R_SDA3.1", "R_SCL3.1", "R_PUR1.1", "R_PUB1.1",
              "U2.16", "C_EXP1.1", "R_INT1.1"],
-    "VBAT_RAW": ["J_BAT1.1", "F1.1"],
+    "VBAT_RAW": ["J_BAT1.1", "F1.1", "R_PROT1.1"],
+    "BAT_N": ["J_BAT1.2", "U4.5", "U4.7", "U4.8", "U4.9", "C_PROT1.2"],  # raw cell negative
+    "PROT_VDD": ["R_PROT1.2", "U4.6", "C_PROT1.1"],
     "VBAT_F": ["F1.2", "J_KEY1.1"],
     "VBAT_SW": ["J_KEY1.2", "J_HBAT1.1", "C_BULK1.1", "C_BULK2.1", "C_IN1.1", "U1.5", "U1.4", "L1.1",
                 "U3.7", "U3.8", "C_AMP1.1", "C_AMP2.1"],

@@ -23,17 +23,22 @@ PLACE = {
     "J3": (44.82, 27.00, 90), "J2": (44.82, 49.86, 90),
     "H1": (3.5, 3.5, 0), "H2": (86.5, 3.5, 0), "H3": (3.5, 56.5, 0), "H4": (86.5, 56.5, 0),
     # Top edge: XH open side (-Y at rotation 0) faces the board edge, pin 1 left
-    "J_BAT1": (10, 6, 0), "J_KEY1": (19, 6, 0), "J_HBAT1": (28, 6, 0),
-    "J_LCD1": (40, 6, 0), "J_NFC1": (54, 6, 0), "J_BTN_R1": (68, 6, 0),
+    # (4-pin XH courtyards are 13.5 mm: five fit between H1 and H2, a sixth does not)
+    "J_BAT1": (10, 6, 0), "J_KEY1": (24.5, 6, 0), "J_HBAT1": (39, 6, 0),
+    "J_LCD1": (53.5, 6, 0), "J_NFC1": (68, 6, 0),
+    # Bottom edge, under the J2 row: open side faces +Y, pin 1 right
+    "J_BTN_R1": (76, 55.75, 180),
     # Left edge: rotated so the open side faces -X, pin 1 at the bottom
-    "J_SPK1": (6, 20.75, 90), "J_BTN_B1": (6, 35, 90), "J_BUZ1": (6, 47, 90),
+    "J_SPK1": (6, 20.5, 90), "J_BTN_B1": (6, 35, 90), "J_BUZ1": (6, 49.5, 90),
     # I2S amp beside J_SPK1 (outputs face it at 180 deg), VDD caps above it on VBAT_SW
     "U3": (15.2, 22.9, 180), "C_AMP2": (15.2, 18.4, 0), "C_AMP1": (15.2, 14.9, 0),
     # Power: MT3608 boost; output loop (SW -> D1 -> C_OUT -> GND) on U1's SW/GND side
-    "F1": (15.2, 11.3, 0), "C_BULK1": (37, 17, 90), "C_BULK2": (40.5, 17, 90),
+    "F1": (19.5, 11.3, 0), "C_BULK1": (37, 17, 90), "C_BULK2": (40.5, 17, 90),
     "L1": (28.5, 15.5, 180), "D1": (21.3, 16, 0), "U1": (27, 21.5, 0), "C_IN1": (31.2, 21.8, 270),
     "C_OUT1": (21, 20, 0), "C_OUT2": (21, 22.9, 0),
     "R_FB2": (26.5, 25.5, 0), "R_FB1": (22, 26, 0),
+    # Cell protection in the free strip left of J3 (VM pins 1-4 face the boost block's GND)
+    "U4": (37.7, 27.4, 0), "R_PROT1": (35.9, 32.5, 0), "C_PROT1": (40.0, 32.5, 0),
     # I2C level shifter, NFC bulk cap and GPIO expander, under their connectors
     "Q_SDA1": (44, 16, 0), "R_SDA3": (44, 20, 0), "R_SDA5": (44, 23.3, 0),
     "Q_SCL1": (49.5, 16, 0), "R_SCL3": (49.5, 20, 0), "R_SCL5": (49.5, 23.3, 0),
@@ -54,11 +59,14 @@ PLACE = {
 REF_AT = {
     "L1": (33.3, 15.5, 90), "U1": (29.55, 21.5, 90), "C_OUT1": (21, 18.4, 0),
     "C_OUT2": (21, 24.6, 0), "R_FB1": (18.4, 26, 0), "C_IN1": (33.05, 21.8, 90),
-    "F1": (18.6, 11.3, 0),  # F1 sits right under the top connector labels
+    "F1": (23.5, 11.3, 0),  # F1 sits right under the top connector labels
+    "R_PROT1": (40.0, 34.4, 0), "C_PROT1": (40.0, 36.0, 0),  # staggered below the parts, clear of U4/Q_LR1 silk
+    "J_BTN_R1": (60, 53.1, 0),  # between J2 and its label (default lands inside the body at 180 deg)
 }
 
 # Connector silk labels (name, pins in pin-1-first order). Pin 1 is the left pad at rot 0 and
-# the bottom pad at rot 90; text reads left-to-right / bottom-to-top, so pin 1 comes first.
+# the bottom pad at rot 90; text reads left-to-right / bottom-to-top, so pin 1 comes first
+# (at rot 180 pin 1 is the right pad; label() reverses the list).
 LABELS = {
     "J_BAT1": ("BAT", "+  -"), "J_KEY1": ("KEY", ""), "J_HBAT1": ("HELTEC BAT", "+  -"),
     "J_LCD1": ("LCD", "GND 5V SDA SCL"), "J_NFC1": ("NFC", "GND 3V3 SDA SCL"),
@@ -220,9 +228,15 @@ def text(board, s, x, y, rot=0, size=1.0, left=False, top=False):
 
 
 def label(board, fp, name, pins):
-    """Centred on the pad row, just outside the XH body on the board side (below / right of it)."""
+    """Centred on the named pins (all pads if none), just outside the XH body on the board side.
+
+    Two-wire connectors on 4-pin XH name only pins 1-2; the blank pads 3-4 are NC."""
     x, y, rot = PLACE[fp.GetReference()]
-    half_row = (len(fp.Pads()) - 1) * 1.25
+    half_row = ((len(pins.split()) or len(fp.Pads())) - 1) * 1.25
+    if rot == 180:  # bottom edge: J2 sits right above, so the label goes left of the body;
+        # pin 1 is the right pad here, so list pins right-to-left to read in pad order
+        text(board, f"{name}\n{' '.join(reversed(pins.split()))}", x - 21, y - 1.3, 0, 0.8, left=True, top=True)
+        return
     at = (x + half_row, y + 3.9) if rot == 0 else (x + 3.9, y - half_row)
     text(board, f"{name}\n{pins}".strip(), *at, rot, size=0.8, top=True)
 

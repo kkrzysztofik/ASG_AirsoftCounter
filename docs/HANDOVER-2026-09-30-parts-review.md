@@ -19,6 +19,13 @@ counts: 19 BOM lines Deluxe / 18 Budget, 7 Extended types Deluxe / 6 Budget, 2 P
 
 ## To do before this is usable (needs KiCad)
 
+**Items 1–4 done locally (KiCad 9.0.8):** `make all` passes with ERC 0, DRC 0, 0 unrouted, and the
+`fab/` outputs are regenerated (19/18 BOM lines). The six top connectors did not fit at 90x60, so
+J_BTN_R1 moved to the bottom edge under J2; see the "As built" note under the placement table in the
+implementation plan. Two-wire connectors label only pins 1-2 on silk (pads 3-4 blank = NC). In
+`gen_sch.py` the five former 2-pin connectors (and F1, C_AMP1/2) were shifted, because `Conn_01x04`
+has pin 2 on the symbol origin where `Conn_01x02` had pin 1. Item 5 (bench check) is still open.
+
 1. **`gen_pcb.py` placement.** A 4-pin XH is ~12.4 mm long (2-pin ~7.4 mm). On the top edge
    J_BAT1/J_KEY1/J_HBAT1/J_LCD1 are 9-12 mm apart and will overlap; the left-edge J_SPK1/J_BTN_B1/J_BUZ1
    are tight. Re-place them; the 90x60 mm board may need to grow.

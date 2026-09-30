@@ -267,6 +267,8 @@ Add `check_netlist.py`: parse `/tmp/carrier.xml` (`<net name=…><node ref= pin=
 | Drivers | Q_*, R_G*, R_PD*, R_L*, D_FLY | x 12–40, y 28–40 |
 | Button RC | R_PU*, R_S*, C_B* | x 12–40, y 42–55 |
 
+*(As built after all connectors became 4-pin XH, 2026-09-30: a 4-pin XH courtyard is 13.5 mm, so only five fit on the top edge between H1 and H2. Top: J_BAT1 10, J_KEY1 24.5, J_HBAT1 39, J_LCD1 53.5, J_NFC1 68. J_BTN_R1 moved to the bottom edge under the J2 row at (76, 55.75), rotated 180°, and its RC stays near U2. Left edge: J_SPK1 y 20.5, J_BTN_B1 35, J_BUZ1 49.5. F1 moved to (19.5, 11.3), between the BAT and KEY labels. `gen_pcb.py` `PLACE` is authoritative.)*
+
 **Step 1: Write the generator.** Requirements:
 1. `import design`. Create `pcbnew.BOARD()`, set design rules (0.2 mm clearance and track, 0.6/0.3 mm via) and a 2-layer stack.
 2. Create one `NETINFO_ITEM` per net in `design.NETS` and add it to the board.

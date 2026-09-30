@@ -94,7 +94,8 @@ _libs = {}
 
 def lib_symbols(lib):
     if lib not in _libs:
-        tree = parse((SYMDIR / f"{lib}.kicad_sym").read_text())
+        # "local" is the project library (sym-lib-table) for parts KiCad does not ship
+        tree = parse(((HERE if lib == "local" else SYMDIR) / f"{lib}.kicad_sym").read_text())
         _libs[lib] = {unq(s[1]): s for s in kids(tree, "symbol")}
     return _libs[lib]
 
@@ -177,21 +178,24 @@ def _driver(x0, n, load):
 
 BLOCKS = [
     {"title": "Battery, key switch, 5 V boost", "at": (12.7, 12.7), "size": (190.5, 63.5),
-     "parts": {"J_BAT1": (7.62, 22.86, 0, "y"), "F1": (30.48, 22.86, 90, None),
-               "J_KEY1": (45.72, 17.78, 90, None), "J_HBAT1": (60.96, 35.56, 0, None),
+     "parts": {"J_BAT1": (7.62, 25.4, 0, "y"), "F1": (35.56, 22.86, 90, None),
+               "J_KEY1": (53.34, 17.78, 90, None), "J_HBAT1": (60.96, 38.1, 0, None),
                "C_BULK1": (73.66, 31.75, 0, None), "C_BULK2": (86.36, 31.75, 0, None),
                "C_IN1": (99.06, 31.75, 0, None), "U1": (121.92, 40.64, 0, None),
                "L1": (121.92, 22.86, 90, None), "D1": (140.97, 22.86, 180, None),
                "R_FB1": (152.4, 35.56, 0, None), "R_FB2": (152.4, 46.99, 0, None),
-               "C_OUT1": (165.1, 31.75, 0, None), "C_OUT2": (177.8, 31.75, 0, None)},
+               "C_OUT1": (165.1, 31.75, 0, None), "C_OUT2": (177.8, 31.75, 0, None),
+               "U4": (38.1, 43.18, 0, None), "C_PROT1": (17.78, 45.72, 0, None),
+               "R_PROT1": (17.78, 33.02, 0, None)},
      "wired": {"VBAT_SW", "+5V"},
-     "tags": {"VBAT_SW": [(66.04, 22.86, "U")], "+5V": [(185.42, 22.86, "U")]},
+     "tags": {"VBAT_SW": [(66.04, 22.86, "U")], "+5V": [(185.42, 22.86, "U")], "PROT_VDD": [(22.86, 40.64, "U")]},
      "flags": [("GND", 7.62, 55.88), ("VBAT_SW", 30.48, 55.88), ("+5V", 53.34, 55.88)],
-     "fields": {"J_KEY1": {"Reference": (-2.54, -1.27, "right"), "Value": (-2.54, 1.27, "right")}}},
+     "fields": {"J_KEY1": {"Reference": (-5.08, -1.27, "right"), "Value": (-5.08, 1.27, "right")},
+                "U4": {"Reference": (-7.62, -6.35, "left"), "Value": (7.62, -6.35, "right")}}},
     {"title": "I2S speaker amp", "at": (208.28, 12.7), "size": (104.14, 63.5),
      "parts": {"U3": (55.88, 38.1, 0, None), "R_SD1": (25.4, 40.64, 90, None),
-               "C_AMP1": (76.2, 17.78, 0, None), "C_AMP2": (88.9, 17.78, 0, None),
-               "J_SPK1": (91.44, 33.02, 0, "x")},
+               "C_AMP1": (68.58, 17.78, 0, None), "C_AMP2": (81.28, 17.78, 0, None),
+               "J_SPK1": (96.52, 30.48, 0, "x")},
      "tags": {"AMP_SD": [(13.97, 40.64, "L")]}},
     {"title": "Heltec V4 headers", "at": (317.5, 12.7), "size": (86.36, 76.2),
      "parts": {"J2": (30.48, 38.1, 0, None), "J3": (73.66, 38.1, 0, None)},
@@ -215,7 +219,7 @@ BLOCKS = [
      "tags": {"EXP_INT": [(15.24, 48.26, "L")]}},
     {"title": "Low-side drivers: button LEDs, buzzer", "at": (12.7, 162.56), "size": (190.5, 60.96),
      "parts": {**_driver(12.7, "LR", True), **_driver(71.12, "LB", True), **_driver(129.54, "BZ", False),
-               "D_FLY1": (165.1, 20.32, 270, None), "J_BUZ1": (180.34, 22.86, 0, None)},
+               "D_FLY1": (165.1, 20.32, 270, None), "J_BUZ1": (182.88, 25.4, 0, None)},
      "tags": {"LED_R_G": [(12.7, 38.1, "L")], "LED_B_G": [(71.12, 38.1, "L")], "BUZ_G": [(129.54, 38.1, "L")],
               "BTN_R_LEDK": [(50.8, 10.16, "R")], "BTN_B_LEDK": [(109.22, 10.16, "R")]}},
     {"title": "Mounting holes", "at": (208.28, 162.56), "size": (50.8, 25.4),
@@ -888,7 +892,7 @@ def project(root):
             # GND is not Power: both layers carry GND pours (route.py routes GND as a normal net, so
             # pours only add connectivity), and a 0.8 mm GND track can't reach
             # U3's GND pins (0.5 mm pitch, one of them between OUTN and a NC pin) or U2's A0-A2.
-            "netclass_patterns": [{"netclass": "Power", "pattern": p} for p in ("VBAT*", "+5V", "SW")],
+            "netclass_patterns": [{"netclass": "Power", "pattern": p} for p in ("VBAT*", "BAT_N", "+5V", "SW")],
         },
         "erc": {"pin_map": PIN_MAP},
         "sheets": [[root, "Root"]],
