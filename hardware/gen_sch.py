@@ -30,8 +30,7 @@ RAILS = ("GND", "+3V3", "+5V", "VBAT_SW")
 PORT_LIB = {"GND": "power:GND", "+3V3": "power:+3V3", "+5V": "power:+5V", "VBAT_SW": "power:+BATT"}
 NC_PARTS = {"J2", "J3"}  # every unconnected pin gets a no-connect flag
 NC_PINS = {"U1.6",  # MT3608 NC
-           "U2.11", "U2.12",  # TCA9534 P6/P7 spare
-           "U3.5", "U3.6", "U3.12", "U3.13"}  # MAX98357A NC
+           "U2.11", "U2.12"}  # TCA9534 P6/P7 spare
 DIRS = {"L": (-1, 0), "R": (1, 0), "U": (0, -1), "D": (0, 1)}
 DIRS_OF = {v: k for k, v in DIRS.items()}
 BEND, CROSS, NEAR = 2.0, 4.0, 1.0  # router costs on top of 1 per grid step
@@ -194,6 +193,7 @@ BLOCKS = [
                 "U4": {"Reference": (-7.62, -6.35, "left"), "Value": (7.62, -6.35, "right")}}},
     {"title": "I2S speaker amp", "at": (208.28, 12.7), "size": (104.14, 63.5),
      "parts": {"U3": (55.88, 38.1, 0, None), "R_SD1": (25.4, 40.64, 90, None),
+               "R_SDPD1": (17.78, 45.72, 0, None),
                "C_AMP1": (68.58, 17.78, 0, None), "C_AMP2": (81.28, 17.78, 0, None),
                "J_SPK1": (96.52, 30.48, 0, "x")},
      "tags": {"AMP_SD": [(13.97, 40.64, "L")]}},
@@ -851,10 +851,9 @@ PIN_MAP = [[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2], [0, 2, 0, 1, 0, 0, 1, 0, 2, 2, 
            [0, 2, 1, 2, 0, 0, 1, 0, 2, 2, 2, 2], [0, 2, 0, 1, 0, 0, 1, 0, 2, 0, 0, 2],
            [0, 2, 1, 1, 0, 0, 1, 0, 2, 0, 0, 2], [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]]
 PASSIVE, UNSPEC = 4, 6
-# The MAX98357A exposed pad (U3.17) is typed Unspecified in the library and goes to GND: treat
-# Unspecified like Passive so it doesn't warn against the GND pins. project() asserts it stays the
-# only Unspecified pin, so a new one can't be silently treated as Passive.
-UNSPEC_OK = {"U3.17"}
+# Unspecified pins are treated like Passive; project() asserts there are none (UNSPEC_OK), so a new one
+# can't be silently treated as Passive. (The MAX98357A's exposed pad was the last one.)
+UNSPEC_OK = set()
 PIN_MAP[UNSPEC] = PIN_MAP[PASSIVE][:]
 for row in PIN_MAP:
     row[UNSPEC] = row[PASSIVE]
@@ -885,13 +884,13 @@ def project(root):
             "classes": [
                 # KiCad 9 silently drops every class if "priority" is missing
                 {"name": "Default", "priority": 2147483647, "track_width": 0.25, "clearance": 0.2, **VIA},
-                # 0.2 mm, not 0.25: the U3 (TQFN) pad gaps are 0.25 mm, so Freerouting can only neck
+                # 0.2 mm, not 0.25: kept from the MAX98357A (TQFN, 0.25 mm pad gaps), where Freerouting could only neck
                 # a VBAT_SW track down into its VDD pads at the default clearance
                 {"name": "Power", "priority": 0, "track_width": 0.8, "clearance": 0.2, **VIA},
             ],
             # GND is not Power: both layers carry GND pours (route.py routes GND as a normal net, so
             # pours only add connectivity), and a 0.8 mm GND track can't reach
-            # U3's GND pins (0.5 mm pitch, one of them between OUTN and a NC pin) or U2's A0-A2.
+            # U2's A0-A2 (0.65 mm pitch TSSOP).
             "netclass_patterns": [{"netclass": "Power", "pattern": p} for p in ("VBAT*", "BAT_N", "+5V", "SW")],
         },
         "erc": {"pin_map": PIN_MAP},

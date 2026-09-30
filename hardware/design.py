@@ -17,7 +17,7 @@ C0805 = ("Device:C", "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
 BSS138 = ("Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23")  # I2C shifter and low-side drivers
 C1206 = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
 TSSOP16 = "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
-TQFN16 = "Package_DFN_QFN:TQFN-16-1EP_3x3mm_P0.5mm_EP1.23x1.23mm_ThermalVias"
+ESOP8 = "Package_SO:HSOP-8-1EP_3.9x4.9mm_P1.27mm_EP2.3x2.3mm_ThermalVias"  # NS4168 eSOP-8, EP 2.0 mm
 XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 SOCKET18 = "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"
 SOIC8EP = "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.41x3.3mm"
@@ -55,11 +55,13 @@ PARTS = {
     "C_BULK1": ("47uF 10V", "Device:C", C1206),
     "C_BULK2": ("47uF 10V", "Device:C", C1206),
     "C_NFC1": ("100uF 6.3V", "Device:C", C1206),
-    # I2C GPIO expander (address 0x20) for buttons, LED/buzzer drivers and the amp's SD_MODE
+    # I2C GPIO expander (address 0x20) for buttons, LED/buzzer drivers and the amp's CTRL
     "U2": ("TCA9534PWR", "Interface_Expansion:TCA9534", TSSOP16),
-    # I2S class-D amp on VBAT_SW, BTL output to J_SPK1, 12 dB (GAIN_SLOT to GND)
-    "U3": ("MAX98357A", "Audio:MAX98357A", TQFN16),
-    "C_AMP1": ("22uF 25V", "Device:C", C1206),
+    # I2S class-D amp on VBAT_SW, BTL output to J_SPK1, fixed gain. Replaced the MAX98357A on 2026-09-30
+    # (about $0.95 cheaper per board; same Extended setup fee). CTRL high = right I2S slot, low = off.
+    "U3": ("NS4168", "local:NS4168", ESOP8),
+    # Datasheet asks for ~100 uF + 1 uF at VDD; the 100 uF 6.3 V part is fine on a <= 4.2 V rail
+    "C_AMP1": ("100uF 6.3V", "Device:C", C1206),
     # I2C level shifter (5V-side pull-ups DNP: LCD backpack has its own)
     "Q_SDA1": ("BSS138", *BSS138),
     "Q_SCL1": ("BSS138", *BSS138),
@@ -93,9 +95,11 @@ for t in ("R", "B"):
 PARTS["C_EXP1"] = ("100nF", *C0805)  # U2 decoupling
 PARTS["R_INT1"] = ("10k", *R0805)  # U2 INT pull-up
 PARTS["C_AMP2"] = ("100nF", *C0805)  # U3 VDD decoupling (next to C_AMP1)
-# SD_MODE series resistor: 3V3 logic high into SD_MODE (abs max VDD + 0.3 V) when VBAT_SW sags below
-# ~3 V; datasheet asks for ~2k, 1k reuses a BOM line and still reads as logic high (100k pull-down inside).
+# CTRL series resistor + pull-down: CTRL abs max is VDD (VBAT_SW, can sag below the 3V3 expander high),
+# the 1k limits that current. No internal pull-down is documented, so the 10k (expander side; CTRL draws
+# no current, so it still pulls CTRL to 0 V) holds the amp off while the expander pins float at reset.
 PARTS["R_SD1"] = ("1k", *R0805)
+PARTS["R_SDPD1"] = ("10k", *R0805)
 # U4 supply filter from the datasheet application circuit: 1k from BAT+, 100nF to the cell negative
 PARTS["R_PROT1"] = ("1k", *R0805)
 PARTS["C_PROT1"] = ("100nF", *C0805)
@@ -117,7 +121,7 @@ LCSC = {
     ("2A PTC", "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"): "C22374899",  # E LUTE 1206L200/16NR 2A hold 16V
     ("TCA9534PWR", TSSOP16): "C783615",  # E TI TCA9534PWR
     ("XB8089D", SOIC8EP): "C79928",  # E XySemi XB8089D (checked on jlcpcb.com/lcsc.com 2026-09-30)
-    ("MAX98357A", TQFN16): "C910544",  # E Maxim MAX98357AETE+T
+    ("NS4168", ESOP8): "C910588",  # E Nsiway NS4168 (lcsc.com 2026-09-30: $0.38, ~9.9k stock)
     ("10uH 2A", "Inductor_SMD:L_Bourns_SRN6045TA"): "C2046332",  # E Bourns SRN6045TA-100M
     ("MT3608", "Package_TO_SOT_SMD:SOT-23-6"): "C84817",  # E XI'AN Aerosemi MT3608 (1 SW 2 GND 3 FB 4 EN 5 VIN)
     ("BSS138", BSS138[1]): "C7420339",  # P hongjiacheng BSS138 (G=1 S=2 D=3)
@@ -138,7 +142,7 @@ NETS = {
             "U1.2", "R_FB2.2", "C_IN1.2", "C_OUT1.2", "C_OUT2.2", "C_BULK1.2", "C_BULK2.2", "C_NFC1.2",
             "Q_LR1.2", "Q_LB1.2", "Q_BZ1.2", "R_PDLR1.2", "R_PDLB1.2", "R_PDBZ1.2", "C_BR1.2", "C_BB1.2",
             "U2.1", "U2.2", "U2.3", "U2.8", "C_EXP1.2",  # A0-A2 low: address 0x20
-            "U3.2", "U3.3", "U3.11", "U3.15", "U3.17", "C_AMP1.2", "C_AMP2.2"],  # GAIN_SLOT low: 12 dB
+            "U3.7", "U3.9", "C_AMP1.2", "C_AMP2.2", "R_SDPD1.2"],
     "+3V3": ["J3.2", "J3.3", "J_NFC1.2", "C_NFC1.1", "Q_SDA1.1", "Q_SCL1.1", "R_SDA3.1", "R_SCL3.1", "R_PUR1.1", "R_PUB1.1",
              "U2.16", "C_EXP1.1", "R_INT1.1"],
     "VBAT_RAW": ["J_BAT1.1", "F1.1", "R_PROT1.1"],
@@ -146,7 +150,7 @@ NETS = {
     "PROT_VDD": ["R_PROT1.2", "U4.6", "C_PROT1.1"],
     "VBAT_F": ["F1.2", "J_KEY1.1"],
     "VBAT_SW": ["J_KEY1.2", "J_HBAT1.1", "C_BULK1.1", "C_BULK2.1", "C_IN1.1", "U1.5", "U1.4", "L1.1",
-                "U3.7", "U3.8", "C_AMP1.1", "C_AMP2.1"],
+                "U3.6", "C_AMP1.1", "C_AMP2.1"],
     "SW": ["L1.2", "U1.1", "D1.2"],
     "FB": ["U1.3", "R_FB1.2", "R_FB2.1"],
     "+5V": ["D1.1", "C_OUT1.1", "C_OUT2.1", "R_FB1.1", "J_LCD1.2", "J_BTN_R1.3", "J_BTN_B1.3", "J_BUZ1.1",
@@ -155,11 +159,10 @@ NETS = {
     "SDA_3V3": ["J3.15", "Q_SDA1.2", "R_SDA3.2", "J_NFC1.3", "U2.15"],
     "SCL_3V3": ["J3.14", "Q_SCL1.2", "R_SCL3.2", "J_NFC1.4", "U2.14"],
     "EXP_INT": ["J3.17", "U2.13", "R_INT1.2"],  # open drain, active low
-    # I2S to the amp; SD_MODE from the expander (high = left channel, low = shutdown)
-    "I2S_BCLK": ["J2.13", "U3.16"], "I2S_LRCLK": ["J2.14", "U3.14"], "I2S_DIN": ["J2.16", "U3.1"],
-    "AMP_SD": ["U2.10", "R_SD1.1"], "AMP_SD_R": ["R_SD1.2", "U3.4"],
-    # J_SPK1 pin 1 is OUT-: with U3 at 180 deg its OUTP pad sits above OUTN, so this avoids a crossing
-    "SPK_N": ["U3.10", "J_SPK1.1"], "SPK_P": ["U3.9", "J_SPK1.2"],
+    # I2S to the amp; CTRL from the expander (high = right slot, low = shutdown)
+    "I2S_BCLK": ["J2.13", "U3.3"], "I2S_LRCLK": ["J2.14", "U3.2"], "I2S_DIN": ["J2.16", "U3.4"],
+    "AMP_SD": ["U2.10", "R_SD1.1", "R_SDPD1.1"], "AMP_SD_R": ["R_SD1.2", "U3.1"],
+    "SPK_N": ["U3.5", "J_SPK1.1"], "SPK_P": ["U3.8", "J_SPK1.2"],
     "SDA_5V": ["Q_SDA1.3", "R_SDA5.2", "J_LCD1.3"],
     "SCL_5V": ["Q_SCL1.3", "R_SCL5.2", "J_LCD1.4"],
     # Drivers: expander P2-P4 -> gate resistor -> gate (pull-down) ; drain -> load
@@ -196,7 +199,7 @@ HEADER_NC = {"J2.2", "J2.3", "J2.4"}  # 5V charger input, Vext x2: must stay unc
 # GPS, enclosure and the other off-board parts are not on the board: they only matter for cost.
 # The buzzer path (Q_BZ1, R_GBZ1, R_PDBZ1, D_FLY1, J_BUZ1) and U2 are core and always populated.
 MODULES = {
-    "speaker": {"U3", "C_AMP1", "C_AMP2", "R_SD1", "J_SPK1"},
+    "speaker": {"U3", "C_AMP1", "C_AMP2", "R_SD1", "R_SDPD1", "J_SPK1"},
     "rfid": {"J_NFC1"},
     "buttons": {"J_BTN_R1", "J_BTN_B1", "Q_LR1", "Q_LB1", "R_GLR1", "R_GLB1", "R_PDLR1", "R_PDLB1",
                 "R_LLR1", "R_LLB1", "R_PUR1", "R_PUB1", "R_SR1", "R_SB1", "C_BR1", "C_BB1"},

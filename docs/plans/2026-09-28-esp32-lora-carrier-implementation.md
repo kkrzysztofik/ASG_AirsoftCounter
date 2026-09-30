@@ -409,6 +409,9 @@ JLCPCB Basic and Preferred libraries.
   - P2/P3/P4 drive the existing LED_R/LED_B/BUZ gate resistors.
   - P5 = AMP_SD.
   - P6/P7 are unconnected.
+- *(Superseded 2026-09-30: U3 is now an NS4168, C910588, eSOP-8. CTRL high = **right** I2S slot, so the
+  firmware (C7) must send audio in the right slot or both; hold CTRL low between clips (13 mA when on).
+  See `hardware/fab/PART_ALTERNATIVES.md`.)*
 - New U3 **MAX98357AETE+T** (C910544, TQFN-16-EP 3x3), VDD on **VBAT_SW**, with 22 µF
   (C12891) + 100 nF (C49678) at VDD.
   - DIN = **GPIO21** (J2.16), BCLK = **GPIO47** (J2.13), LRCLK = **GPIO48** (J2.14).

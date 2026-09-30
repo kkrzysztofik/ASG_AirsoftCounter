@@ -30,8 +30,9 @@ PLACE = {
     "J_BTN_R1": (76, 55.75, 180),
     # Left edge: rotated so the open side faces -X, pin 1 at the bottom
     "J_SPK1": (6, 20.5, 90), "J_BTN_B1": (6, 35, 90), "J_BUZ1": (6, 49.5, 90),
-    # I2S amp beside J_SPK1 (outputs face it at 180 deg), VDD caps above it on VBAT_SW
-    "U3": (15.2, 22.9, 180), "C_AMP2": (15.2, 18.4, 0), "C_AMP1": (15.2, 14.9, 0),
+    # I2S amp beside J_SPK1 (outputs face up at 90 deg), VDD caps above it; C_AMP2 at 180 puts its
+    # VBAT_SW pad over U3.6 (VDD) and its GND pad over U3.7
+    "U3": (15.2, 23.2, 90), "C_AMP2": (15.2, 18.4, 180), "C_AMP1": (15.2, 14.9, 0),
     # Power: MT3608 boost; output loop (SW -> D1 -> C_OUT -> GND) on U1's SW/GND side
     "F1": (19.5, 11.3, 0), "C_BULK1": (37, 17, 90), "C_BULK2": (40.5, 17, 90),
     "L1": (28.5, 15.5, 180), "D1": (21.3, 16, 0), "U1": (27, 21.5, 0), "C_IN1": (31.2, 21.8, 270),
@@ -43,7 +44,7 @@ PLACE = {
     "Q_SDA1": (44, 16, 0), "R_SDA3": (44, 20, 0), "R_SDA5": (44, 23.3, 0),
     "Q_SCL1": (49.5, 16, 0), "R_SCL3": (49.5, 20, 0), "R_SCL5": (49.5, 23.3, 0),
     "C_NFC1": (55.5, 15.3, 0), "R_SD1": (54.5, 21.5, 90),
-    "U2": (60.2, 21, 0), "C_EXP1": (60.5, 15.6, 0), "R_INT1": (66, 22.8, 0),
+    "U2": (60.2, 21, 0), "R_SDPD1": (75.5, 13.0, 0), "C_EXP1": (60.5, 15.6, 0), "R_INT1": (66, 22.8, 0),
     # Low-side drivers, one column each (top to bottom R_G, R_PD, Q, R_L): gate pads on one
     # vertical line at x+1, GND pads at x-1, drain straight down into R_L
     "R_GLB1": (16, 29, 0), "R_PDLB1": (16, 32, 180), "Q_LB1": (16, 35.5, 270), "R_LLB1": (16, 39.5, 270),
@@ -58,9 +59,10 @@ PLACE = {
 # Reference text moved off neighbouring silk in the packed boost block: ref -> (x, y, rot)
 REF_AT = {
     "L1": (33.3, 15.5, 90), "U1": (29.55, 21.5, 90), "C_OUT1": (21, 18.4, 0),
-    "C_OUT2": (21, 24.6, 0), "R_FB1": (18.4, 26, 0), "C_IN1": (33.05, 21.8, 90),
+    "C_OUT2": (21, 24.6, 0), "R_FB1": (19.3, 27.0, 90), "C_IN1": (33.05, 21.8, 90),
     "F1": (23.5, 11.3, 0),  # F1 sits right under the top connector labels
-    "R_PROT1": (40.0, 34.4, 0), "C_PROT1": (40.0, 36.0, 0),  # staggered below the parts, clear of U4/Q_LR1 silk
+    "U3": (13.45, 23.2, 90),  # inside U3's outline, left of the exposed pad (the SPK label is outside)
+    "R_PROT1": (40.0, 34.4, 0), "C_PROT1": (40.0, 36.0, 0), "R_SDPD1": (75.5, 14.7, 0),  # staggered below the parts, clear of U4/Q_LR1 silk
     "J_BTN_R1": (60, 53.1, 0),  # between J2 and its label (default lands inside the body at 180 deg)
 }
 
@@ -86,7 +88,7 @@ GND_PAD_CONNECTION = pcbnew.ZONE_CONNECTION_FULL
 # pour instead of through a long F.Cu detour (the F.Cu pour around U3 is cut up by traces).
 # The untied three stitch the pours along the I2S corridor, next to where the I2S lines change layer
 # and cross B.Cu traces (+5V/LED_B_G, +3V3, BTN_B_IN), so their return current can follow them.
-GND_VIAS = [(18.0, 14.2, ("C_AMP1", "2")), (17.5, 18.4, ("C_AMP2", "2")),
+GND_VIAS = [(18.0, 14.2, ("C_AMP1", "2")), (12.9, 18.4, ("C_AMP2", "2")),
             (21.4, 28.3, None), (29.0, 43.6, None), (37.2, 45.5, None)]
 HELTEC_PADS = {("J3", "1"): (44.82, 27.00), ("J3", "18"): (88.00, 27.00),
                ("J2", "1"): (44.82, 49.86), ("J2", "18"): (88.00, 49.86)}

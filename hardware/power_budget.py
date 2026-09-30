@@ -42,7 +42,7 @@ LCD_BACKLIGHT_5V = 60.0  # EST: 20x4 backlight; the biggest unknown on the 5 V s
 LED_RING_5V = 10.0  # EST: one ONPOW 6 V ring run at 5 V
 BUZZER_5V = 8.0  # BZ-38 (web figure)
 GATE_PD = 3.0 / 11e3 * 1e3  # 10k gate pull-down + 1k: 0.27 mA per driver that is on
-AMP_IDLE = 2.4  # MAX98357A quiescent with SD_MODE high (0 if firmware shuts it between clips)
+AMP_ON = 13.0  # NS4168 quiescent with CTRL high; firmware holds CTRL low between clips (1 uA off)
 AMP_PLAYING = 0.4 / VBAT * 1e3  # EST: ~0.4 W average electrical while a clip plays
 BOOST_IDLE = 1.0  # EST: MT3608 switching at near-zero load
 PROT = 0.006  # XB8089D operating current
@@ -62,7 +62,7 @@ def scenario(deluxe, game, backlight, status_s=30, clip_duty=0.05):
     if deluxe:
         ma["GNSS"] = GNSS
         ma["PN532"] = NFC_POLL if game else NFC_IDLE
-        ma["Amp idle + clips"] = AMP_IDLE + AMP_PLAYING * clip_duty if game else 0.0
+        ma["Amp (on only for clips)"] = (AMP_ON + AMP_PLAYING) * clip_duty if game else 0.0
     five = LCD_LOGIC_5V + (LCD_BACKLIGHT_5V if backlight else 0)
     if game:
         five += LED_RING_5V + BUZZER_5V * READY_BUZZ_DUTY

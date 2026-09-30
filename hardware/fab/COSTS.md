@@ -36,13 +36,13 @@ Add or remove per module. Everything works on the same PCB; only the BOM changes
 |---|---|---|---|---|
 | Buttons | +93 / +42 | ONPOW pair | generic 16 mm pair | 2 BSS138 drivers, 2 RC input filters, `J_BTN_R/B` |
 | RFID | +24.90 (+3/card) | PN532 | same | `J_NFC1` |
-| Speaker | +14.20 | VISATON K 50 | same | MAX98357A (`U3`), its caps, `R_SD1`, `J_SPK1` |
+| Speaker | +14.20 | VISATON K 50 | same | NS4168 (`U3`), its caps, `R_SD1`, `R_SDPD1`, `J_SPK1` |
 | GPS | +29 | L76K | same | none (Heltec connector only) |
 | Key vs toggle | +53.33 vs ~5 | KS22 | KS22 or toggle | none |
 | Enclosure | 178.55 / 65.74 | Kradex + plate | Pawbol | none |
 
 Rules: a variant needs **buttons or RFID** (`design.check()` fails otherwise). RFID without buttons means no
-local admin menu. Dropping the speaker also drops the only Extended-part setup fee on the amp (`U3`, C910544);
+local admin menu. Dropping the speaker also drops the only Extended-part setup fee on the amp (`U3`, C910588);
 `U2` (the expander) stays in every variant because the LEDs, buzzer and buttons sit behind it.
 
 ## Budget trade-offs

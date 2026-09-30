@@ -24,7 +24,7 @@ pays off if the replacement is Basic or Preferred Extended (no fee), or is dropp
 
 **Decision:** keep the TCA9534. The saving is a setup fee, and the PCF8574 would need extra hardware or firmware to hold the buzzer and LEDs off at reset.
 
-## U3: MAX98357AETE+T (I2S class-D amp, C910544)
+## U3: MAX98357AETE+T (I2S class-D amp, C910544), replaced by the NS4168
 
 | Option | Fit | Notes |
 |---|---|---|
@@ -33,7 +33,17 @@ pays off if the replacement is Basic or Preferred Extended (no fee), or is dropp
 
 Into 8 ohm the board delivers about 1 W either way, so the NS4168 costs no real output.
 
-**Decision:** keep the MAX98357A for now. Revisit the NS4168 only if the speaker stays and the fee matters, after the layout is settled.
+**Decision (2026-09-30):** switched to the **NS4168** (C910588, Extended, $0.38 vs $1.33 at LCSC; same setup fee).
+Symbol in `local.kicad_sym`, footprint `HSOP-8-1EP_3.9x4.9mm_P1.27mm_EP2.3x2.3mm_ThermalVias` (package EP is
+2.0 mm). What changed with it:
+- **CTRL instead of SD_MODE:** below 0.4 V = off, 0.9-1.15 V = left slot, 1.5 V-VDD = right slot. The expander
+  drives it high, so **the firmware must put audio in the right I2S slot** (or both). CTRL's absolute maximum is
+  VDD, so R_SD1 (1k) stays in series; `R_SDPD1` (10k to GND on `AMP_SD`) holds it off at reset, since no
+  internal pull-down is documented. Pulses of 1-12 us on CTRL set the input high-pass filter; I2C expander
+  writes are far slower, so the default filter stays.
+- **No gain pin:** gain is fixed; volume is digital, as before.
+- **13 mA quiescent when on** (MAX98357A: 2.4 mA): the firmware should hold CTRL low between clips.
+- **C_AMP1** is now the 100 uF 6.3 V part (datasheet: ~100 uF + 1 uF at VDD; VBAT_SW stays under 4.2 V).
 
 ## To verify before acting
 

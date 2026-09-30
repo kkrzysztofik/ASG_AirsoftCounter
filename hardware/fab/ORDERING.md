@@ -45,7 +45,7 @@ Leave the other fields at their defaults. Price and lead time follow from these 
 | Size / layers | 90 x 60 mm, 2 copper layers, rounded corners |
 | Material / thickness | FR-4, 1.6 mm, 1 oz outer copper |
 | Min track / clearance | 0.25 mm signal / 0.8 mm power tracks (0.15 mm rule, for necks into the fine-pitch U1/U2/U3 pads); 0.2 mm clearance |
-| Vias | 0.6 mm pad / 0.3 mm drill, tented (47 vias, 10 of them GND), plus 4 thermal vias of the same size in U3's exposed pad |
+| Vias | 0.6 mm pad / 0.3 mm drill, tented (56 vias, 8 of them GND), plus 4 thermal vias of the same size in U3's exposed pad |
 | Plated component holes | 0.95 / 1.0 mm (the U3 thermal vias are 0.3 mm, like the vias) |
 | Non-plated holes | 4 x 3.2 mm (M3 mounting), in the NPTH drill file |
 | Copper to board edge | 0.5 mm |
@@ -80,7 +80,7 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 
 **Setup fees.** Economic PCBA charges a setup (feeder loading) fee for each **Extended** part type. Basic and Preferred Extended parts don't have this fee. This board has:
 
-- **8 Extended types:** U4 (XB8089D cell protection, C79928), U1 (MT3608, C84817), L1 (C2046332), F1 (2 A PTC 1206L200/16NR, C22374899), J2/J3 socket (C2905422), JST-XH 4-pin, used for all 9 off-board connectors (C144395), U2 (TCA9534PWR, C783615) and U3 (MAX98357AETE+T, C910544).
+- **8 Extended types:** U4 (XB8089D cell protection, C79928), U1 (MT3608, C84817), L1 (C2046332), F1 (2 A PTC 1206L200/16NR, C22374899), J2/J3 socket (C2905422), JST-XH 4-pin, used for all 9 off-board connectors (C144395), U2 (TCA9534PWR, C783615) and U3 (NS4168, C910588).
 - Cheaper alternatives for U2 and U3 that were considered are in `PART_ALTERNATIVES.md`; other review findings are in `PARTS_REVIEW.md`.
 - **2 Preferred Extended types (no fee):** BSS138 (Q_SDA1/Q_SCL1 and the three low-side drivers, C7420339) and the 75k resistor (R_FB1, C17819).
 - **10 Basic types:** everything else, including the ceramic bulk capacitors C_BULK1/C_BULK2 (47 µF 10 V, C96123) and C_NFC1 (100 µF 6.3 V, C15008), and the 0 Ω LED jumpers R_LLR1/R_LLB1 (C17477).
@@ -91,7 +91,7 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 |---|---|
 | U1 (SOT-23-6) | The pin-1 dot sits at the silkscreen pin-1 mark. |
 | U2 (TCA9534, TSSOP-16) | The pin-1 dot sits at the silkscreen pin-1 mark (top left, on the R_SD1 side). |
-| U3 (MAX98357A, TQFN-16 3x3) | The pin-1 dot sits at the silkscreen pin-1 mark (U3 is rotated 180°: pin 1 is at the lower right, towards C_OUT2). The exposed pad is centred on the square pad with its 4 vias. |
+| U3 (NS4168, eSOP-8) | The pin-1 dot sits at the silkscreen pin-1 mark (U3 is rotated 90°: pin 1 is at the lower left, towards J_BTN_B1). The exposed pad is centred on the square pad with its vias. |
 | Q_SDA1, Q_SCL1, Q_LR1, Q_LB1, Q_BZ1 (SOT-23) | The single pin (drain, pin 3) is on the single-pad side. These are the parts most likely to be off by 90° or 180°. |
 | D1 (SMA), D_FLY1 (SOD-123) | The cathode band is on the silkscreen band side. |
 | U4 (XB8089D, SOIC-8-EP) | The pin-1 dot sits at the silkscreen pin-1 mark (upper left, towards C_IN1). The exposed pad is centred on the large pad. |
@@ -107,7 +107,7 @@ and `COSTS.md`). Order the same Gerber zip, then upload **`fab/jlc_bom_budget.cs
 **`fab/jlc_cpl_budget.csv`** instead. Differences from the steps above:
 
 - 19 BOM lines and 49 placements (Deluxe: 20 and 55). Nothing else in the form changes.
-- **7 Extended types**, not 8: U3 (MAX98357A, C910544) is not fitted, so its setup fee is gone. Preferred (2) and Basic (10) counts are unchanged.
+- **7 Extended types**, not 8: U3 (NS4168, C910588) is not fitted, so its setup fee is gone. Preferred (2) and Basic (10) counts are unchanged.
 - Not fitted: U3, C_AMP1, C_AMP2, R_SD1, J_SPK1 and J_NFC1. In the placement preview, check that none of them appear.
 - Buy the speaker and the PN532 only if you add those modules later; the footprints stay empty on the board.
 
@@ -131,6 +131,6 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 - M3 standoffs
 - Kradex ZP240.190.105SJp enclosure and ZP240.190-PCB mounting plate
 
-**Speaker.** U3 (MAX98357A) drives J_SPK as a bridge-tied load (BTL): both pins switch, and neither is ground. Connect the speaker's two leads straight to J_SPK (pin 1 OUT-, pin 2 OUT+, as on the silkscreen) and **never connect either lead to GND, the enclosure or a shared return wire**: that shorts an output stage. Use an **8 Ω, 2 W** speaker (Visaton K 50; about 1 W into 8 Ω from a 1S cell at 12 dB gain), plus an ePTFE acoustic vent in the enclosure wall if needed.
+**Speaker.** U3 (NS4168) drives J_SPK as a bridge-tied load (BTL): both pins switch, and neither is ground. Connect the speaker's two leads straight to J_SPK (pin 1 OUT-, pin 2 OUT+, as on the silkscreen) and **never connect either lead to GND, the enclosure or a shared return wire**: that shorts an output stage. Use an **8 Ω, 2 W** speaker (Visaton K 50; roughly 0.6 W into 8 Ω from a 1S cell, estimated from the datasheet's 1.2 W into 4 Ω at 3.6 V), plus an ePTFE acoustic vent in the enclosure wall if needed.
 
 Other files in `fab/`: `schematic.pdf`, `top.png`/`bottom.png` (3D renders), `gerbers/` (created by `make all` and not committed: the unzipped Gerbers plus drill maps and a Gerber job file, which are not in the zip).

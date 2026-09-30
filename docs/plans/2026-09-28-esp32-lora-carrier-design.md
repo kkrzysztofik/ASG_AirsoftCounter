@@ -215,6 +215,8 @@ so every slow signal moves to an I2C GPIO expander.
 - Its I2C address must not collide with the PN532 (0x24) or the LCD backpack (0x27/0x3F).
 
 ### Speaker path
+- *(As built 2026-09-30: U3 is an NS4168, not a MAX98357A; CTRL high selects the **right** I2S slot and there is
+  no gain pin. See `hardware/fab/PART_ALTERNATIVES.md`.)*
 - MAX98357A-class I2S class-D amplifier, **powered from VBAT_SW (3.0–4.2 V)**, not the
   5 V boost. That gives about 1 W into 8 Ω, or 1.5–2 W into 4 Ω if a 4 Ω speaker is
   used, and keeps audio peaks off the 5 V rail
@@ -254,7 +256,7 @@ left unpopulated when absent (`MODULES`/`VARIANTS` in `hardware/design.py`).
 |---|---|---|
 | buttons | 2 BSS138 LED drivers, RC input filters, `J_BTN_R/B` | 2 IP67 buttons |
 | rfid | `J_NFC1` | PN532, cards |
-| speaker | `U3` MAX98357A, caps, `R_SD1`, `J_SPK1` | VISATON K 50 |
+| speaker | `U3` NS4168, caps, `R_SD1`, `R_SDPD1`, `J_SPK1` | VISATON K 50 |
 | GPS, enclosure, key/toggle | none | L76K, box, switch |
 
 Core (always): Heltec V4, power path, expander `U2`, buzzer path, LCD. The expander stays in

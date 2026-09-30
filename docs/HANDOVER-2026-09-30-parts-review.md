@@ -26,6 +26,9 @@ implementation plan. Two-wire connectors label only pins 1-2 on silk (pads 3-4 b
 `gen_sch.py` the five former 2-pin connectors (and F1, C_AMP1/2) were shifted, because `Conn_01x04`
 has pin 2 on the symbol origin where `Conn_01x02` had pin 1. Item 5 (bench check) is still open.
 
+**Later the same day:** U4 XB8089D cell protection added (the Heltec V4 has no UVLO), U3 swapped to the
+NS4168, and `hardware/power_budget.py` added. See `PARTS_REVIEW.md` and `PART_ALTERNATIVES.md`.
+
 1. **`gen_pcb.py` placement.** A 4-pin XH is ~12.4 mm long (2-pin ~7.4 mm). On the top edge
    J_BAT1/J_KEY1/J_HBAT1/J_LCD1 are 9-12 mm apart and will overlap; the left-edge J_SPK1/J_BTN_B1/J_BUZ1
    are tight. Re-place them; the 90x60 mm board may need to grow.
