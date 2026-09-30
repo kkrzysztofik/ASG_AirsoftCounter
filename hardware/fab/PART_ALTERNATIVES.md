@@ -19,7 +19,7 @@ pays off if the replacement is Basic or Preferred Extended (no fee), or is dropp
 - No direction/config registers, so the firmware changes.
 - Quasi-bidirectional outputs: high is a weak (~100 uA) pull-up.
 - Every pin **powers up high**. That would switch on the `Q_LR1`, `Q_LB1` and `Q_BZ1` gates and `AMP_SD`
-  at every reset until the firmware writes to it. The TCA9534 powers up as inputs, and the 100k
+  at every reset until the firmware writes to it. The TCA9534 powers up as inputs, and the 10k
   gate pull-downs keep those loads off.
 
 **Decision:** keep the TCA9534. The saving is a setup fee, and the PCF8574 would need extra hardware or firmware to hold the buzzer and LEDs off at reset.

@@ -73,7 +73,7 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 1. Upload `fab/carrier_gerbers_jlcpcb.zip` and fill in the form as in section 2.
 2. Turn on "PCB Assembly". Choose **Economic**, assemble the **Top** side, and set how many boards to assemble (2 or all 5).
 3. Upload **`fab/jlc_bom.csv`** as the BOM and **`fab/jlc_cpl.csv`** as the CPL / pick-and-place file.
-4. Check the parts matching. There are 21 BOM lines, and each should match the LCSC number in its row with stock for your quantity. Nothing should be left unmatched or skipped.
+4. Check the parts matching. There are 19 BOM lines, and each should match the LCSC number in its row with stock for your quantity. Nothing should be left unmatched or skipped.
 5. Open the 3D placement preview and do the checks below before you confirm.
 
 **Through-hole parts are included**: J2/J3 (1x18 sockets) and the 9 JST-XH headers. JLC solders them by wave soldering and charges per THT joint on top of the SMD assembly. The price shows on the form. The old THT electrolytics (220 µF C_BULK1, 100 µF C_NFC1) are gone: the bulk capacitors are now 1206 ceramics (2x 47 µF on VBAT_SW, 100 µF on 3V3).
@@ -81,9 +81,9 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 **Setup fees.** Economic PCBA charges a setup (feeder loading) fee for each **Extended** part type. Basic and Preferred Extended parts don't have this fee. This board has:
 
 - **7 Extended types:** U1 (MT3608, C84817), L1 (C2046332), F1 (2 A PTC 1206L200/16NR, C22374899), J2/J3 socket (C2905422), JST-XH 4-pin, used for all 9 off-board connectors (C144395), U2 (TCA9534PWR, C783615) and U3 (MAX98357AETE+T, C910544).
-- Cheaper alternatives for U2 and U3 that were considered are in `PART_ALTERNATIVES.md`.
+- Cheaper alternatives for U2 and U3 that were considered are in `PART_ALTERNATIVES.md`; other review findings are in `PARTS_REVIEW.md`.
 - **2 Preferred Extended types (no fee):** BSS138 (Q_SDA1/Q_SCL1 and the three low-side drivers, C7420339) and the 75k resistor (R_FB1, C17819).
-- **12 Basic types:** everything else, including the ceramic bulk capacitors C_BULK1/C_BULK2 (47 µF 10 V, C96123) and C_NFC1 (100 µF 6.3 V, C15008), and the 0 Ω LED jumpers R_LLR1/R_LLB1 (C17477).
+- **10 Basic types:** everything else, including the ceramic bulk capacitors C_BULK1/C_BULK2 (47 µF 10 V, C96123) and C_NFC1 (100 µF 6.3 V, C15008), and the 0 Ω LED jumpers R_LLR1/R_LLB1 (C17477).
 
 **Placement preview checks.** The CPL uses KiCad's rotations with no JLC corrections. Sources disagree on the SOT-23 offset (180° or −90°), and JLC's engineers correct rotation using the silkscreen polarity marks. Mid X/Y is the centre of each part's courtyard, so the through-hole parts sit on their holes. In the preview, check:
 
@@ -105,8 +105,8 @@ If a part is wrong, fix its `Rotation` in `fab/jlc_cpl.csv` (degrees, counter-cl
 and `COSTS.md`). Order the same Gerber zip, then upload **`fab/jlc_bom_budget.csv`** and
 **`fab/jlc_cpl_budget.csv`** instead. Differences from the steps above:
 
-- 20 BOM lines and 46 placements (Deluxe: 21 and 52). Nothing else in the form changes.
-- **6 Extended types**, not 7: U3 (MAX98357A, C910544) is not fitted, so its setup fee is gone. Preferred (2) and Basic (12) counts are unchanged.
+- 18 BOM lines and 46 placements (Deluxe: 19 and 52). Nothing else in the form changes.
+- **6 Extended types**, not 7: U3 (MAX98357A, C910544) is not fitted, so its setup fee is gone. Preferred (2) and Basic (10) counts are unchanged.
 - Not fitted: U3, C_AMP1, C_AMP2, R_SD1, J_SPK1 and J_NFC1. In the placement preview, check that none of them appear.
 - Buy the speaker and the PN532 only if you add those modules later; the footprints stay empty on the board.
 

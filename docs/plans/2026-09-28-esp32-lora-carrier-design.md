@@ -73,8 +73,8 @@ Heltec 5V pin: NOT connected (it is the charger input; feeding it would loop).
 
 ## Part 2: I/O circuits and connectors
 
-- **Output drivers (x3: LED R, LED B, buzzer):** BSS138 low-side, 100 Ω gate
-  series, 100k gate pull-down (keeps loads off during boot). R_LOAD footprint in
+- **Output drivers (x3: LED R, LED B, buzzer):** BSS138 low-side, 1k gate
+  series, 10k gate pull-down (keeps loads off during boot). R_LOAD footprint in
   series with load: 150 Ω (red), 100 Ω (blue), 0 Ω for buzzer or 5V-LED buttons. *(As built: 0 Ω for both, because the chosen ONPOW LAS1-AGQ 6 V buttons have built-in LED resistors; see hardware/fab/OFFBOARD_PARTS.md.)*
   1N4148W flyback across buzzer.
 - **Button inputs (x2):** 10k pull-up to 3V3, 100 nF to GND, 1k series to GPIO.
@@ -209,7 +209,7 @@ so every slow signal moves to an I2C GPIO expander.
 ### Expander (8 I/O, 3V3 side of the I2C bus)
 - Inputs: BTN_R, BTN_B. The 10k pull-up, 100 nF and 1k series RC stay.
 - Outputs: LED_R, LED_B and BUZ gate drives (same BSS138 low-side drivers with
-  100 Ω + 100k), plus AMP_SD (through a 1k resistor), which drives the amplifier's shutdown pin so it stays
+  1k + 10k), plus AMP_SD (through a 1k resistor), which drives the amplifier's shutdown pin so it stays
   off during boot and while silent.
 - Two spare I/O.
 - Its I2C address must not collide with the PN532 (0x24) or the LCD backpack (0x27/0x3F).

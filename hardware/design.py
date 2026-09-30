@@ -74,8 +74,8 @@ DNP = {"R_SDA5", "R_SCL5"}
 DRIVERS = {"LR": "0R", "LB": "0R", "BZ": None}
 for n, r_load in DRIVERS.items():
     PARTS[f"Q_{n}1"] = ("BSS138", *BSS138)
-    PARTS[f"R_G{n}1"] = ("100R", *R0805)
-    PARTS[f"R_PD{n}1"] = ("100k", *R0805)
+    PARTS[f"R_G{n}1"] = ("1k", *R0805)
+    PARTS[f"R_PD{n}1"] = ("10k", *R0805)
     if r_load:
         PARTS[f"R_L{n}1"] = (r_load, *R0805)
 PARTS["D_FLY1"] = ("1N4148W", "Diode:1N4148W", "Diode_SMD:D_SOD-123")
@@ -114,9 +114,7 @@ LCSC = {
     ("BSS138", BSS138[1]): "C7420339",  # P hongjiacheng BSS138 (G=1 S=2 D=3)
     ("75k", R0805[1]): "C17819",  # P UNI-ROYAL 0805W8F7502T5E
     ("10k", R0805[1]): "C17414",  # B 0805W8F1002T5E
-    ("100R", R0805[1]): "C17408",  # B 0805W8F1000T5E
     ("0R", R0805[1]): "C17477",  # B UNI-ROYAL 0805W8F0000T5E
-    ("100k", R0805[1]): "C149504",  # B 0805W8F1003T5E
     ("1k", R0805[1]): "C17513",  # B 0805W8F1001T5E
     ("4k7", R0805[1]): "C17673",  # B 0805W8F4701T5E
     ("Heltec_J2", SOCKET18): "C2905422",  # E Kinghelm KH-2.54FH-1X18P-H8.5
