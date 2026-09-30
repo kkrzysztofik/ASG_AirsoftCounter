@@ -81,6 +81,7 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 **Setup fees.** Economic PCBA charges a setup (feeder loading) fee for each **Extended** part type. Basic and Preferred Extended parts don't have this fee. This board has:
 
 - **7 Extended types:** U1 (MT3608, C84817), L1 (C2046332), F1 (2 A PTC 1206L200/16NR, C22374899), J2/J3 socket (C2905422), JST-XH 4-pin, used for all 9 off-board connectors (C144395), U2 (TCA9534PWR, C783615) and U3 (MAX98357AETE+T, C910544).
+- Cheaper alternatives for U2 and U3 that were considered are in `PART_ALTERNATIVES.md`.
 - **2 Preferred Extended types (no fee):** BSS138 (Q_SDA1/Q_SCL1 and the three low-side drivers, C7420339) and the 75k resistor (R_FB1, C17819).
 - **12 Basic types:** everything else, including the ceramic bulk capacitors C_BULK1/C_BULK2 (47 µF 10 V, C96123) and C_NFC1 (100 µF 6.3 V, C15008), and the 0 Ω LED jumpers R_LLR1/R_LLB1 (C17477).
 
