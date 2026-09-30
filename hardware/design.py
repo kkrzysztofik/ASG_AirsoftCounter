@@ -14,7 +14,7 @@ lookup) and KiCad ERC catch those.
 # Footprints (and symbol + footprint pairs) shared by PARTS and LCSC below
 R0805 = ("Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder")
 C0805 = ("Device:C", "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder")
-AO3400A = ("Transistor_FET:AO3400A", "Package_TO_SOT_SMD:SOT-23")
+BSS138 = ("Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23")  # I2C shifter and low-side drivers
 C1206 = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
 TSSOP16 = "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
 TQFN16 = "Package_DFN_QFN:TQFN-16-1EP_3x3mm_P0.5mm_EP1.23x1.23mm_ThermalVias"
@@ -56,8 +56,8 @@ PARTS = {
     "U3": ("MAX98357A", "Audio:MAX98357A", TQFN16),
     "C_AMP1": ("22uF 25V", "Device:C", C1206),
     # I2C level shifter (5V-side pull-ups DNP: LCD backpack has its own)
-    "Q_SDA1": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
-    "Q_SCL1": ("BSS138", "Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23"),
+    "Q_SDA1": ("BSS138", *BSS138),
+    "Q_SCL1": ("BSS138", *BSS138),
     "R_SDA3": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_SCL3": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_SDA5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
@@ -69,11 +69,11 @@ XH_SPARE = {f"{r}.{n}" for r in ("J_BAT1", "J_KEY1", "J_HBAT1", "J_BUZ1", "J_SPK
 DNP = {"R_SDA5", "R_SCL5"}
 
 
-# Low-side drivers: name -> load resistor value or None. The ONPOW LAS1-AGQ-11E/x/6V button LEDs
+# Low-side drivers (loads are ~15 mA LED rings and an ~8 mA buzzer, well inside a BSS138): name -> load resistor value or None. The ONPOW LAS1-AGQ-11E/x/6V button LEDs
 # have a built-in resistor, so R_LLR1/R_LLB1 are 0R jumpers (footprint kept as a brightness knob).
 DRIVERS = {"LR": "0R", "LB": "0R", "BZ": None}
 for n, r_load in DRIVERS.items():
-    PARTS[f"Q_{n}1"] = ("AO3400A", *AO3400A)
+    PARTS[f"Q_{n}1"] = ("BSS138", *BSS138)
     PARTS[f"R_G{n}1"] = ("100R", *R0805)
     PARTS[f"R_PD{n}1"] = ("100k", *R0805)
     if r_load:
@@ -96,7 +96,7 @@ for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", "MountingHole:MountingHole_3.2mm_M3")
 
 # JLCPCB assembly: (value, footprint) -> LCSC part number. Changing a part's value or footprint
-# fails check() until a new part is picked (editing the shared R0805/C0805/AO3400A tuples moves
+# fails check() until a new part is picked (editing the shared R0805/C0805/BSS138 tuples moves
 # their keys along). All verified live against JLCPCB's parts API on 2026-09-29.
 # Type: B = Basic, P = Preferred Extended (no setup fee), E = Extended.
 LCSC = {
@@ -111,8 +111,7 @@ LCSC = {
     ("MAX98357A", TQFN16): "C910544",  # E Maxim MAX98357AETE+T
     ("10uH 2A", "Inductor_SMD:L_Bourns_SRN6045TA"): "C2046332",  # E Bourns SRN6045TA-100M
     ("MT3608", "Package_TO_SOT_SMD:SOT-23-6"): "C84817",  # E XI'AN Aerosemi MT3608 (1 SW 2 GND 3 FB 4 EN 5 VIN)
-    ("AO3400A", AO3400A[1]): "C20917",  # B AOS AO3400A
-    ("BSS138", AO3400A[1]): "C7420339",  # P hongjiacheng BSS138 (G=1 S=2 D=3)
+    ("BSS138", BSS138[1]): "C7420339",  # P hongjiacheng BSS138 (G=1 S=2 D=3)
     ("75k", R0805[1]): "C17819",  # P UNI-ROYAL 0805W8F7502T5E
     ("10k", R0805[1]): "C17414",  # B 0805W8F1002T5E
     ("100R", R0805[1]): "C17408",  # B 0805W8F1000T5E

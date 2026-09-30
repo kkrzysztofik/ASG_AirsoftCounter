@@ -73,7 +73,7 @@ Heltec 5V pin: NOT connected (it is the charger input; feeding it would loop).
 
 ## Part 2: I/O circuits and connectors
 
-- **Output drivers (x3: LED R, LED B, buzzer):** AO3400A low-side, 100 Ω gate
+- **Output drivers (x3: LED R, LED B, buzzer):** BSS138 low-side, 100 Ω gate
   series, 100k gate pull-down (keeps loads off during boot). R_LOAD footprint in
   series with load: 150 Ω (red), 100 Ω (blue), 0 Ω for buzzer or 5V-LED buttons. *(As built: 0 Ω for both, because the chosen ONPOW LAS1-AGQ 6 V buttons have built-in LED resistors; see hardware/fab/OFFBOARD_PARTS.md.)*
   1N4148W flyback across buzzer.
@@ -208,7 +208,7 @@ so every slow signal moves to an I2C GPIO expander.
 
 ### Expander (8 I/O, 3V3 side of the I2C bus)
 - Inputs: BTN_R, BTN_B. The 10k pull-up, 100 nF and 1k series RC stay.
-- Outputs: LED_R, LED_B and BUZ gate drives (same AO3400A low-side drivers with
+- Outputs: LED_R, LED_B and BUZ gate drives (same BSS138 low-side drivers with
   100 Ω + 100k), plus AMP_SD (through a 1k resistor), which drives the amplifier's shutdown pin so it stays
   off during boot and while silent.
 - Two spare I/O.
@@ -252,7 +252,7 @@ left unpopulated when absent (`MODULES`/`VARIANTS` in `hardware/design.py`).
 
 | Module | On-board parts | Off-board |
 |---|---|---|
-| buttons | 2 AO3400A LED drivers, RC input filters, `J_BTN_R/B` | 2 IP67 buttons |
+| buttons | 2 BSS138 LED drivers, RC input filters, `J_BTN_R/B` | 2 IP67 buttons |
 | rfid | `J_NFC1` | PN532, cards |
 | speaker | `U3` MAX98357A, caps, `R_SD1`, `J_SPK1` | VISATON K 50 |
 | GPS, enclosure, key/toggle | none | L76K, box, switch |

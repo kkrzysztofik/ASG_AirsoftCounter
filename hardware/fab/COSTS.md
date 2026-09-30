@@ -34,7 +34,7 @@ Add or remove per module. Everything works on the same PCB; only the BOM changes
 
 | Module | Adds | Deluxe part | Budget part | On-board parts dropped when absent |
 |---|---|---|---|---|
-| Buttons | +93 / +42 | ONPOW pair | generic 16 mm pair | 2 AO3400A drivers, 2 RC input filters, `J_BTN_R/B` |
+| Buttons | +93 / +42 | ONPOW pair | generic 16 mm pair | 2 BSS138 drivers, 2 RC input filters, `J_BTN_R/B` |
 | RFID | +24.90 (+3/card) | PN532 | same | `J_NFC1` |
 | Speaker | +14.20 | VISATON K 50 | same | MAX98357A (`U3`), its caps, `R_SD1`, `J_SPK1` |
 | GPS | +29 | L76K | same | none (Heltec connector only) |

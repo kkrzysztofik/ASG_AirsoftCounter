@@ -167,7 +167,7 @@ def graphic_points(node):
 # fields {ref: {"Reference"/"Value": (dx, dy, justify)}}: horizontal text at that offset from the part.
 # Nets without a tag get a label on a wire (one-block nets) or at a pin (a lone pin in a block).
 def _driver(x0, n, load):
-    """One low-side driver at x offset x0: gate resistor, pull-down, AO3400A, load resistor."""
+    """One low-side driver at x offset x0: gate resistor, pull-down, BSS138, load resistor."""
     parts = {f"R_G{n}1": (x0 + 10.16, 38.1, 90, None), f"R_PD{n}1": (x0 + 17.78, 45.72, 0, None),
              f"Q_{n}1": (x0 + 33.02, 38.1, 0, None)}
     if load:
