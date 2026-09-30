@@ -80,7 +80,7 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 
 **Setup fees.** Economic PCBA charges a setup (feeder loading) fee for each **Extended** part type. Basic and Preferred Extended parts don't have this fee. This board has:
 
-- **8 Extended types:** U1 (MT3608, C84817), L1 (C2046332), F1 (2 A PTC 1206L200/16NR, C22374899), J2/J3 socket (C2905422), JST-XH 2-pin (C158012), JST-XH 4-pin (C144395), U2 (TCA9534PWR, C783615) and U3 (MAX98357AETE+T, C910544).
+- **7 Extended types:** U1 (MT3608, C84817), L1 (C2046332), F1 (2 A PTC 1206L200/16NR, C22374899), J2/J3 socket (C2905422), JST-XH 4-pin, used for all 9 off-board connectors (C144395), U2 (TCA9534PWR, C783615) and U3 (MAX98357AETE+T, C910544).
 - **2 Preferred Extended types (no fee):** BSS138 (Q_SDA1/Q_SCL1, C7420339) and the 75k resistor (R_FB1, C17819).
 - **13 Basic types:** everything else, including the ceramic bulk capacitors C_BULK1/C_BULK2 (47 µF 10 V, C96123) and C_NFC1 (100 µF 6.3 V, C15008), and the 0 Ω LED jumpers R_LLR1/R_LLB1 (C17477).
 
@@ -98,14 +98,14 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 
 If a part is wrong, fix its `Rotation` in `fab/jlc_cpl.csv` (degrees, counter-clockwise positive) and upload the file again. You can also leave it and note it in the order, because JLC's engineers follow the silkscreen polarity marks. Don't edit the CSVs by hand as a long-term fix: `make all` rewrites them.
 
-**Stock.** The J2/J3 socket (about 2.8k in stock) and L1 (about 3.2k), as of 2026-09-29, are the parts most likely to run out. Verified backups: socket C2897381, JST-XH clones C20079 (2-pin) and C37815 (4-pin), BSS138 C82045. (The old PTC backup C5358568 is a 1 A part and no longer fits F1.) To switch, change the number in `LCSC` in `design.py` and run `make all`. Check the new part's package and pinout on its LCSC page first.
+**Stock.** The J2/J3 socket (about 2.8k in stock) and L1 (about 3.2k), as of 2026-09-29, are the parts most likely to run out. Verified backups: socket C2897381, JST-XH 4-pin clone C37815, BSS138 C82045. (The old PTC backup C5358568 is a 1 A part and no longer fits F1.) To switch, change the number in `LCSC` in `design.py` and run `make all`. Check the new part's package and pinout on its LCSC page first.
 
 **Budget variant.** The same board, assembled without the speaker and NFC modules (see `design.py` `VARIANTS`
 and `COSTS.md`). Order the same Gerber zip, then upload **`fab/jlc_bom_budget.csv`** and
 **`fab/jlc_cpl_budget.csv`** instead. Differences from the steps above:
 
-- 22 BOM lines and 46 placements (Deluxe: 23 and 52). Nothing else in the form changes.
-- **7 Extended types**, not 8: U3 (MAX98357A, C910544) is not fitted, so its setup fee is gone. Preferred (2) and Basic (13) counts are unchanged.
+- 21 BOM lines and 46 placements (Deluxe: 22 and 52). Nothing else in the form changes.
+- **6 Extended types**, not 7: U3 (MAX98357A, C910544) is not fitted, so its setup fee is gone. Preferred (2) and Basic (13) counts are unchanged.
 - Not fitted: U3, C_AMP1, C_AMP2, R_SD1, J_SPK1 and J_NFC1. In the placement preview, check that none of them appear.
 - Buy the speaker and the PN532 only if you add those modules later; the footprints stay empty on the board.
 

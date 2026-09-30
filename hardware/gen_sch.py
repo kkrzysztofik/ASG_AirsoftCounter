@@ -391,7 +391,7 @@ def place_part(sh, ref, x, y, rot, mirror, fields):
         pin = f"{ref}.{n}"
         net = pin_net.get(n)
         if net is None:
-            if ref not in NC_PARTS and pin not in NC_PINS:
+            if ref not in NC_PARTS and pin not in NC_PINS and pin not in design.XH_SPARE:
                 raise SystemExit(f"{pin} is neither on a net nor marked no-connect")
             sh.items.append(["no_connect", at(c[0] * STEP, c[1] * STEP)[:3], ["uuid", uid(f"nc/{ref}/{n}")]])
             sh.mark([c], ref)

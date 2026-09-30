@@ -18,7 +18,6 @@ AO3400A = ("Transistor_FET:AO3400A", "Package_TO_SOT_SMD:SOT-23")
 C1206 = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
 TSSOP16 = "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
 TQFN16 = "Package_DFN_QFN:TQFN-16-1EP_3x3mm_P0.5mm_EP1.23x1.23mm_ThermalVias"
-XH2 = "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"
 XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 SOCKET18 = "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"
 
@@ -27,16 +26,17 @@ PARTS = {
     # Heltec WiFi LoRa 32 V4 headers (pin 1 at USB end). Rows are 22.86 mm apart.
     "J2": ("Heltec_J2", "Connector_Generic:Conn_01x18", SOCKET18),
     "J3": ("Heltec_J3", "Connector_Generic:Conn_01x18", SOCKET18),
-    # Off-board connectors, JST-XH 2.50 mm vertical
-    "J_BAT1": ("BAT", "Connector_Generic:Conn_01x02", XH2),
-    "J_KEY1": ("KEY", "Connector_Generic:Conn_01x02", XH2),
-    "J_HBAT1": ("HELTEC_BAT", "Connector_Generic:Conn_01x02", XH2),
+    # Off-board connectors: one part, JST-XH 4-pin 2.50 mm vertical. 2-wire nets use pins 1-2, pins 3-4 are NC
+    # (see XH_SPARE)
+    "J_BAT1": ("BAT", "Connector_Generic:Conn_01x04", XH4),
+    "J_KEY1": ("KEY", "Connector_Generic:Conn_01x04", XH4),
+    "J_HBAT1": ("HELTEC_BAT", "Connector_Generic:Conn_01x04", XH4),
     "J_LCD1": ("LCD", "Connector_Generic:Conn_01x04", XH4),
     "J_NFC1": ("NFC", "Connector_Generic:Conn_01x04", XH4),
     "J_BTN_R1": ("BTN_R", "Connector_Generic:Conn_01x04", XH4),
     "J_BTN_B1": ("BTN_B", "Connector_Generic:Conn_01x04", XH4),
-    "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x02", XH2),
-    "J_SPK1": ("SPK", "Connector_Generic:Conn_01x02", XH2),
+    "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x04", XH4),
+    "J_SPK1": ("SPK", "Connector_Generic:Conn_01x04", XH4),
     # Power
     "F1": ("2A PTC", "Device:Polyfuse", "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"),
     "U1": ("MT3608", "Regulator_Switching:MT3608", "Package_TO_SOT_SMD:SOT-23-6"),
@@ -63,6 +63,8 @@ PARTS = {
     "R_SDA5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_SCL5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
 }
+# 2-wire connectors: pins 3-4 are unused (gen_sch.py flags them no-connect).
+XH_SPARE = {f"{r}.{n}" for r in ("J_BAT1", "J_KEY1", "J_HBAT1", "J_BUZ1", "J_SPK1") for n in (3, 4)}
 # Do not populate: the LCD backpack has its own 5V-side pull-ups.
 DNP = {"R_SDA5", "R_SCL5"}
 
@@ -122,8 +124,7 @@ LCSC = {
     ("Heltec_J3", SOCKET18): "C2905422",
 }
 # Connector values are names, so every name maps to the same part.
-LCSC |= {(v, XH2): "C158012" for v in ("BAT", "KEY", "HELTEC_BAT", "BUZ", "SPK")}  # E JST B2B-XH-A(LF)(SN)
-LCSC |= {(v, XH4): "C144395" for v in ("LCD", "NFC", "BTN_R", "BTN_B")}  # E JST B4B-XH-A(LF)(SN)
+LCSC |= {(v, XH4): "C144395" for v in ("BAT", "KEY", "HELTEC_BAT", "BUZ", "SPK", "LCD", "NFC", "BTN_R", "BTN_B")}  # E JST B4B-XH-A(LF)(SN)
 
 # net: [ "REF.pin", ... ]
 NETS = {
