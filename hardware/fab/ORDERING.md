@@ -110,7 +110,7 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 - 20x4 I2C LCD with PCF8574 backpack
 - 2x ONPOW LAS1-AGQ-11E/x/6V IP67 pushbuttons (6 V ring LED with a built-in resistor, so R_LLR1/R_LLB1 are 0 Ω jumpers; fit a resistor there to dim an LED)
 - Active 5 V buzzer
-- Weatherproof **4 Ω, 2–3 W speaker** on J_SPK (see below)
+- Weatherproof **8 Ω, 2 W speaker** on J_SPK (see below)
 - IP65 key switch
 - 2x18650 holder and matched cells
 - IP67 USB-C panel extension
@@ -120,6 +120,6 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 - M3 standoffs
 - Kradex ZP240.190.105SJp enclosure and ZP240.190-PCB mounting plate
 
-**Speaker.** U3 (MAX98357A) drives J_SPK as a bridge-tied load (BTL): both pins switch, and neither is ground. Connect the speaker's two leads straight to J_SPK (pin 1 OUT-, pin 2 OUT+, as on the silkscreen) and **never connect either lead to GND, the enclosure or a shared return wire**: that shorts an output stage. Use a 4 Ω, 2–3 W speaker (about 1.5–2 W from a 1S cell at 12 dB gain), plus an ePTFE acoustic vent in the enclosure wall if needed.
+**Speaker.** U3 (MAX98357A) drives J_SPK as a bridge-tied load (BTL): both pins switch, and neither is ground. Connect the speaker's two leads straight to J_SPK (pin 1 OUT-, pin 2 OUT+, as on the silkscreen) and **never connect either lead to GND, the enclosure or a shared return wire**: that shorts an output stage. Use an **8 Ω, 2 W** speaker (Visaton K 50; about 1 W into 8 Ω from a 1S cell at 12 dB gain), plus an ePTFE acoustic vent in the enclosure wall if needed.
 
 Other files in `fab/`: `schematic.pdf`, `top.png`/`bottom.png` (3D renders), `gerbers/` (created by `make all` and not committed: the unzipped Gerbers plus drill maps and a Gerber job file, which are not in the zip).

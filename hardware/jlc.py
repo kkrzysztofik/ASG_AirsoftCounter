@@ -1,6 +1,6 @@
 """Write the JLCPCB assembly (PCBA) files from design.py and the routed board, and validate them.
 
-fab/jlc_bom.csv  Comment,Designator,Footprint,LCSC Part #   one row per LCSC number
+fab/jlc_bom.csv  (deluxe; other variants: jlc_bom_<variant>.csv) Comment,Designator,Footprint,LCSC Part #   one row per LCSC number
 fab/jlc_cpl.csv  Designator,Mid X,Mid Y,Layer,Rotation      one row per placed part (SMD and THT)
 Placed parts are design.assembled(): no DNP parts, no mounting holes.
 
@@ -26,17 +26,20 @@ import design
 HERE = Path(__file__).parent
 PCB = HERE / "carrier.kicad_pcb"
 ZIP = HERE / "fab/carrier_gerbers_jlcpcb.zip"
-BOM = HERE / "fab/jlc_bom.csv"
-CPL = HERE / "fab/jlc_cpl.csv"
+
+
+def out(kind, variant):
+    """fab/jlc_bom.csv is the deluxe (full) board; other variants get a suffix."""
+    return HERE / f"fab/jlc_{kind}{'' if variant == 'deluxe' else '_' + variant}.csv"
 
 
 def natural(ref):
     return [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", ref)]
 
 
-def bom_rows():
+def bom_rows(variant):
     groups = {}
-    for r in sorted(design.assembled(), key=natural):
+    for r in sorted(design.assembled(variant), key=natural):
         value, _, fp = design.PARTS[r]
         groups.setdefault(design.LCSC[(value, fp)], []).append(r)
     rows = []
@@ -56,8 +59,8 @@ def board_outline():
     return min(xs), max(xs), min(ys), max(ys)
 
 
-def cpl_rows():
-    placed = set(design.assembled())
+def cpl_rows(variant):
+    placed = set(design.assembled(variant))
     fps = [fp for fp in pcbnew.LoadBoard(str(PCB)).GetFootprints() if fp.GetReference() in placed]
     refs = [fp.GetReference() for fp in fps]
     dupes = {r for r in refs if refs.count(r) > 1}
@@ -86,15 +89,16 @@ def write(path, header, rows):
 
 def main():
     design.check()
-    bom, cpl = bom_rows(), cpl_rows()
-    assert all(re.fullmatch(r"C\d+", row[3]) for row in bom), "BOM row without an LCSC number"
-    bom_refs = [r for row in bom for r in row[1].split(",")]
-    cpl_refs = [row[0] for row in cpl]
-    assert sorted(bom_refs) == sorted(cpl_refs) and len(set(bom_refs)) == len(bom_refs), \
-        f"BOM/CPL designators differ: {set(bom_refs) ^ set(cpl_refs)}"
-    write(BOM, ["Comment", "Designator", "Footprint", "LCSC Part #"], bom)
-    write(CPL, ["Designator", "Mid X", "Mid Y", "Layer", "Rotation"], cpl)
-    print(f"jlc ok: {len(bom)} BOM lines, {len(cpl)} placements inside the Gerber outline")
+    for variant in design.VARIANTS:
+        bom, cpl = bom_rows(variant), cpl_rows(variant)
+        assert all(re.fullmatch(r"C\d+", row[3]) for row in bom), "BOM row without an LCSC number"
+        bom_refs = [r for row in bom for r in row[1].split(",")]
+        cpl_refs = [row[0] for row in cpl]
+        assert sorted(bom_refs) == sorted(cpl_refs) and len(set(bom_refs)) == len(bom_refs), \
+            f"{variant}: BOM/CPL designators differ: {set(bom_refs) ^ set(cpl_refs)}"
+        write(out("bom", variant), ["Comment", "Designator", "Footprint", "LCSC Part #"], bom)
+        write(out("cpl", variant), ["Designator", "Mid X", "Mid Y", "Layer", "Rotation"], cpl)
+        print(f"jlc ok ({variant}): {len(bom)} BOM lines, {len(cpl)} placements inside the Gerber outline")
 
 
 if __name__ == "__main__":

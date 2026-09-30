@@ -182,9 +182,27 @@ HEADER_POWER = {"J2.1": "GND", "J3.1": "GND", "J3.2": "+3V3", "J3.3": "+3V3"}
 HEADER_NC = {"J2.2", "J2.3", "J2.4"}  # 5V charger input, Vext x2: must stay unconnected
 
 
-def assembled():
-    """Refs JLCPCB places: everything except DNP parts and mounting holes."""
-    return [r for r, (_, sym, _) in PARTS.items() if r not in DNP and sym != "Mechanical:MountingHole"]
+# Build variants: one board, fewer parts populated. The pin map never changes (everything
+# slow already sits behind the U2 expander), so a variant is just a BOM/CPL without a module's refs.
+# GPS, enclosure and the other off-board parts are not on the board: they only matter for cost.
+# The buzzer path (Q_BZ1, R_GBZ1, R_PDBZ1, D_FLY1, J_BUZ1) and U2 are core and always populated.
+MODULES = {
+    "speaker": {"U3", "C_AMP1", "C_AMP2", "R_SD1", "J_SPK1"},
+    "rfid": {"J_NFC1"},
+    "buttons": {"J_BTN_R1", "J_BTN_B1", "Q_LR1", "Q_LB1", "R_GLR1", "R_GLB1", "R_PDLR1", "R_PDLB1",
+                "R_LLR1", "R_LLB1", "R_PUR1", "R_PUB1", "R_SR1", "R_SB1", "C_BR1", "C_BB1"},
+}
+VARIANTS = {
+    "deluxe": {"speaker", "rfid", "buttons"},
+    "budget": {"buttons"},
+}
+
+
+def assembled(variant="deluxe"):
+    """Refs JLCPCB places: everything except DNP parts, mounting holes and modules the variant drops."""
+    dropped = set().union(*(MODULES[m] for m in MODULES.keys() - VARIANTS[variant]))
+    return [r for r, (_, sym, _) in PARTS.items()
+            if r not in DNP | dropped and sym != "Mechanical:MountingHole"]
 
 
 def check():
@@ -217,7 +235,12 @@ def check():
     assert not missing, f"assembled parts without an LCSC number: {missing}"
     stale = LCSC.keys() - {(PARTS[r][0], PARTS[r][2]) for r in assembled()}
     assert not stale, f"LCSC entries no assembled part uses: {stale}"
-    print(f"design ok: {len(PARTS)} parts, {len(NETS)} nets")
+    for m, refs in MODULES.items():
+        assert refs <= PARTS.keys(), f"module {m}: unknown parts {refs - PARTS.keys()}"
+    for v, mods in VARIANTS.items():
+        assert mods <= MODULES.keys(), f"variant {v}: unknown modules {mods - MODULES.keys()}"
+        assert mods & {"buttons", "rfid"}, f"variant {v} has no input (needs buttons or rfid)"
+    print(f"design ok: {len(PARTS)} parts, {len(NETS)} nets, variants {sorted(VARIANTS)}")
 
 
 if __name__ == "__main__":

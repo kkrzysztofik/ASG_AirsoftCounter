@@ -216,13 +216,14 @@ so every slow signal moves to an I2C GPIO expander.
 
 ### Speaker path
 - MAX98357A-class I2S class-D amplifier, **powered from VBAT_SW (3.0–4.2 V)**, not the
-  5 V boost. That gives about 1.5–2 W into 4 Ω and keeps audio peaks off the 5 V rail
+  5 V boost. That gives about 1 W into 8 Ω, or 1.5–2 W into 4 Ω if a 4 Ω speaker is
+  used, and keeps audio peaks off the 5 V rail
   (no LCD flicker). GAIN_SLOT is tied to GND (12 dB); volume is set digitally in firmware.
 - The output is BTL: the new 2-pin XH connector `J_SPK` must never be tied to GND
   (silkscreen note).
-- Off-board: Visaton K 50 WP (8 Ω, 2 W, IP65) in the enclosure wall behind a grille
+- Off-board: Visaton K 50 (2901; the WP variant is out of stock) (8 Ω, 2 W, IP65) in the enclosure wall behind a grille
   with a front gasket (see `hardware/fab/OFFBOARD_PARTS.md`). About 1 W into 8 Ω from
-  VBAT.
+  VBAT. `ORDERING.md` must list this same 8 Ω part.
 
 ### Power changes
 - Polyfuse raised to 2 A hold (1206L200/16NR, C22374899), for LoRa TX + audio peaks + boost.
@@ -237,6 +238,42 @@ so every slow signal moves to an I2C GPIO expander.
   must be set as outputs driven low (the TCA9534 has no internal pull-ups).
 - An audio task streams clips over I2S DMA from flash (beeps, siren, spoken lines).
 - `core` gets a `Sound` event next to `Beep`.
+
+## Part 7: Build variants (Deluxe / Budget) (approved 2026-09-30)
+
+### Why
+The Deluxe unit costs ~700 zł in parts (see `hardware/fab/COSTS.md`). A cheaper tier
+should share the board, pin map and firmware `core`, not fork them.
+
+### Model
+One PCB, one pin map. A variant is a set of modules; a module is a set of board parts
+left unpopulated when absent (`MODULES`/`VARIANTS` in `hardware/design.py`).
+`jlc.py` writes a BOM/CPL per variant (`fab/jlc_bom.csv` = deluxe, `fab/jlc_bom_budget.csv`).
+
+| Module | On-board parts | Off-board |
+|---|---|---|
+| buttons | 2 AO3400A LED drivers, RC input filters, `J_BTN_R/B` | 2 IP67 buttons |
+| rfid | `J_NFC1` | PN532, cards |
+| speaker | `U3` MAX98357A, caps, `R_SD1`, `J_SPK1` | VISATON K 50 |
+| GPS, enclosure, key/toggle | none | L76K, box, switch |
+
+Core (always): Heltec V4, power path, expander `U2`, buzzer path, LCD. The expander stays in
+every variant because the LEDs, buzzer and buttons sit behind it.
+
+- **Deluxe:** buttons + rfid + speaker + GPS, Kradex IP67, key switch.
+- **Budget:** buttons only, Pawbol S-BOX 416-P IP65 box (190 x 140 x 70 mm inside), generic 16 mm buttons, no GPS, KS22 key (or a toggle). Same board.
+- Any mix is valid if it has **buttons or RFID** (`design.check()` enforces it).
+
+### Firmware
+- I2C probe at boot: PN532 at 0x24, the expander at 0x20, the LCD at 0x27/0x3F. A missing module
+  disables its task instead of failing.
+- `cargo` features only for what cannot be probed: speaker fitted, buttons fitted, GPS fitted.
+- No buttons: set expander P0/P1 as outputs (no pull-ups fitted, floating inputs would toggle INT).
+- STATUS omits position without GPS. The buzzer is present in every variant.
+
+### Open
+Red 6 V ONPOW button availability, key-switch choice (maintained vs momentary), buzzer code,
+budget generic-part prices: tracked in `hardware/fab/COSTS.md`.
 
 ## Open items to verify during implementation
 
