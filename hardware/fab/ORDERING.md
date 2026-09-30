@@ -78,9 +78,13 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 
 **Through-hole parts are included**: J2/J3 (1x18 sockets) and the 9 JST-XH headers. JLC solders them by wave soldering and charges per THT joint on top of the SMD assembly. The price shows on the form. The old THT electrolytics (220 µF C_BULK1, 100 µF C_NFC1) are gone: the bulk capacitors are now 1206 ceramics (2x 47 µF on VBAT_SW, 100 µF on 3V3).
 
-**Setup fees.** Economic PCBA charges a setup (feeder loading) fee for each **Extended** part type. Basic and Preferred Extended parts don't have this fee. This board has:
+**Setup fees.** Economic PCBA charges a setup (feeder loading) fee, about $3 per order, for each **SMD Extended** part type. Basic and Preferred Extended parts don't have it, and through-hole parts don't either (JLC lists them as Extended, but they are wave-soldered). This board has:
 
-- **8 Extended types:** U4 (XB8089D cell protection, C79928), U1 (MT3608, C84817), L1 (C2046332), F1 (2 A PTC 1206L200/16NR, C22374899), J2/J3 socket (C2905422), JST-XH 4-pin, used for all 9 off-board connectors (C144395), U2 (TCA9534PWR, C783615) and U3 (NS4168, C910588).
+- **6 SMD Extended types (fee):** U4 (XB8089D cell protection, C79928), U1 (MT3608, C84817), L1 (C2046332), F1 (2 A PTC 1206L200/16NR, C22374899), U2 (TCA9534PWR, C783615) and U3 (NS4168, C910588). About $18 per order.
+- **2 through-hole Extended types (no loading fee, per-joint THT charge instead):** J2/J3 socket (C2905422) and the JST-XH 4-pin used for all 9 off-board connectors (C144395).
+- None of the six has a Basic or Preferred replacement (JLC parts API, 2026-09-30: boost converters, 10 uH power
+  inductors, PTC fuses, I2C expanders, I2S/class-D amps and Li-ion protection ICs were searched). The only ways to cut the
+  fee are the Budget variant (no U3) or hand-soldering some of them yourself.
 - Cheaper alternatives for U2 and U3 that were considered are in `PART_ALTERNATIVES.md`; other review findings are in `PARTS_REVIEW.md`.
 - **2 Preferred Extended types (no fee):** BSS138 (Q_SDA1/Q_SCL1 and the three low-side drivers, C7420339) and the 75k resistor (R_FB1, C17819).
 - **10 Basic types:** everything else, including the ceramic bulk capacitors C_BULK1/C_BULK2 (47 µF 10 V, C96123) and C_NFC1 (100 µF 6.3 V, C15008), and the 0 Ω LED jumpers R_LLR1/R_LLB1 (C17477).
@@ -107,7 +111,7 @@ and `COSTS.md`). Order the same Gerber zip, then upload **`fab/jlc_bom_budget.cs
 **`fab/jlc_cpl_budget.csv`** instead. Differences from the steps above:
 
 - 19 BOM lines and 49 placements (Deluxe: 20 and 55). Nothing else in the form changes.
-- **7 Extended types**, not 8: U3 (NS4168, C910588) is not fitted, so its setup fee is gone. Preferred (2) and Basic (10) counts are unchanged.
+- **5 SMD Extended types**, not 6: U3 (NS4168, C910588) is not fitted, so its setup fee is gone. Preferred (2) and Basic (10) counts are unchanged.
 - Not fitted: U3, C_AMP1, C_AMP2, R_SD1, J_SPK1 and J_NFC1. In the placement preview, check that none of them appear.
 - Buy the speaker and the PN532 only if you add those modules later; the footprints stay empty on the board.
 
