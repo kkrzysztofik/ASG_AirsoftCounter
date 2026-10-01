@@ -19,6 +19,7 @@ C1206 = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
 TSSOP16 = "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
 ESOP8 = "Package_SO:HSOP-8-1EP_3.9x4.9mm_P1.27mm_EP2.3x2.3mm_ThermalVias"  # NS4168 eSOP-8, EP 2.0 mm
 XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
+XH6 = "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical"
 SOCKET18 = "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"
 SOIC8EP = "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.41x3.3mm"
 
@@ -29,9 +30,10 @@ PARTS = {
     "J3": ("Heltec_J3", "Connector_Generic:Conn_01x18", SOCKET18),
     # Off-board connectors: one part, JST-XH 4-pin 2.50 mm vertical. 2-wire nets use pins 1-2, pins 3-4 are NC
     # (see XH_SPARE)
-    "J_BAT1": ("BAT", "Connector_Generic:Conn_01x04", XH4),
-    "J_KEY1": ("KEY", "Connector_Generic:Conn_01x04", XH4),
     "J_HBAT1": ("HELTEC_BAT", "Connector_Generic:Conn_01x04", XH4),
+    # Power from the pack board (the cell protector, key switch and 5 V boost moved there in P5).
+    # 1-2 GND, 3 VBAT_SW, 4 +5V, 5 SDA_3V3, 6 SCL_3V3.
+    "J_PWR1": ("PWR", "Connector_Generic:Conn_01x06", XH6),
     "J_LCD1": ("LCD", "Connector_Generic:Conn_01x04", XH4),
     "J_NFC1": ("NFC", "Connector_Generic:Conn_01x04", XH4),
     "J_BTN_R1": ("BTN_R", "Connector_Generic:Conn_01x04", XH4),
@@ -39,19 +41,9 @@ PARTS = {
     "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x04", XH4),
     "J_SPK1": ("SPK", "Connector_Generic:Conn_01x04", XH4),
     # Cell protection in the negative lead (the Heltec V4 has no under-voltage cutoff, see
-    # fab/PARTS_REVIEW.md): 2.5 V over-discharge, 4.25 V overcharge, 10 A overcurrent, short circuit.
-    # Board GND is the protected pack negative (VM); only J_BAT1.2 sees the raw cell negative.
-    "U4": ("XB8089D", "local:XB8089D", SOIC8EP),
-    # Power
-    "F1": ("2A PTC", "Device:Polyfuse", "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"),
-    "U1": ("MT3608", "Regulator_Switching:MT3608", "Package_TO_SOT_SMD:SOT-23-6"),
-    "L1": ("10uH 2A", "Device:L", "Inductor_SMD:L_Bourns_SRN6045TA"),
-    "D1": ("SS34", "Diode:SS34", "Diode_SMD:D_SMA"),
-    "R_FB1": ("75k", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
-    "R_FB2": ("10k", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
-    "C_IN1": ("22uF 25V", "Device:C", C1206),
-    "C_OUT1": ("22uF 25V", "Device:C", C1206),
-    "C_OUT2": ("22uF 25V", "Device:C", C1206),
+    # fab/PARTS_REVIEW.md) now lives on the pack board: J_PWR1.3 already is the protected, switched
+    # pack rail and board GND is the pack ground.
+    # Power (bulk on the switched pack rail; the boost is on the pack board)
     "C_BULK1": ("47uF 10V", "Device:C", C1206),
     "C_BULK2": ("47uF 10V", "Device:C", C1206),
     "C_NFC1": ("100uF 6.3V", "Device:C", C1206),
@@ -71,7 +63,7 @@ PARTS = {
     "R_SCL5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
 }
 # 2-wire connectors: pins 3-4 are unused (gen_sch.py flags them no-connect).
-XH_SPARE = {f"{r}.{n}" for r in ("J_BAT1", "J_KEY1", "J_HBAT1", "J_BUZ1", "J_SPK1") for n in (3, 4)}
+XH_SPARE = {f"{r}.{n}" for r in ("J_HBAT1", "J_BUZ1", "J_SPK1") for n in (3, 4)}
 # Do not populate: the LCD backpack has its own 5V-side pull-ups.
 DNP = {"R_SDA5", "R_SCL5"}
 
@@ -100,9 +92,6 @@ PARTS["C_AMP2"] = ("100nF", *C0805)  # U3 VDD decoupling (next to C_AMP1)
 # no current, so it still pulls CTRL to 0 V) holds the amp off while the expander pins float at reset.
 PARTS["R_SD1"] = ("1k", *R0805)
 PARTS["R_SDPD1"] = ("10k", *R0805)
-# U4 supply filter from the datasheet application circuit: 1k from BAT+, 100nF to the cell negative
-PARTS["R_PROT1"] = ("1k", *R0805)
-PARTS["C_PROT1"] = ("100nF", *C0805)
 
 for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", "MountingHole:MountingHole_3.2mm_M3")
@@ -113,19 +102,12 @@ for i in range(1, 5):
 # Type: B = Basic, P = Preferred Extended (no setup fee), E = Extended.
 LCSC = {
     ("100nF", C0805[1]): "C49678",  # B YAGEO CC0805KRX7R9BB104 50V X7R
-    ("22uF 25V", C1206): "C12891",  # B Samsung CL31A226KAHNNNE X5R
     ("47uF 10V", C1206): "C96123",  # B Samsung CL31A476MPHNNNE X5R
     ("100uF 6.3V", C1206): "C15008",  # B Samsung CL31A107MQHNNNE X5R
-    ("SS34", "Diode_SMD:D_SMA"): "C8678",  # B MDD SS34
     ("1N4148W", "Diode_SMD:D_SOD-123"): "C81598",  # B ST Semtech 1N4148W
-    ("2A PTC", "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"): "C22374899",  # E LUTE 1206L200/16NR 2A hold 16V
     ("TCA9534PWR", TSSOP16): "C783615",  # E TI TCA9534PWR
-    ("XB8089D", SOIC8EP): "C79928",  # E XySemi XB8089D (checked on jlcpcb.com/lcsc.com 2026-09-30)
     ("NS4168", ESOP8): "C910588",  # E Nsiway NS4168 (lcsc.com 2026-09-30: $0.38, ~9.9k stock)
-    ("10uH 2A", "Inductor_SMD:L_Bourns_SRN6045TA"): "C2046332",  # E Bourns SRN6045TA-100M
-    ("MT3608", "Package_TO_SOT_SMD:SOT-23-6"): "C84817",  # E XI'AN Aerosemi MT3608 (1 SW 2 GND 3 FB 4 EN 5 VIN)
     ("BSS138", BSS138[1]): "C7420339",  # P hongjiacheng BSS138 (G=1 S=2 D=3)
-    ("75k", R0805[1]): "C17819",  # P UNI-ROYAL 0805W8F7502T5E
     ("10k", R0805[1]): "C17414",  # B 0805W8F1002T5E
     ("0R", R0805[1]): "C17477",  # B UNI-ROYAL 0805W8F0000T5E
     ("1k", R0805[1]): "C17513",  # B 0805W8F1001T5E
@@ -134,30 +116,24 @@ LCSC = {
     ("Heltec_J3", SOCKET18): "C2905422",
 }
 # Connector values are names, so every name maps to the same part.
-LCSC |= {(v, XH4): "C144395" for v in ("BAT", "KEY", "HELTEC_BAT", "BUZ", "SPK", "LCD", "NFC", "BTN_R", "BTN_B")}  # E JST B4B-XH-A(LF)(SN)
+LCSC |= {(v, XH4): "C144395" for v in ("HELTEC_BAT", "BUZ", "SPK", "LCD", "NFC", "BTN_R", "BTN_B")}  # E JST B4B-XH-A(LF)(SN)
+LCSC[("PWR", XH6)] = "C144397"  # E JST B6B-XH-A(LF)(SN), power in from the pack board
 
 # net: [ "REF.pin", ... ]
 NETS = {
-    "GND": ["J2.1", "J3.1", "U4.1", "U4.2", "U4.3", "U4.4", "J_HBAT1.2", "J_LCD1.1", "J_NFC1.1", "J_BTN_R1.2", "J_BTN_B1.2",
-            "U1.2", "R_FB2.2", "C_IN1.2", "C_OUT1.2", "C_OUT2.2", "C_BULK1.2", "C_BULK2.2", "C_NFC1.2",
+    "GND": ["J2.1", "J3.1", "J_HBAT1.2", "J_LCD1.1", "J_NFC1.1", "J_BTN_R1.2", "J_BTN_B1.2",
+            "J_PWR1.1", "J_PWR1.2", "C_BULK1.2", "C_BULK2.2", "C_NFC1.2",
             "Q_LR1.2", "Q_LB1.2", "Q_BZ1.2", "R_PDLR1.2", "R_PDLB1.2", "R_PDBZ1.2", "C_BR1.2", "C_BB1.2",
             "U2.1", "U2.2", "U2.3", "U2.8", "C_EXP1.2",  # A0-A2 low: address 0x20
             "U3.7", "U3.9", "C_AMP1.2", "C_AMP2.2", "R_SDPD1.2"],
     "+3V3": ["J3.2", "J3.3", "J_NFC1.2", "C_NFC1.1", "Q_SDA1.1", "Q_SCL1.1", "R_SDA3.1", "R_SCL3.1", "R_PUR1.1", "R_PUB1.1",
              "U2.16", "C_EXP1.1", "R_INT1.1"],
-    "VBAT_RAW": ["J_BAT1.1", "F1.1", "R_PROT1.1"],
-    "BAT_N": ["J_BAT1.2", "U4.5", "U4.7", "U4.8", "U4.9", "C_PROT1.2"],  # raw cell negative
-    "PROT_VDD": ["R_PROT1.2", "U4.6", "C_PROT1.1"],
-    "VBAT_F": ["F1.2", "J_KEY1.1"],
-    "VBAT_SW": ["J_KEY1.2", "J_HBAT1.1", "C_BULK1.1", "C_BULK2.1", "C_IN1.1", "U1.5", "U1.4", "L1.1",
-                "U3.6", "C_AMP1.1", "C_AMP2.1"],
-    "SW": ["L1.2", "U1.1", "D1.2"],
-    "FB": ["U1.3", "R_FB1.2", "R_FB2.1"],
-    "+5V": ["D1.1", "C_OUT1.1", "C_OUT2.1", "R_FB1.1", "J_LCD1.2", "J_BTN_R1.3", "J_BTN_B1.3", "J_BUZ1.1",
+    "VBAT_SW": ["J_HBAT1.1", "C_BULK1.1", "C_BULK2.1", "U3.6", "C_AMP1.1", "C_AMP2.1", "J_PWR1.3"],
+    "+5V": ["J_PWR1.4", "J_LCD1.2", "J_BTN_R1.3", "J_BTN_B1.3", "J_BUZ1.1",
             "D_FLY1.1", "R_SDA5.1", "R_SCL5.1"],
     # I2C
-    "SDA_3V3": ["J3.15", "Q_SDA1.2", "R_SDA3.2", "J_NFC1.3", "U2.15"],
-    "SCL_3V3": ["J3.14", "Q_SCL1.2", "R_SCL3.2", "J_NFC1.4", "U2.14"],
+    "SDA_3V3": ["J3.15", "Q_SDA1.2", "R_SDA3.2", "J_NFC1.3", "U2.15", "J_PWR1.5"],
+    "SCL_3V3": ["J3.14", "Q_SCL1.2", "R_SCL3.2", "J_NFC1.4", "U2.14", "J_PWR1.6"],
     "EXP_INT": ["J3.17", "U2.13", "R_INT1.2"],  # open drain, active low
     # I2S to the amp; CTRL from the expander (high = right slot, low = shutdown)
     "I2S_BCLK": ["J2.13", "U3.3"], "I2S_LRCLK": ["J2.14", "U3.2"], "I2S_DIN": ["J2.16", "U3.4"],
@@ -222,18 +198,17 @@ def assembled(variant="deluxe"):
 NAME = "carrier"
 TITLE = "AirsoftCounter v2 carrier"
 # Nets that get the wider Power class: gen_sch.py writes them into .kicad_pro, gen_pcb.verify checks.
-NETCLASS_POWER = ("VBAT*", "BAT_N", "+5V", "SW")
+NETCLASS_POWER = ("VBAT*", "+5V")
 # (net, [track width, clearance]) the reloaded board must resolve (gen_pcb.verify).
 NETCLASS_EXPECT = (("VBAT_SW", [0.8, 0.2]), ("GND", [0.25, 0.2]), ("+5V", [0.8, 0.2]),
-                   ("SW", [0.8, 0.2]), ("SPK_P", [0.25, 0.2]), ("SDA_3V3", [0.25, 0.2]))
+                   ("SPK_P", [0.25, 0.2]), ("SDA_3V3", [0.25, 0.2]))
 
 RAILS = ("GND", "+3V3", "+5V", "VBAT_SW")
 # Power ports name their net by Value, so VBAT_SW reuses the stock +BATT arrow: a stock
 # symbol keeps ERC's library check (lib_symbol_issues) clean with no ignore.
 PORT_LIB = {"GND": "power:GND", "+3V3": "power:+3V3", "+5V": "power:+5V", "VBAT_SW": "power:+BATT"}
 NC_PARTS = {"J2", "J3"}  # every unconnected pin gets a no-connect flag
-NC_PINS = {"U1.6",  # MT3608 NC
-           "U2.11", "U2.12"}  # TCA9534 P6/P7 spare
+NC_PINS = {"U2.11", "U2.12"}  # TCA9534 P6/P7 spare
 
 
 # --- Layout: blocks of hand-placed parts ---
@@ -253,21 +228,10 @@ def _driver(x0, n, load):
 
 
 BLOCKS = [
-    {"title": "Battery, key switch, 5 V boost", "at": (12.7, 12.7), "size": (190.5, 63.5),
-     "parts": {"J_BAT1": (7.62, 25.4, 0, "y"), "F1": (35.56, 22.86, 90, None),
-               "J_KEY1": (53.34, 17.78, 90, None), "J_HBAT1": (60.96, 38.1, 0, None),
-               "C_BULK1": (73.66, 31.75, 0, None), "C_BULK2": (86.36, 31.75, 0, None),
-               "C_IN1": (99.06, 31.75, 0, None), "U1": (121.92, 40.64, 0, None),
-               "L1": (121.92, 22.86, 90, None), "D1": (140.97, 22.86, 180, None),
-               "R_FB1": (152.4, 35.56, 0, None), "R_FB2": (152.4, 46.99, 0, None),
-               "C_OUT1": (165.1, 31.75, 0, None), "C_OUT2": (177.8, 31.75, 0, None),
-               "U4": (38.1, 43.18, 0, None), "C_PROT1": (17.78, 45.72, 0, None),
-               "R_PROT1": (17.78, 33.02, 0, None)},
-     "wired": {"VBAT_SW", "+5V"},
-     "tags": {"VBAT_SW": [(66.04, 22.86, "U")], "+5V": [(185.42, 22.86, "U")], "PROT_VDD": [(22.86, 40.64, "U")]},
-     "flags": [("GND", 7.62, 55.88), ("VBAT_SW", 30.48, 55.88), ("+5V", 53.34, 55.88)],
-     "fields": {"J_KEY1": {"Reference": (-5.08, -1.27, "right"), "Value": (-5.08, 1.27, "right")},
-                "U4": {"Reference": (-7.62, -6.35, "left"), "Value": (7.62, -6.35, "right")}}},
+    {"title": "Power in (from pack board)", "at": (12.7, 12.7), "size": (100.33, 63.5),
+     "parts": {"J_PWR1": (20.32, 25.4, 90, None), "J_HBAT1": (45.72, 25.4, 0, None),
+               "C_BULK1": (58.42, 31.75, 0, None), "C_BULK2": (71.12, 31.75, 0, None)},
+     "flags": [("GND", 7.62, 55.88), ("VBAT_SW", 30.48, 55.88), ("+5V", 53.34, 55.88)]},
     {"title": "I2S speaker amp", "at": (208.28, 12.7), "size": (104.14, 63.5),
      "parts": {"U3": (55.88, 38.1, 0, None), "R_SD1": (25.4, 40.64, 90, None),
                "R_SDPD1": (17.78, 45.72, 0, None),
@@ -314,7 +278,7 @@ PLACE = {
     "H1": (3.5, 3.5, 0), "H2": (86.5, 3.5, 0), "H3": (3.5, 56.5, 0), "H4": (86.5, 56.5, 0),
     # Top edge: XH open side (-Y at rotation 0) faces the board edge, pin 1 left
     # (4-pin XH courtyards are 13.5 mm: five fit between H1 and H2, a sixth does not)
-    "J_BAT1": (10, 6, 0), "J_KEY1": (24.5, 6, 0), "J_HBAT1": (39, 6, 0),
+    "J_PWR1": (13, 6, 0), "J_HBAT1": (39, 6, 0),
     "J_LCD1": (53.5, 6, 0), "J_NFC1": (68, 6, 0),
     # Bottom edge, under the J2 row: open side faces +Y, pin 1 right
     "J_BTN_R1": (76, 55.75, 180),
@@ -323,13 +287,8 @@ PLACE = {
     # I2S amp beside J_SPK1 (outputs face up at 90 deg), VDD caps above it; C_AMP2 at 180 puts its
     # VBAT_SW pad over U3.6 (VDD) and its GND pad over U3.7
     "U3": (15.2, 23.2, 90), "C_AMP2": (15.2, 18.4, 180), "C_AMP1": (15.2, 14.9, 0),
-    # Power: MT3608 boost; output loop (SW -> D1 -> C_OUT -> GND) on U1's SW/GND side
-    "F1": (19.5, 11.3, 0), "C_BULK1": (37, 17, 90), "C_BULK2": (40.5, 17, 90),
-    "L1": (28.5, 15.5, 180), "D1": (21.3, 16, 0), "U1": (27, 21.5, 0), "C_IN1": (31.2, 21.8, 270),
-    "C_OUT1": (21, 20, 0), "C_OUT2": (21, 22.9, 0),
-    "R_FB2": (26.5, 25.5, 0), "R_FB1": (22, 26, 0),
-    # Cell protection in the free strip left of J3 (VM pins 1-4 face the boost block's GND)
-    "U4": (37.7, 27.4, 0), "R_PROT1": (35.9, 32.5, 0), "C_PROT1": (40.0, 32.5, 0),
+    # Bulk caps on the switched pack rail, in the strip J_BAT1/J_KEY1 used to share
+    "C_BULK1": (37, 17, 90), "C_BULK2": (40.5, 17, 90),
     # I2C level shifter, NFC bulk cap and GPIO expander, under their connectors
     "Q_SDA1": (44, 16, 0), "R_SDA3": (44, 20, 0), "R_SDA5": (44, 23.3, 0),
     "Q_SCL1": (49.5, 16, 0), "R_SCL3": (49.5, 20, 0), "R_SCL5": (49.5, 23.3, 0),
@@ -346,13 +305,10 @@ PLACE = {
     "R_PUR1": (66, 15.5, 0), "C_BR1": (66, 19, 0), "R_SR1": (71, 17.25, 0),
 }
 
-# Reference text moved off neighbouring silk in the packed boost block: ref -> (x, y, rot)
+# Reference text moved off neighbouring silk: ref -> (x, y, rot)
 REF_AT = {
-    "L1": (33.3, 15.5, 90), "U1": (29.55, 21.5, 90), "C_OUT1": (21, 18.4, 0),
-    "C_OUT2": (21, 24.6, 0), "R_FB1": (19.3, 27.0, 90), "C_IN1": (33.05, 21.8, 90),
-    "F1": (23.5, 11.3, 0),  # F1 sits right under the top connector labels
     "U3": (13.45, 23.2, 90),  # inside U3's outline, left of the exposed pad (the SPK label is outside)
-    "R_PROT1": (40.0, 34.4, 0), "C_PROT1": (40.0, 36.0, 0), "R_SDPD1": (75.5, 14.7, 0),  # staggered below the parts, clear of U4/Q_LR1 silk
+    "R_SDPD1": (75.5, 14.7, 0),
     "J_BTN_R1": (60, 53.1, 0),  # between J2 and its label (default lands inside the body at 180 deg)
 }
 
@@ -360,7 +316,7 @@ REF_AT = {
 # the bottom pad at rot 90; text reads left-to-right / bottom-to-top, so pin 1 comes first
 # (at rot 180 pin 1 is the right pad; label() reverses the list).
 LABELS = {
-    "J_BAT1": ("BAT", "+  -"), "J_KEY1": ("KEY", ""), "J_HBAT1": ("HELTEC BAT", "+  -"),
+    "J_PWR1": ("PACK", "GND GND BAT 5V SDA SCL"), "J_HBAT1": ("HELTEC BAT", "+  -"),
     "J_LCD1": ("LCD", "GND 5V SDA SCL"), "J_NFC1": ("NFC", "GND 3V3 SDA SCL"),
     "J_BTN_R1": ("BTN_R", "SW GND L+ L-"), "J_BTN_B1": ("BTN_B", "SW GND L+ L-"), "J_BUZ1": ("BUZ", "+  -"),
     "J_SPK1": ("SPK (BTL, not GND)", "OUT- OUT+"),

@@ -45,15 +45,7 @@
       },
       {
         "netclass": "Power",
-        "pattern": "BAT_N"
-      },
-      {
-        "netclass": "Power",
         "pattern": "+5V"
-      },
-      {
-        "netclass": "Power",
-        "pattern": "SW"
       }
     ]
   },
