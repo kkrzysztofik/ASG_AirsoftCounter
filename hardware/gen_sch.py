@@ -804,10 +804,11 @@ def project(root):
             # the U1/U2/U3 fine-pitch pads (earlier routes necked to ~0.19 mm; the current narrowest
             # track is 0.25 mm). Net-class widths (0.25 / 0.8 mm) are unchanged.
             "min_track_width": 0.15, "min_clearance": 0.2,
-            "min_via_diameter": 0.6, "min_through_hole_diameter": 0.3},
+            "min_via_diameter": 0.6, "min_through_hole_diameter": 0.3, **getattr(design, "DRC_RULES", {})},
             # gen_pcb.py loads every footprint fresh from the library, so the only possible mismatch
             # is its deliberate one: U3's thermal vias widened from 0.2 to 0.3 mm drill for JLCPCB.
-            "rule_severities": {"lib_footprint_mismatch": "ignore"}}},
+            "rule_severities": {"lib_footprint_mismatch": "ignore",
+                                **getattr(design, "RULE_SEVERITIES", {})}}},
         "net_settings": {
             "meta": {"version": 4},
             "classes": [

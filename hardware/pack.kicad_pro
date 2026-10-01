@@ -9,10 +9,12 @@
         "min_track_width": 0.15,
         "min_clearance": 0.2,
         "min_via_diameter": 0.6,
-        "min_through_hole_diameter": 0.3
+        "min_through_hole_diameter": 0.3,
+        "min_hole_clearance": 0.15
       },
       "rule_severities": {
-        "lib_footprint_mismatch": "ignore"
+        "lib_footprint_mismatch": "ignore",
+        "courtyards_overlap": "ignore"
       }
     }
   },

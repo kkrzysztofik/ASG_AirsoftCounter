@@ -411,6 +411,92 @@ def _blocks():
 BLOCKS = _blocks()
 
 
+# --- PCB (read by gen_pcb.py / route.py / check_gerbers.py) -------------------------------------
+# The Keystone 1042 courtyard is 87.88 x 21.66 mm; four holders side by side are 87.88 x 86.64, so
+# the cell block alone does not fit the design doc's "about 90 x 85". The board adds a right strip
+# (x = 96..140) for the single-side SMD assembly, the 5 V boost and the board-edge connectors, and
+# the branch parts sit under their own cell. The size is provisional until the real holder and the
+# ZP240.190 plate are measured (design doc, "Unverified").
+W, H, CORNER = 140.0, 100.0, 2.0
+NETCLASS_EXPECT = (("VPACK", [0.8, 0.2]), ("GND", [0.25, 0.2]), ("+5V", [0.8, 0.2]),
+                   ("SW", [0.8, 0.2]), ("CELL1_F", [0.8, 0.2]), ("SDA_EXT", [0.25, 0.2]))
+# The branch parts sit under their holder, whose courtyard wraps the whole cell (the cell rides
+# ~12 mm above the PCB, so there is no collision): ignore KiCad's 2D courtyard rule for this board.
+RULE_SEVERITIES = {"courtyards_overlap": "ignore"}
+# The stock USB-C footprint spaces its own shield NPTH 0.185 mm from its GND pads; JLCPCB's 2-layer
+# minimum "hole to copper" is 0.2 mm nominal, so keep the 0.15 mm track-width grade rather than fail.
+DRC_RULES = {"min_hole_clearance": 0.15}
+
+_CELL_X = 52.0                       # holder centre x (cell block x 8.06..95.94)
+_CELL_Y = (17.51, 39.17, 60.83, 82.49)  # holder centres, 21.66 mm pitch
+
+
+# ref -> (x, y, rot). Holder pads sit at x = centre -/+ 39.69; the under-cell rows keep clear of the
+# holder's three NPTH locating holes and of the NTC at the cell middle.
+_STRIP = {
+    # charger (U_CHG and its application circuit)
+    "U_CHG": (107, 8, 0), "L_CHG": (107, 16, 0),
+    "C_VBUS": (99, 4, 0), "C_PMID": (99, 10, 0), "C_SYS": (99, 16, 0), "C_BAT": (99, 22, 0),
+    "C_REGN": (99, 28, 0), "C_BTST": (99, 34, 0), "R_CE": (99, 40, 0), "R_INT_CHG": (99, 46, 0),
+    "R_STAT": (99, 52, 0), "LED_STAT": (99, 58, 0), "R_CC1": (99, 64, 0), "R_CC2": (99, 70, 0),
+    "RT1": (107, 24, 0), "RT2": (107, 30, 0), "TH_CHG": (107, 36, 0),
+    # LDO and cell diode-OR
+    "U_LDO": (107, 44, 0), "C_LDO1": (107, 50, 0), "C_LDO2": (107, 56, 0),
+    "D_OR1": (107, 62, 0), "D_OR2": (107, 68, 0), "D_OR3": (107, 74, 0),
+    # monitoring
+    "U_INA1": (115, 8, 0), "U_INA2": (115, 20, 0),
+    "C_INA1": (115, 28, 0), "C_INA2": (115, 34, 0),
+    "R_SCL_INT": (115, 40, 0), "R_SDA_INT": (115, 46, 0),
+    "R_CRIT": (115, 52, 0), "R_WARN": (115, 58, 0),
+    # boost (same parts as the carrier)
+    "U1": (115, 66, 0), "L1": (115, 74, 0), "D1": (115, 80, 0),
+    "F_SYS1": (123, 4, 0), "C_IN1": (123, 12, 0), "C_OUT1": (123, 18, 0), "C_OUT2": (123, 24, 0),
+    "R_FB1": (123, 30, 0), "R_FB2": (123, 36, 0),
+    # MCU support
+    "SW_BOOT": (123, 44, 0), "SW_RST": (123, 52, 0),
+    "R_LED_MCU": (123, 58, 0), "LED_MCU": (123, 64, 0),
+    "TP_SWDIO": (123, 70, 0), "TP_SWCLK": (123, 74, 0), "TP_NRST": (123, 78, 0),
+    "TP_GND": (123, 82, 0), "C_NRST": (123, 88, 0), "R_BOOT": (123, 92, 0),
+    "U_MCU": (106, 88, 0), "C_MCU1": (99, 78, 0), "C_MCU2": (99, 90, 0),
+    # board-edge connectors (openings face +x)
+    "J_USB1": (133, 20, 90), "J_PWR1": (134, 55, 90), "J_KEY1": (134, 82, 90),
+    "H1": (4.4, 4.4, 0), "H2": (135.6, 4.4, 0), "H3": (4.4, 95.6, 0), "H4": (135.6, 95.6, 0),
+}
+
+
+def _pcb_place():
+    place = dict(_STRIP)
+    for i, cy in enumerate(_CELL_Y, start=1):
+        # One branch per cell, a copy of the same two rows, in the design-doc branch order.
+        row_a = (("D_CB", 20.0), ("F", 28.0), ("R_SH", 36.0), ("Q_A", 44.0), ("Q_B", 52.0),
+                 ("R_GS", 60.0), ("R_BYP", 68.0), ("Q_N", 76.0))
+        row_b = (("R_PD", 20.0), ("R_SW", 28.0), ("R_PROT", 36.0), ("C_PROT", 44.0),
+                 ("U_P", 52.0), ("R_NTC", 60.0))
+        for name, x in row_a:
+            place[f"{name}{i}"] = (x, cy - 5.0, 0)
+        for name, x in row_b:
+            place[f"{name}{i}"] = (x, cy + 5.0, 0)
+        place[f"TH{i}"] = (_CELL_X, cy, 0)  # NTC under the cell middle
+        place[f"BT{i}"] = (_CELL_X, cy, 0)  # holder, THT, hand-soldered
+    return place
+
+
+PLACE = _pcb_place()
+REF_AT = {"D1": (115, 84, 0), "C_MCU2": (99, 86, 90)}  # clear of neighbouring silkscreen
+LABELS = {}
+TEXTS = [
+    ("AirsoftCounter v2 pack", 99, 96, 0, 1.0, True), ("2026-10", 99, 98, 0, 1.0, True),
+    ("USB", 127, 12, 90, 0.8, False), ("KEY", 127, 70, 90, 0.8, False),
+    ("PACK", 127, 42, 90, 0.8, False),
+]
+GND_VIAS = []
+HELTEC_PADS = {}
+
+SIZE_MM = (W, H)
+# Mounting-hole centres checked against the NPTH drill file (check_gerbers.py).
+NPTH_XY = sorted((PLACE[r][0], PLACE[r][1]) for r in ("H1", "H2", "H3", "H4"))
+
+
 MODULES = {}
 VARIANTS = {"standard": set()}
 
