@@ -17,7 +17,7 @@ import re
 import uuid
 from pathlib import Path
 
-import design
+from board import design
 
 HERE = Path(__file__).parent
 SYMDIR = Path("/usr/share/kicad/symbols")

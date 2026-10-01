@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pcbnew
 
-import design
+from board import design
 
 HERE = Path(__file__).parent
 PCB = HERE / "carrier.kicad_pcb"

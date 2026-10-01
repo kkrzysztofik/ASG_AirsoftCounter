@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-import design
+from board import design
 
 
 XML = Path(__file__).resolve().parent / "build" / "carrier.xml"

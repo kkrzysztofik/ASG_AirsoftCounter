@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pcbnew
 
-import design
+from board import design
 import gen_sch
 
 HERE = Path(__file__).parent
