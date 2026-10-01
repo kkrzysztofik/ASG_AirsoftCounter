@@ -14,6 +14,7 @@ correction (ORDERING.md lists the parts to check in the preview).
 /usr/bin/python3 jlc.py   (after `make fab` has built the Gerber zip)
 """
 import csv
+import os
 import re
 import sys
 import zipfile
@@ -24,14 +25,16 @@ import pcbnew  # pyright: ignore[reportMissingImports]
 from board import design  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).parent
+# Per-board output directory, exported by the Makefile (fab for the carrier, fab/pack for the pack).
+FAB = Path(os.environ.get("FAB", "fab"))
 PCB = HERE / f"{design.NAME}.kicad_pcb"
-ZIP = HERE / f"fab/{design.NAME}_gerbers_jlcpcb.zip"
+ZIP = HERE / FAB / f"{design.NAME}_gerbers_jlcpcb.zip"
 DEFAULT_VARIANT = next(iter(design.VARIANTS))  # carrier: deluxe; pack: standard
 
 
 def out(kind, variant):
-    """The default (first) variant is the unsuffixed fab/jlc_<kind>.csv; other variants get a suffix."""
-    return HERE / f"fab/jlc_{kind}{'' if variant == DEFAULT_VARIANT else '_' + variant}.csv"
+    """The default (first) variant is the unsuffixed jlc_<kind>.csv; other variants get a suffix."""
+    return HERE / FAB / f"jlc_{kind}{'' if variant == DEFAULT_VARIANT else '_' + variant}.csv"
 
 
 def natural(ref):
