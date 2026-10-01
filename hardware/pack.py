@@ -99,7 +99,7 @@ PARTS = {
     "F_SYS1": ("2A PTC", "Device:Polyfuse", FUSE1206),
     "U1": ("MT3608", "Regulator_Switching:MT3608", SOT23_6),
     "L1": ("10uH 2A", "Device:L", LRN6045),
-    "D1": ("SS34", "Device:SS34", SMA),
+    "D1": ("SS34", "Diode:SS34", SMA),
     "R_FB1": ("75k", *R0805),
     "R_FB2": ("10k", *R0805),
     "C_IN1": ("22uF 25V", "Device:C", C1206),
@@ -199,7 +199,7 @@ NETS = {
     # pack rail and charger
     "VPACK": [*(f"Q_B{i}.3" for i in range(1, 5)), *(f"R_BYP{i}.2" for i in range(1, 5)),
               "U_CHG.13", "U_CHG.14", "C_BAT.1"],
-    "SYS": ["U_CHG.15", "U_CHG.16", "C_SYS.1", "D_OR3.1", "D_OR3.2", "J_KEY1.1"],
+    "SYS": ["U_CHG.15", "U_CHG.16", "L_CHG.2", "C_SYS.1", "D_OR3.1", "D_OR3.2", "J_KEY1.1"],
     "KEY_OUT": ["J_KEY1.2", "F_SYS1.1"],
     "VBAT_SW": ["F_SYS1.2", "U1.5", "U1.4", "L1.1", "C_IN1.1", "J_PWR1.3"],
     "SW": ["L1.2", "U1.1", "D1.2"],
@@ -255,7 +255,7 @@ NETS = {
             "J_USB1.A1", "J_USB1.A12", "J_USB1.B1", "J_USB1.B12", "J_USB1.S1",
             "U_MCU.5", "C_MCU1.2", "C_MCU2.2", "C_NRST.2", "SW_RST.2", "R_BOOT.2",
             "LED_MCU.1", "R_CE.2",
-            "U1.2", "C_IN1.2", "C_OUT1.2", "C_OUT2.2",
+            "U1.2", "C_IN1.2", "C_OUT1.2", "C_OUT2.2", "R_FB2.2",
             "J_PWR1.1", "J_PWR1.2", "TP_GND.1"],
 }
 
