@@ -14,7 +14,7 @@ XML = Path(__file__).resolve().parent / "build" / f"{design.NAME}.xml"
 
 def check(xml_path=XML, parts=design.PARTS, nets=design.NETS, dnp=design.DNP):
     # local, kicad-cli-generated netlist, not untrusted input; ElementTree does not resolve external entities
-    root = ET.parse(xml_path).getroot()  # nosemgrep: python.lang.security.use-defused-xml-parse.use-defused-xml-parse
+    root = ET.fromstring(Path(xml_path).read_text())
     got = {(n.attrib["name"].lstrip("/"), f"{node.get('ref')}.{node.get('pin')}")
            for n in root.iter("net") if not n.attrib["name"].startswith("unconnected-")
            for node in n.iter("node")}

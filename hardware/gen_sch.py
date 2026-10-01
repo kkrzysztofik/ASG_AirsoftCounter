@@ -816,7 +816,7 @@ def project(root):
             # GND is not Power: both layers carry GND pours (route.py routes GND as a normal net, so
             # pours only add connectivity), and a 0.8 mm GND track can't reach
             # U2's A0-A2 (0.65 mm pitch TSSOP).
-            "netclass_patterns": [{"netclass": "Power", "pattern": p} for p in ("VBAT*", "BAT_N", "+5V", "SW")],
+            "netclass_patterns": [{"netclass": "Power", "pattern": p} for p in design.NETCLASS_POWER],
         },
         "erc": {"pin_map": PIN_MAP},
         "sheets": [[root, "Root"]],
