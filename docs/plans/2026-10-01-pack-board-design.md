@@ -192,12 +192,158 @@ The hardware flow is generator-based (`design.py` -> `gen_sch.py`/`gen_pcb.py` -
 board means a second design definition and a second set of fab outputs, plus removing the parts listed
 above from the carrier (and regenerating its BOM/CPL and `power_budget.py`).
 
+## Parts (settled 2026-10-01, from datasheets and live JLCPCB stock)
+
+Every LCSC number below was queried live against the JLCPCB parts API on 2026-10-01;
+library type (B = Basic, P = Preferred Extended, E = Extended), maker and stock are recorded.
+
+### Chosen parts
+
+| Item | Decision | LCSC | Type | Stock | Source |
+|---|---|---|---|---|---|
+| MCU | STM32C071KBT6, LQFP-32, `MCU_ST_STM32C0:STM32C071KBTx` | C42116633 | E | 600 | JLCPCB API |
+| Charger | BQ25601RTWR, QFN-24, `Battery_Management:BQ25601` | C468236 | E | 5877 | JLCPCB API |
+| Current monitor | INA3221AIRGVR, VQFN-16, `Power_Management:INA3221` | C181255 | E | 8652 | JLCPCB API |
+| Cell protector | XB8089D, SOP-8-EP, `local:XB8089D` | C79928 | E | 9381 | JLCPCB API |
+| LDO | XC6206P332MR, SOT-23-3, `Regulator_Linear:XC6206PxxxMR` | C5446 | B | 474563 | JLCPCB API |
+| P-FET (x8) | AO3401A, SOT-23, `Transistor_FET:AO3401A` | C15127 | B | 782223 | JLCPCB API |
+| N-FET | BSS138, SOT-23, `Transistor_FET:BSS138` | C7420339 | P | (carrier part) | `design.py` |
+| Diode-OR | BAT54C,215 (Nexperia), SOT-23, `Diode:BAT54C` | C37704 | E | 351362 | JLCPCB API |
+| Crowbar + boost diode | SS34, SMA, `Diode:SS34` | C8678 | B | 4440087 | JLCPCB API |
+| Charger inductor | Murata DFE322512F-1R5M, 1210, 1.5 uH, Irms 3.0 A, Isat 3.9 A, DCR 48 mOhm | C703084 | E | 4596 | Murata dynamic-model list + JLCPCB API |
+| Boost IC / L / caps | MT3608 + 10 uH 2 A + 22 uF 25 V, copied from the carrier | C84817 / C2046332 / C12891 | E / E / B | | `design.py` |
+| Branch fuse | Bourns SF-1206F500-2, 1206, 5 A fast, I2t 0.966 A2s | C48332 | E | 9975 | Bourns SF-1206F datasheet + JLCPCB API |
+| Shunt | TA-I RLS12FTCR020, 1206, 20 mOhm 1% | C163047 | E | 26562 | JLCPCB API |
+| NTC (x5) | Nanjing Shiheng CMFB 103F3435, 0805, 10k B3435 1% | C2889056 | E | 15625 | JLCPCB API |
+| Tact switch (BOOT0, NRST) | XKB TS-1187A-B-A-B, SMD 5.1x5.1 mm | C318884 | B | 477769 | JLCPCB API |
+| LED red (STAT) | NCD0805R1, 0805 | C84256 | B | 4820981 | JLCPCB API |
+| LED green (MCU status) | KT-0805G, 0805 | C2297 | B | 3140725 | JLCPCB API |
+| USB-C receptacle | HCTL HC-TYPE-C-16P-01A, `Connector_USB:USB_C_Receptacle_HCTL_HC-TYPE-C-16P-01A` | C2894897 | E | 43482 | JLCPCB API |
+| USB-C symbol | `Connector:USB_C_Receptacle_USB2.0_14P` | | | | KiCad 9.0.8 |
+| 6-pin XH | JST B6B-XH-A(LF)(SN), `Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical` | C144397 | E | 43646 | JLCPCB API |
+| 18650 holder | Keystone 1042, `Battery:BatteryHolder_Keystone_1042_1x18650`, hand-soldered | none (off-board) | | | KiCad footprint |
+| 4-pin XH | JST B4B-XH-A(LF)(SN), carrier part | C144395 | E | | `design.py` |
+
+The `BAT54C` guess in the plan ("C47546 or similar") is wrong: C47546 is a BAT54**S** (series), not
+common-cathode. Use C37704. There is no Basic BAT54C at JLC; it is Extended.
+
+### Datasheet facts
+
+**STM32C071KBT6** (DS14693 Rev 2, 2025-04; RM0490 Rev 5; both read 2026-10-01)
+
+- LQFP-32 pin numbers (KiCad symbol cross-checked against DS14693 Table 12 and Figure 6):
+  VDD 4, VSS 5, PF2-NRST 6, PA0-PA3 7-10, PA4 11, PA5 12, PA6 13, PA7 14, PB0 15, PB1 16, PB2 17,
+  PA8 18, PA9 19, PC6 20, PA10 21, PA11 22, PA12 23, PA13 24, PA14-BOOT0 25, PA15 26, PB3 27,
+  PB4 28, PB5 29, PB6 30, PB7 31, PB8 32. Unused/NC: PB8, PB9, PC14, PC15, PA9, PA10, PC6.
+- USB FS device on PA11/PA12 is **crystal-less** (DS14693 section 3.20: "USB 2.0 FS device
+  (crystal-less)"); the HSI48 oscillator plus CRS (SOF-based clock recovery) covers USB clock
+  accuracy (DS14693 sections 3.16.2/3.20). No crystal parts.
+- **Internal DP pull-up exists**: USB electrical table 67 gives `R_PU` on PA12 (USB_DP) 0.9-1.575 kOhm
+  (typ 1.25 k). No external 1.5 k.
+- ROM bootloader over USB on PA11/PA12 (DS14693 section 3.5). Boot selection (RM0490 Table 9 and
+  FLASH_OPTR, 0x1FFF7800): the factory **option bytes are nBOOT_SEL = 1, NBOOT0 = 1, NBOOT1 = 1**,
+  i.e. the **PA14-BOOT0 pin is ignored by default** and the NBOOT0 option bit selects main flash.
+  Because a blank chip has the FLASH EMPTY flag set, first power-up is forced to system memory (USB
+  DFU). Consequence: the BOOT0 button only does anything after an option-byte change that sets
+  nBOOT_SEL = 0 (legacy BOOT0 pin) or NBOOT0 = 0; the board still works unflashed. Keep the button
+  as a convenience for later firmware, not as the DFU entry path.
+- NRST: factory `NRST_MODE = 11` (bidirectional reset, legacy NRST pin), so PF2-NRST works as an
+  input with the 100 nF + reset button. It has an embedded weak pull-up (DS14693 pin table).
+- Stop-mode current (DS14693 Table 32, 3 V, 25 C): typ **85.5 uA** all clocks off, 86.0 uA with
+  RTC + LSE bypass; Standby typ 7.2 uA (Table 33); Shutdown lower (Table 34). A "tens of uA"
+  pack quiescent target is **not** reachable with the MCU in Stop mode: budget about 85 uA for the MCU.
+
+**BQ25601** (SLUSCK5A, March 2017, revised March 2023; read 2026-10-01)
+
+- Application circuit (section 10.2, Figure 10-1): SW-BTST bootstrap 0.047 uF, PMID 10 uF ceramic to
+  GND (pin table), SYS 10 uF, BAT 10 uF, REGN 4.7 uF / 10 V; inductor 1.5 MHz switcher,
+  `ISAT >= ICHG + IRIPPLE/2` (eq. 3), ripple 20-40 % of ICHG (section 10.2.2.1). Chosen 1.5 uH / 3.9 A.
+- Charging defaults with no host (Table 9-2): **ICHG 2.048 A, VREG 4.208 V**, precharge/termination
+  180 mA, JEITA profile, 10 h safety timer. The I2C watchdog restores these defaults if the MCU hangs.
+- PSEL (pin 2): **high = 500 mA, low = 2.4 A** input current limit in default mode (pin table, Table 9-1).
+  Tie PSEL to GND for the ~2 A charge target.
+- TS (pin 11, section 9.3.7.4 and Figure 9-5): resistor network from REGN to TS to GND in parallel with
+  the thermistor. TI's worked 0-60 C example for a 103AT gives **RT1 = 5.23 kOhm (REGN-TS) and
+  RT2 = 30.9 kOhm (TS-GND)** with the 10k B3435 NTC. Use those values (TH_CHG). Check at 25 C:
+  RT2||NTC = 30.9k||10k = 7.56k, VTS/VREGN = 59 % inside the VT1/VT5 window.
+- STAT (pin 4): open-drain, **6 mA sink** (Table: STAT output sink current), 10k + LED to a logic rail
+  (pin table), LOW = charging, HIGH = done/disabled, blinking = fault (section 9.3.7).
+- /CE (pin 9): LOW = charging enabled. Pull down 10k so charging runs with the MCU unpowered.
+- /INT (pin 7): open-drain, 10k pull-up.
+- /PG (pin 3): open-drain power-good. Not used: leave unconnected.
+- /QON (pin 12): has an **internal 200 kOhm pull-up** (section 9.4.4.4), so it is safe to leave
+  unconnected; not used.
+- VAC is pin 1, VBUS is pin 24 (separate pins on the symbol): tie both to USB VBUS.
+
+**INA3221** (SBOS576C, revised September 2026; read 2026-10-01)
+
+- A0 straps (Table 7-1): **GND = 0x40, VS = 0x41, SDA = 0x42, SCL = 0x43**. So U_INA1 A0 = GND (0x40),
+  U_INA2 A0 = +3V3 (0x41).
+- Pin numbers (Table 5-1): IN+1 12, IN-1 11, IN+2 15, IN-2 14, IN+3 2, IN-3 1; VS 4, GND 3, VPU 16,
+  PV 10, Critical 9, Warning 8, TC 13, SDA 7, SCL 6, A0 5. Matches `Power_Management:INA3221`.
+- **VPU (pin 16)** is the power-valid pull-up rail; the typical application connects it to the supply
+  rail. Tie VPU to +3V3 (same as VS) with the 100 nF bypass (section 9.3: 0.1 uF close to VS/GND).
+- Unused channels (section 7.4.2): connect the unused-channel **IN- externally to a used channel** and
+  **float IN+**, or leave the channel unmonitored. For U_INA2 only ch1 is used, so short IN+2/IN-2 and
+  IN+3/IN-3 together onto the ch1 IN- net (cell-4 sense); differential 0 V, common mode within range.
+- Absolute maximum (section 6.1): differential (IN+)-(IN-) +/-26 V; **common-mode (IN+ + IN-)/2
+  -0.3 V to 26 V**. The -0.3 V floor is the crowbar-event limit called out in the design.
+- Input filter (section 7.4.3, Figure 7-8): **series R <= 10 Ohm** per input plus 0.1-1 uF to GND.
+  Use 10 Ohm + 100 nF on each used IN+/IN- pair; place the filter at the shunt (Kelvin).
+
+**XB8089D** (XySemi datasheet Apr 2022; read 2026-10-01)
+
+- Protection thresholds: overcharge 4.25 V typ (4.2-4.3), overcharge release 4.10 V,
+  overdischarge 2.5 V typ, overdischarge release 3.0 V. FET R_SS(ON) 20 mOhm typ.
+- Overcurrent (section "Detection Current" / "Detection Delay Time"): **Overdischarge Current 1
+  typ 10 A, delay 10 ms; Overdischarge Current 2 typ 15 A, delay 0.4 ms; Load Short-Circuit typ
+  40 A, delay 75 us.** Current consumption in normal operation 6-12 uA.
+- Recovery: overdischarge is released by charging (VDR) or by removing the load; overcurrent/
+  short-circuit release when the load is removed (VM pin returns to GND). No latch, no host reset.
+- **Fuse ruling.** The plan/design text said "5 A fast-blow, above the XB8089D overcurrent trip".
+  The datasheet trip is 10 A, so a 5 A fuse is *below* it. The correct rule, and what the board uses:
+  the fuse sits **above the maximum per-cell current** (about 2 A) and **below the crowbar fault
+  current**, so it is the slow backup to the protector rather than a nuisance blow. Crowbar check:
+  Bourns SF-1206F500-2 melting I2t = 0.966 A2s; at 20-30 A it clears in 0.966/400 .. 0.966/900 =
+  **1.1-2.4 ms**. SS34 non-repetitive surge is **100 A for 8.3 ms** (Vishay/onsemi SS32-SS39), i.e.
+  I2t about 41 A2s, so the diode sees under 3 A2s during clearing. The XB8089D short-circuit trip
+  (40 A, 75 us) normally acts first; the fuse covers a sustained 10-15 A that the protector times out
+  on and a failed protector during a reversed cell.
+
+**XC6206P332MR** (Torex XC6206 series datasheet; read 2026-10-01): Iq **1.0 uA typ (3.0 uA max)**,
+VIN 1.8-6.0 V, IOUT 200 mA (500 mA current limit). Confirmed C5446 is the -G SOT-23-3 Basic part.
+
+**AO3401A** (AOS datasheet; read 2026-10-01): RDS(ON) **<= 85 mOhm at VGS = -2.5 V (typ 60 mOhm)**,
+<= 60 mOhm at -4.5 V, ID -4.0 A. Back-to-back at a 3.0 V cell is about 120-130 mOhm per branch.
+
+**Gate resistor:** 1 MOhm per cell (4 uA at 4.2 V, 16 uA for four) as already in the per-cell diagram.
+
+### Footprints
+
+All named footprints/symbols exist in KiCad 9.0.8: `Connector_USB:USB_C_Receptacle_HCTL_HC-TYPE-C-16P-01A`,
+`Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical`,
+`Battery:BatteryHolder_Keystone_1042_1x18650`,
+`Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm` (BQ25601),
+`Package_DFN_QFN:Texas_RGV0016A_VQFN-16-1EP_4x4mm_P0.65mm_EP2.1x2.1mm` (INA3221 RGV).
+
+**18650 holder:** the Keystone 1042 footprint F.Fab body is **77.78 x 21.37 mm** (x = ±38.89,
+y = ±10.685); the contact-tab guides reach x = ±43.94. Four holders side by side are about
+**85.5 mm** wide (4 x 21.37 mm) plus margin, and 77.8 mm long. That fixes the board outline in P4.1;
+the plan's "77 mm long" is the holder body, not the footprint.
+
 ## Unverified (check before building)
 
-- XB8089D overcurrent trip and release/recovery behaviour (datasheet unreadable from the dev environment).
-- Fuse rating vs XB8089D trip and crowbar I2t; Schottky surge rating.
-- STM32C071: USB DFU on the LQFP-32, two I2C peripherals, Stop-mode current, embassy USB support.
-- BQ25601 default charge current and TS behaviour with a 10k NTC; LDO choice and total quiescent current.
-- AO3401A RDS(on) at -3.0 V gate drive (empty cell).
-- Holder dimensions and the Kradex plate pattern; 6-pin XH LCSC part and stock.
-- 18650 capacity (3350 mAh is the datasheet minimum used by `power_budget.py`).
+Closed on 2026-10-01 by the datasheet and stock check above: XB8089D trip/release, fuse and Schottky
+I2t, STM32C071 USB DFU / crystal-less USB / Stop current, BQ25601 defaults and TS network, AO3401A
+RDS(on) at low gate voltage, holder and 6-pin XH LCSC/stock.
+
+Still open, and only answerable with real hardware or the pack firmware:
+
+- Long-term reliability of protected cells in parallel and the crowbar protection once a real fuse
+  and a sacrificial cell are used (bench item).
+- Pack quiescent current as built: the model puts the MCU Stop contribution at about 85 uA, so the
+  "tens of uA" target is revised upward and measured on the bench (P6.1).
+- Total LDO + protector + monitor quiescent current as built.
+- 18650 capacity (3350 mAh is the datasheet minimum used by `power_budget.py`) for the actual cells.
+- embassy-stm32 support level for STM32C071 USB and Stop mode (firmware, deferred).
+- ZP240.190 plate and enclosure hole pattern; the holder footprint fixes the board outline (P4.1).
