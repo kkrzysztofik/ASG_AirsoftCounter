@@ -1,9 +1,12 @@
 # AirsoftCounter pack board: 4x18650 power subsystem
 
 Date: 2026-10-01
-Status: design approved 2026-10-01. Hardware is next; pack firmware is designed here but its
-implementation is deferred. Lines marked "verified" were checked against a source; everything else is
-listed under "Unverified" at the end.
+Status: hardware done 2026-10-01 (pack.py generated, routed and fabbed; `make boards` green). Pack
+firmware is designed here but its implementation is deferred. Lines marked "verified" were checked
+against a source; everything else is listed under "Unverified" at the end. The generated board is
+140 x 100 mm: the four Keystone 1042 courtyards alone are 87.88 x 86.64, so the "about 90 x 85"
+earlier in this document is superseded. Re-check that, and the hole pattern, against the real holder
+and the ZP240.190 plate before ordering the enclosure.
 
 ## Goal
 
@@ -11,6 +14,11 @@ Move all battery and power management off the carrier (`2026-09-28-esp32-lora-ca
 onto a separate **pack board** that holds four 18650 cells and manages each cell:
 
 - **Runtime:** 4 x 3.35 Ah (Samsung INR18650-35E) = about 13.4 Ah, about double the current 2 cells.
+  With `power_budget.py` (2026-10-01, still with the 100 mA backlight estimate): 33 h deluxe game with
+  the backlight on and 60 h with it off at 20 C; 78 days parked with the key left on; 109 uA and so
+  about 12 years for the pack's own electronics with the key off (cell self-discharge dominates after
+  a season). The ~150 mOhm branch drop is not modelled: below 0.3 V at these currents, inside the
+  0.84 usable-capacity derate.
 - **Per-cell management:** short/overcurrent, over/under-voltage, temperature and current
   monitoring, and disabling a failing cell, so shorts, imbalance and ageing are caught.
 - **Own USB-C charging** (about 2 A), so the Heltec USB-C becomes programming-only.

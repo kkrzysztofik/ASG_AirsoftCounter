@@ -56,6 +56,10 @@ Spare: GPIO43 and the top 4-pin strip. Left unconnected.
 
 ### Power path
 
+**Superseded 2026-10-01:** the cell protector, key switch, 2 A PTC and MT3608 boost moved to the pack
+board (`docs/plans/2026-10-01-pack-board-design.md`). The carrier now takes GND / GND / VBAT_SW / +5V
+/ SDA_3V3 / SCL_3V3 on a 6-pin J_PWR1; J_BAT, J_KEY and the boost no longer exist here.
+
 ```
 1S Li-ion (2x18650 parallel) ─J_BAT─ PTC 1A ─ key switch (J_KEY) ─ VBAT_SW ─┬─ J_HBAT ─> Heltec SH1.25 battery socket
                                                                             ├─ 220 µF bulk

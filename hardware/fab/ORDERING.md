@@ -1,6 +1,12 @@
-# Ordering the carrier PCB from JLCPCB (bare board or assembled)
+# Ordering the PCBs from JLCPCB (bare board or assembled)
 
-Regenerate everything with `cd hardware && make all` (it exits non-zero if ERC, DRC or the gerber check fails).
+**Two boards.** The carrier is `fab/carrier_gerbers_jlcpcb.zip` (90 x 60 mm, sections 1-6 below).
+The 4x18650 pack board is `fab/pack/pack_gerbers_jlcpcb.zip` (140 x 100 mm, section 7). They are two
+separate orders; the Economic setup fee is per order per Extended part type, so the totals below are
+per board.
+
+Regenerate everything with `cd hardware && make boards` (both boards; it exits non-zero if ERC, DRC
+or the gerber check fails, for either board).
 
 ## 1. Upload
 
@@ -73,21 +79,20 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 1. Upload `fab/carrier_gerbers_jlcpcb.zip` and fill in the form as in section 2.
 2. Turn on "PCB Assembly". Choose **Economic**, assemble the **Top** side, and set how many boards to assemble (2 or all 5).
 3. Upload **`fab/jlc_bom.csv`** as the BOM and **`fab/jlc_cpl.csv`** as the CPL / pick-and-place file.
-4. Check the parts matching. There are 20 BOM lines, and each should match the LCSC number in its row with stock for your quantity. Nothing should be left unmatched or skipped.
+4. Check the parts matching. There are 14 BOM lines, and each should match the LCSC number in its row with stock for your quantity. Nothing should be left unmatched or skipped.
 5. Open the 3D placement preview and do the checks below before you confirm.
 
 **Through-hole parts are included**: J2/J3 (1x18 sockets) and the 9 JST-XH headers. JLC solders them by wave soldering and charges per THT joint on top of the SMD assembly. The price shows on the form. The old THT electrolytics (220 µF C_BULK1, 100 µF C_NFC1) are gone: the bulk capacitors are now 1206 ceramics (2x 47 µF on VBAT_SW, 100 µF on 3V3).
 
 **Setup fees.** Economic PCBA charges a setup (feeder loading) fee, about $3 per order, for each **SMD Extended** part type. Basic and Preferred Extended parts don't have it, and through-hole parts don't either (JLC lists them as Extended, but they are wave-soldered). This board has:
 
-- **6 SMD Extended types (fee):** U4 (XB8089D cell protection, C79928), U1 (MT3608, C84817), L1 (C2046332), F1 (2 A PTC 1206L200/16NR, C22374899), U2 (TCA9534PWR, C783615) and U3 (NS4168, C910588). About $18 per order.
-- **2 through-hole Extended types (no loading fee, per-joint THT charge instead):** J2/J3 socket (C2905422) and the JST-XH 4-pin used for all 9 off-board connectors (C144395).
-- None of the six has a Basic or Preferred replacement (JLC parts API, 2026-09-30: boost converters, 10 uH power
-  inductors, PTC fuses, I2C expanders, I2S/class-D amps and Li-ion protection ICs were searched). The only ways to cut the
+- **2 SMD Extended types (fee):** U2 (TCA9534PWR, C783615) and U3 (NS4168, C910588). About $6 per order. (U4, U1, L1 and F1 moved to the pack board in P5; see section 7.)
+- **3 through-hole Extended types (no loading fee, per-joint THT charge instead):** J2/J3 socket (C2905422), the JST-XH 4-pin used for the off-board connectors (C144395) and J_PWR1 (JST-XH 6-pin, C144397).
+- None of the two SMD Extended types has a Basic or Preferred replacement (JLC parts API, 2026-09-30: I2C expanders and I2S/class-D amps were searched). The only ways to cut the
   fee are the Budget variant (no U3) or hand-soldering some of them yourself.
 - Cheaper alternatives for U2 and U3 that were considered are in `PART_ALTERNATIVES.md`; other review findings are in `PARTS_REVIEW.md`.
 - **2 Preferred Extended types (no fee):** BSS138 (Q_SDA1/Q_SCL1 and the three low-side drivers, C7420339) and the 75k resistor (R_FB1, C17819).
-- **10 Basic types:** everything else, including the ceramic bulk capacitors C_BULK1/C_BULK2 (47 µF 10 V, C96123) and C_NFC1 (100 µF 6.3 V, C15008), and the 0 Ω LED jumpers R_LLR1/R_LLB1 (C17477).
+- **8 Basic types:** everything else, including the ceramic bulk capacitors C_BULK1/C_BULK2 (47 µF 10 V, C96123) and C_NFC1 (100 µF 6.3 V, C15008), and the 0 Ω LED jumpers R_LLR1/R_LLB1 (C17477).
 
 **Placement preview checks.** The CPL uses KiCad's rotations with no JLC corrections. Sources disagree on the SOT-23 offset (180° or −90°), and JLC's engineers correct rotation using the silkscreen polarity marks. Mid X/Y is the centre of each part's courtyard, so the through-hole parts sit on their holes. In the preview, check:
 
@@ -98,8 +103,9 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 | U3 (NS4168, eSOP-8) | The pin-1 dot sits at the silkscreen pin-1 mark (U3 is rotated 90°: pin 1 is at the lower left, towards J_BTN_B1). The exposed pad is centred on the square pad with its vias. |
 | Q_SDA1, Q_SCL1, Q_LR1, Q_LB1, Q_BZ1 (SOT-23) | The single pin (drain, pin 3) is on the single-pad side. These are the parts most likely to be off by 90° or 180°. |
 | D1 (SMA), D_FLY1 (SOD-123) | The cathode band is on the silkscreen band side. |
-| U4 (XB8089D, SOIC-8-EP) | The pin-1 dot sits at the silkscreen pin-1 mark (upper left, towards C_IN1). The exposed pad is centred on the large pad. |
+| U4 (XB8089D, SOIC-8-EP) | gone: the protector is on the pack board now (section 7). |
 | J2, J3 | Pin 1 is on the square pad at the USB end, and the socket covers all 18 holes. |
+| J_PWR1 (6-pin XH) | The latch/key side faces the board edge, and pin 1 is at the left (see the silkscreen "PACK" label: GND GND BAT 5V SDA SCL). |
 | JST-XH headers | The latch/key side faces the same way as the silkscreen outline. |
 
 If a part is wrong, fix its `Rotation` in `fab/jlc_cpl.csv` (degrees, counter-clockwise positive) and upload the file again. You can also leave it and note it in the order, because JLC's engineers follow the silkscreen polarity marks. Don't edit the CSVs by hand as a long-term fix: `make all` rewrites them.
@@ -110,8 +116,8 @@ If a part is wrong, fix its `Rotation` in `fab/jlc_cpl.csv` (degrees, counter-cl
 and `COSTS.md`). Order the same Gerber zip, then upload **`fab/jlc_bom_budget.csv`** and
 **`fab/jlc_cpl_budget.csv`** instead. Differences from the steps above:
 
-- 19 BOM lines and 49 placements (Deluxe: 20 and 55). Nothing else in the form changes.
-- **5 SMD Extended types**, not 6: U3 (NS4168, C910588) is not fitted, so its setup fee is gone. Preferred (2) and Basic (10) counts are unchanged.
+- 13 BOM lines and 36 placements (Deluxe: 14 and 43). Nothing else in the form changes.
+- **1 SMD Extended type**, not 2: U3 (NS4168, C910588) is not fitted, so its setup fee is gone. The Preferred (1) and Basic (8) counts are unchanged.
 - Not fitted: U3, C_AMP1, C_AMP2, R_SD1, J_SPK1 and J_NFC1. In the placement preview, check that none of them appear.
 - Buy the speaker and the PN532 only if you add those modules later; the footprints stay empty on the board.
 
@@ -126,8 +132,9 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 - 2x ONPOW LAS1-AGQ-11E/x/6V IP67 pushbuttons (6 V ring LED with a built-in resistor, so R_LLR1/R_LLB1 are 0 Ω jumpers; fit a resistor there to dim an LED)
 - Active 5 V buzzer
 - Weatherproof **8 Ω, 2 W speaker** on J_SPK (see below)
-- IP65 key switch
-- 2x18650 holder and matched cells
+- IP65 key switch (its lead goes to the pack board's J_KEY1)
+- 4x Keystone 1042 holders (hand-soldered on the pack board) and 4 matched INR18650-35E cells
+- JST-XH 6-pin cable, straight 1:1, carrier J_PWR1 <-> pack J_PWR1 (pin 1 to pin 1)
 - IP67 USB-C panel extension
 - u.FL-to-SMA bulkhead pigtail and an 868 MHz antenna
 - SH1.25-to-XH battery pigtail (for the Heltec battery input)
@@ -138,3 +145,46 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 **Speaker.** U3 (NS4168) drives J_SPK as a bridge-tied load (BTL): both pins switch, and neither is ground. Connect the speaker's two leads straight to J_SPK (pin 1 OUT-, pin 2 OUT+, as on the silkscreen) and **never connect either lead to GND, the enclosure or a shared return wire**: that shorts an output stage. Use an **8 Ω, 2 W** speaker (Visaton K 50; roughly 0.6 W into 8 Ω from a 1S cell, estimated from the datasheet's 1.2 W into 4 Ω at 3.6 V), plus an ePTFE acoustic vent in the enclosure wall if needed.
 
 Other files in `fab/`: `schematic.pdf`, `top.png`/`bottom.png` (3D renders), `gerbers/` (created by `make all` and not committed: the unzipped Gerbers plus drill maps and a Gerber job file, which are not in the zip).
+
+## 7. The pack board (4 x 18650)
+
+`fab/pack/pack_gerbers_jlcpcb.zip`, 140 x 100 mm, 2 layers, 1.6 mm, rounded corners, top-side
+assembly only. Upload it as its own order and fill in the form as in section 2 (JLC auto-detects the
+size and layer count; if it shows something else, stop). Schematic `fab/pack/schematic.pdf`, renders
+`fab/pack/top.png` / `bottom.png`.
+
+**Assembly.** Same Economic PCBA flow. BOM `fab/pack/jlc_bom.csv` (38 lines), CPL
+`fab/pack/jlc_cpl.csv` (116 placements, all top side). **Hand-solder the four 18650 holders (BT1-BT4)**
+and the four test pads: the holders are not in the BOM/CPL (their cell contact pads are large SMD pads
+plus three non-plated locating pins each), and the DNP 0R bring-up bypasses R_BYP1-R_BYP4 are left off
+on purpose.
+
+**Setup fees (SMD Extended types, about $3 each).** 15 types, about $45 per order:
+BQ25601RTWR (C468236), STM32C071KBTx (C42116633), 2x INA3221 (C181255), XB8089D (C79928),
+MT3608 (C84817), the 1.5 uH charger inductor (C703084), the 10 uH boost inductor (C2046332),
+the USB-C receptacle (C2894897), the 20 mOhm shunt (C163047), the TS divider 5.23k/30.9k
+(C17739/C204398), the 10k NTC (C2889056), the 5 A fuse (C48332), the 2 A PTC (C22374899) and
+BAT54C (C37704). **2 through-hole Extended types** (no loading fee, per-joint charge):
+J_KEY1 (XH 4-pin, C144395) and J_PWR1 (XH 6-pin, C144397). **Preferred (no fee):** 75k (C17819) and
+BSS138 (C7420339). Everything else is Basic.
+
+**Placement preview checks** (the CPL carries KiCad rotations, no JLC corrections):
+
+| Part | What to check |
+|---|---|
+| U_CHG (BQ25601, QFN-24) | The pin-1 dot sits at the silkscreen pin-1 mark. |
+| U_MCU (STM32C071, LQFP-32) | The pin-1 dot sits at the silkscreen pin-1 mark. |
+| U_INA1, U_INA2 (VQFN-16) | The pin-1 dot sits at the silkscreen pin-1 mark; the exposed pad is centred. |
+| Q_A*/Q_B*/Q_N* (SOT-23) | The single pin (drain, pin 3) is on the single-pad side. Most likely to be off by 90/180 deg. |
+| D_CB*, D_OR*, D1 (SMA / SOT-23) | The cathode band is on the silkscreen band side. |
+| J_USB1 (USB-C) | The opening faces the right board edge (the "USB" silk); the shield pads straddle their holes. |
+| BT1-BT4 (holder) | Not in the CPL. The silkscreen `+` marks the positive contact; the four holders must all face the same way. |
+| LED_STAT, LED_MCU | The cathode (bar) is on the silkscreen band side. |
+
+**Board facts.** 140 x 100 mm, 1 oz; 195 vias of 0.6/0.3 mm (tented); signal tracks 0.25 mm, power
+0.8 mm (0.15 mm rule for necks into the fine-pitch QFN/LQFP/VQFN pads); NPTH: 4 x 3.2 mm M3
+mounting, 12 holder locating pins (2.39/3.45 mm) and 2 USB-C shell pins (0.65 mm); PTH 0.95/1.0 mm
+(J_KEY1/J_PWR1) and 0.6 mm (the USB-C shell). GND pours on both layers.
+
+**Note.** The outline and the M3 hole pattern are provisional: the design doc's Unverified list still
+holds "measure the real holder and the ZP240.190 plate". Check them before ordering an enclosure.
