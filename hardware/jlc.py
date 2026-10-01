@@ -24,8 +24,8 @@ import pcbnew
 from board import design
 
 HERE = Path(__file__).parent
-PCB = HERE / "carrier.kicad_pcb"
-ZIP = HERE / "fab/carrier_gerbers_jlcpcb.zip"
+PCB = HERE / f"{design.NAME}.kicad_pcb"
+ZIP = HERE / f"fab/{design.NAME}_gerbers_jlcpcb.zip"
 
 
 def out(kind, variant):
@@ -54,7 +54,7 @@ def bom_rows(variant):
 def board_outline():
     """Edge.Cuts extent from the Gerber itself: (xmin, xmax, ymin, ymax) in mm."""
     with zipfile.ZipFile(ZIP) as z:
-        edge = z.read("carrier-Edge_Cuts.gm1").decode()
+        edge = z.read(f"{design.NAME}-Edge_Cuts.gm1").decode()
     xs, ys = zip(*((int(x) / 1e6, int(y) / 1e6) for x, y in re.findall(r"^X(-?\d+)Y(-?\d+)", edge, re.M)))
     return min(xs), max(xs), min(ys), max(ys)
 

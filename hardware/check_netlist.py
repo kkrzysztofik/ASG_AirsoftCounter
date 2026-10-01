@@ -1,7 +1,7 @@
 """Assert the exported KiCad netlist matches design.py.
 
-kicad-cli sch export netlist --format kicadxml -o build/carrier.xml carrier.kicad_sch
-/usr/bin/python3 check_netlist.py [build/carrier.xml]
+kicad-cli sch export netlist --format kicadxml -o build/<BOARD>.xml <BOARD>.kicad_sch
+/usr/bin/python3 check_netlist.py [build/<BOARD>.xml]
 """
 import sys
 from pathlib import Path
@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from board import design
 
 
-XML = Path(__file__).resolve().parent / "build" / "carrier.xml"
+XML = Path(__file__).resolve().parent / "build" / f"{design.NAME}.xml"
 
 
 def check(xml_path=XML, parts=design.PARTS, nets=design.NETS, dnp=design.DNP):

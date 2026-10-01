@@ -1,9 +1,9 @@
-"""Autoroute carrier.kicad_pcb with Freerouting, add the F.Cu GND pour, fill zones, save in place.
+"""Autoroute <BOARD>.kicad_pcb with Freerouting, add the F.Cu GND pour, fill zones, save in place.
 
 Input must be the unrouted board straight from gen_pcb.py: a board that already has unlocked tracks
 or vias is refused (re-run gen_pcb.py first) rather than stripped, so a half-routed board never gets
 reused. gen_pcb.py's locked GND vias and ties go to Freerouting as fixed wiring and are kept.
-Loads the board in place so KiCad picks up the net classes from carrier.kicad_pro beside it.
+Loads the board in place so KiCad picks up the net classes from <BOARD>.kicad_pro beside it.
 Run from anywhere: /usr/bin/python3 route.py
 """
 import re
@@ -14,6 +14,7 @@ from pathlib import Path
 import pcbnew
 
 import gen_pcb
+from board import design
 
 JAR = gen_pcb.HERE / "tools" / "freerouting-2.4.1.jar"
 PASSES = 100
@@ -21,7 +22,7 @@ TIMEOUT_S = 600
 
 
 def load():
-    gen_pcb.verify()  # rules + per-net classes resolve (i.e. carrier.kicad_pro is beside the board)
+    gen_pcb.verify()  # rules + per-net classes resolve (i.e. <BOARD>.kicad_pro is beside the board)
     return pcbnew.LoadBoard(str(gen_pcb.PCB))
 
 
@@ -71,7 +72,7 @@ def main():
     b_gnd = [z for z in board.Zones() if z.GetZoneName() == "GND"]
     if len(b_gnd) != 1:
         raise SystemExit(f"expected one GND pour from gen_pcb.py, found {len(b_gnd)}")
-    f_gnd = gen_pcb.zone(board, "GND_F", 0, 0, gen_pcb.W, gen_pcb.H, lset=gen_pcb.layers(pcbnew.F_Cu))
+    f_gnd = gen_pcb.zone(board, "GND_F", 0, 0, design.W, design.H, lset=gen_pcb.layers(pcbnew.F_Cu))
     f_gnd.SetNet(board.FindNet("GND"))
     f_gnd.SetAssignedPriority(0)
     f_gnd.SetLocalClearance(b_gnd[0].GetLocalClearance())
@@ -83,7 +84,7 @@ def main():
     unconnected = board.GetConnectivity().GetUnconnectedCount(False)
     if unconnected:
         raise SystemExit(f"{unconnected} unconnected items after SES import + fill")
-    if not pcbnew.SaveBoard(str(gen_pcb.PCB), board, True):  # True: leave carrier.kicad_pro alone
+    if not pcbnew.SaveBoard(str(gen_pcb.PCB), board, True):  # True: leave <BOARD>.kicad_pro alone
         raise SystemExit("save failed")
     gen_pcb.verify()
     print(f"wrote {gen_pcb.PCB.name}: {len(board.GetTracks())} tracks/vias, 0 unconnected")

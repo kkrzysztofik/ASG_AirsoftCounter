@@ -217,6 +217,176 @@ def assembled(variant="deluxe"):
             if r not in DNP | dropped and sym != "Mechanical:MountingHole"]
 
 
+
+# --- layout (read by gen_sch.py / gen_pcb.py / check_gerbers.py) ---
+NAME = "carrier"
+TITLE = "AirsoftCounter v2 carrier"
+# Nets that get the wider Power class: gen_sch.py writes them into .kicad_pro, gen_pcb.verify checks.
+NETCLASS_POWER = ("VBAT*", "BAT_N", "+5V", "SW")
+# (net, [track width, clearance]) the reloaded board must resolve (gen_pcb.verify).
+NETCLASS_EXPECT = (("VBAT_SW", [0.8, 0.2]), ("GND", [0.25, 0.2]), ("+5V", [0.8, 0.2]),
+                   ("SW", [0.8, 0.2]), ("SPK_P", [0.25, 0.2]), ("SDA_3V3", [0.25, 0.2]))
+
+RAILS = ("GND", "+3V3", "+5V", "VBAT_SW")
+# Power ports name their net by Value, so VBAT_SW reuses the stock +BATT arrow: a stock
+# symbol keeps ERC's library check (lib_symbol_issues) clean with no ignore.
+PORT_LIB = {"GND": "power:GND", "+3V3": "power:+3V3", "+5V": "power:+5V", "VBAT_SW": "power:+BATT"}
+NC_PARTS = {"J2", "J3"}  # every unconnected pin gets a no-connect flag
+NC_PINS = {"U1.6",  # MT3608 NC
+           "U2.11", "U2.12"}  # TCA9534 P6/P7 spare
+
+
+# --- Layout: blocks of hand-placed parts ---
+# Block: title, sheet origin (x, y), size (w, h), parts {ref: (dx, dy, rot, mirror)},
+# wired rails (drawn as wires in this block, with one power port each in "tags"),
+# tags {net: [(dx, dy, dir)]}: a global label (or the power port of a wired rail) at that point,
+# pointing dir; flags [(net, dx, dy)]: a PWR_FLAG wired to a port of that rail;
+# fields {ref: {"Reference"/"Value": (dx, dy, justify)}}: horizontal text at that offset from the part.
+# Nets without a tag get a label on a wire (one-block nets) or at a pin (a lone pin in a block).
+def _driver(x0, n, load):
+    """One low-side driver at x offset x0: gate resistor, pull-down, BSS138, load resistor."""
+    parts = {f"R_G{n}1": (x0 + 10.16, 38.1, 90, None), f"R_PD{n}1": (x0 + 17.78, 45.72, 0, None),
+             f"Q_{n}1": (x0 + 33.02, 38.1, 0, None)}
+    if load:
+        parts[f"R_L{n}1"] = (x0 + 35.56, 16.51, 180, None)
+    return parts
+
+
+BLOCKS = [
+    {"title": "Battery, key switch, 5 V boost", "at": (12.7, 12.7), "size": (190.5, 63.5),
+     "parts": {"J_BAT1": (7.62, 25.4, 0, "y"), "F1": (35.56, 22.86, 90, None),
+               "J_KEY1": (53.34, 17.78, 90, None), "J_HBAT1": (60.96, 38.1, 0, None),
+               "C_BULK1": (73.66, 31.75, 0, None), "C_BULK2": (86.36, 31.75, 0, None),
+               "C_IN1": (99.06, 31.75, 0, None), "U1": (121.92, 40.64, 0, None),
+               "L1": (121.92, 22.86, 90, None), "D1": (140.97, 22.86, 180, None),
+               "R_FB1": (152.4, 35.56, 0, None), "R_FB2": (152.4, 46.99, 0, None),
+               "C_OUT1": (165.1, 31.75, 0, None), "C_OUT2": (177.8, 31.75, 0, None),
+               "U4": (38.1, 43.18, 0, None), "C_PROT1": (17.78, 45.72, 0, None),
+               "R_PROT1": (17.78, 33.02, 0, None)},
+     "wired": {"VBAT_SW", "+5V"},
+     "tags": {"VBAT_SW": [(66.04, 22.86, "U")], "+5V": [(185.42, 22.86, "U")], "PROT_VDD": [(22.86, 40.64, "U")]},
+     "flags": [("GND", 7.62, 55.88), ("VBAT_SW", 30.48, 55.88), ("+5V", 53.34, 55.88)],
+     "fields": {"J_KEY1": {"Reference": (-5.08, -1.27, "right"), "Value": (-5.08, 1.27, "right")},
+                "U4": {"Reference": (-7.62, -6.35, "left"), "Value": (7.62, -6.35, "right")}}},
+    {"title": "I2S speaker amp", "at": (208.28, 12.7), "size": (104.14, 63.5),
+     "parts": {"U3": (55.88, 38.1, 0, None), "R_SD1": (25.4, 40.64, 90, None),
+               "R_SDPD1": (17.78, 45.72, 0, None),
+               "C_AMP1": (68.58, 17.78, 0, None), "C_AMP2": (81.28, 17.78, 0, None),
+               "J_SPK1": (96.52, 30.48, 0, "x")},
+     "tags": {"AMP_SD": [(13.97, 40.64, "L")]}},
+    {"title": "Heltec V4 headers", "at": (317.5, 12.7), "size": (86.36, 76.2),
+     "parts": {"J2": (30.48, 38.1, 0, None), "J3": (73.66, 38.1, 0, None)},
+     "flags": [("+3V3", 40.64, 68.58)]},
+    {"title": "I2C level shifter, LCD (5 V), NFC (3.3 V)", "at": (12.7, 81.28), "size": (111.76, 76.2),
+     "parts": {"J_NFC1": (7.62, 38.1, 0, "y"), "C_NFC1": (7.62, 60.96, 0, None),
+               "R_SDA3": (33.02, 24.13, 0, None), "Q_SDA1": (45.72, 25.4, 270, None),
+               "R_SDA5": (62.23, 24.13, 0, None),
+               "R_SCL3": (33.02, 46.99, 0, None), "Q_SCL1": (45.72, 48.26, 270, None),
+               "R_SCL5": (62.23, 46.99, 0, None), "J_LCD1": (91.44, 25.4, 0, None)},
+     "tags": {"SDA_3V3": [(22.86, 20.32, "U")], "SCL_3V3": [(22.86, 60.96, "D")]},
+     "fields": {"Q_SDA1": {"Reference": (3.81, -5.08, "left"), "Value": (3.81, -2.54, "left")},
+                "Q_SCL1": {"Reference": (3.81, -5.08, "left"), "Value": (3.81, -2.54, "left")}}},
+    {"title": "GPIO expander (0x20), button inputs", "at": (129.54, 81.28), "size": (182.88, 76.2),
+     "parts": {"U2": (55.88, 50.8, 0, None), "C_EXP1": (38.1, 30.48, 0, None),
+               "R_INT1": (25.4, 40.64, 0, None),
+               "R_SR1": (82.55, 22.86, 270, None), "R_PUR1": (114.3, 15.24, 0, None),
+               "C_BR1": (121.92, 30.48, 0, None), "J_BTN_R1": (152.4, 25.4, 0, None),
+               "R_SB1": (99.06, 43.18, 270, None), "R_PUB1": (111.76, 35.56, 0, None),
+               "C_BB1": (119.38, 50.8, 0, None), "J_BTN_B1": (152.4, 45.72, 0, None)},
+     "tags": {"EXP_INT": [(15.24, 48.26, "L")]}},
+    {"title": "Low-side drivers: button LEDs, buzzer", "at": (12.7, 162.56), "size": (190.5, 60.96),
+     "parts": {**_driver(12.7, "LR", True), **_driver(71.12, "LB", True), **_driver(129.54, "BZ", False),
+               "D_FLY1": (165.1, 20.32, 270, None), "J_BUZ1": (182.88, 25.4, 0, None)},
+     "tags": {"LED_R_G": [(12.7, 38.1, "L")], "LED_B_G": [(71.12, 38.1, "L")], "BUZ_G": [(129.54, 38.1, "L")],
+              "BTN_R_LEDK": [(50.8, 10.16, "R")], "BTN_B_LEDK": [(109.22, 10.16, "R")]}},
+    {"title": "Mounting holes", "at": (208.28, 162.56), "size": (50.8, 25.4),
+     "parts": {"H1": (7.62, 15.24, 0, None), "H2": (17.78, 15.24, 0, None),
+               "H3": (27.94, 15.24, 0, None), "H4": (38.1, 15.24, 0, None)}},
+]
+
+
+W, H, CORNER = 90.0, 60.0, 2.0
+
+# ref: (x, y, rotation deg). Footprint origin = pad 1 for connectors and THT caps.
+PLACE = {
+    # Heltec V4 headers: pin 1 at the USB end (left), pins run +X (asserted in build)
+    "J3": (44.82, 27.00, 90), "J2": (44.82, 49.86, 90),
+    "H1": (3.5, 3.5, 0), "H2": (86.5, 3.5, 0), "H3": (3.5, 56.5, 0), "H4": (86.5, 56.5, 0),
+    # Top edge: XH open side (-Y at rotation 0) faces the board edge, pin 1 left
+    # (4-pin XH courtyards are 13.5 mm: five fit between H1 and H2, a sixth does not)
+    "J_BAT1": (10, 6, 0), "J_KEY1": (24.5, 6, 0), "J_HBAT1": (39, 6, 0),
+    "J_LCD1": (53.5, 6, 0), "J_NFC1": (68, 6, 0),
+    # Bottom edge, under the J2 row: open side faces +Y, pin 1 right
+    "J_BTN_R1": (76, 55.75, 180),
+    # Left edge: rotated so the open side faces -X, pin 1 at the bottom
+    "J_SPK1": (6, 20.5, 90), "J_BTN_B1": (6, 35, 90), "J_BUZ1": (6, 49.5, 90),
+    # I2S amp beside J_SPK1 (outputs face up at 90 deg), VDD caps above it; C_AMP2 at 180 puts its
+    # VBAT_SW pad over U3.6 (VDD) and its GND pad over U3.7
+    "U3": (15.2, 23.2, 90), "C_AMP2": (15.2, 18.4, 180), "C_AMP1": (15.2, 14.9, 0),
+    # Power: MT3608 boost; output loop (SW -> D1 -> C_OUT -> GND) on U1's SW/GND side
+    "F1": (19.5, 11.3, 0), "C_BULK1": (37, 17, 90), "C_BULK2": (40.5, 17, 90),
+    "L1": (28.5, 15.5, 180), "D1": (21.3, 16, 0), "U1": (27, 21.5, 0), "C_IN1": (31.2, 21.8, 270),
+    "C_OUT1": (21, 20, 0), "C_OUT2": (21, 22.9, 0),
+    "R_FB2": (26.5, 25.5, 0), "R_FB1": (22, 26, 0),
+    # Cell protection in the free strip left of J3 (VM pins 1-4 face the boost block's GND)
+    "U4": (37.7, 27.4, 0), "R_PROT1": (35.9, 32.5, 0), "C_PROT1": (40.0, 32.5, 0),
+    # I2C level shifter, NFC bulk cap and GPIO expander, under their connectors
+    "Q_SDA1": (44, 16, 0), "R_SDA3": (44, 20, 0), "R_SDA5": (44, 23.3, 0),
+    "Q_SCL1": (49.5, 16, 0), "R_SCL3": (49.5, 20, 0), "R_SCL5": (49.5, 23.3, 0),
+    "C_NFC1": (55.5, 15.3, 0), "R_SD1": (54.5, 21.5, 90),
+    "U2": (60.2, 21, 0), "R_SDPD1": (75.5, 13.0, 0), "C_EXP1": (60.5, 15.6, 0), "R_INT1": (66, 22.8, 0),
+    # Low-side drivers, one column each (top to bottom R_G, R_PD, Q, R_L): gate pads on one
+    # vertical line at x+1, GND pads at x-1, drain straight down into R_L
+    "R_GLB1": (16, 29, 0), "R_PDLB1": (16, 32, 180), "Q_LB1": (16, 35.5, 270), "R_LLB1": (16, 39.5, 270),
+    "R_GBZ1": (24, 29, 0), "R_PDBZ1": (24, 32, 180), "Q_BZ1": (24, 35.5, 270),
+    "R_GLR1": (32, 29, 0), "R_PDLR1": (32, 32, 180), "Q_LR1": (32, 35.5, 270), "R_LLR1": (32, 39.5, 270),
+    "D_FLY1": (15, 45, 0),
+    # Button RC: BTN_B near its connector, BTN_R near J_BTN_R1 and the expander
+    "R_PUB1": (20, 49, 0), "C_BB1": (20, 52.5, 0), "R_SB1": (25, 50.75, 0),
+    "R_PUR1": (66, 15.5, 0), "C_BR1": (66, 19, 0), "R_SR1": (71, 17.25, 0),
+}
+
+# Reference text moved off neighbouring silk in the packed boost block: ref -> (x, y, rot)
+REF_AT = {
+    "L1": (33.3, 15.5, 90), "U1": (29.55, 21.5, 90), "C_OUT1": (21, 18.4, 0),
+    "C_OUT2": (21, 24.6, 0), "R_FB1": (19.3, 27.0, 90), "C_IN1": (33.05, 21.8, 90),
+    "F1": (23.5, 11.3, 0),  # F1 sits right under the top connector labels
+    "U3": (13.45, 23.2, 90),  # inside U3's outline, left of the exposed pad (the SPK label is outside)
+    "R_PROT1": (40.0, 34.4, 0), "C_PROT1": (40.0, 36.0, 0), "R_SDPD1": (75.5, 14.7, 0),  # staggered below the parts, clear of U4/Q_LR1 silk
+    "J_BTN_R1": (60, 53.1, 0),  # between J2 and its label (default lands inside the body at 180 deg)
+}
+
+# Connector silk labels (name, pins in pin-1-first order). Pin 1 is the left pad at rot 0 and
+# the bottom pad at rot 90; text reads left-to-right / bottom-to-top, so pin 1 comes first
+# (at rot 180 pin 1 is the right pad; label() reverses the list).
+LABELS = {
+    "J_BAT1": ("BAT", "+  -"), "J_KEY1": ("KEY", ""), "J_HBAT1": ("HELTEC BAT", "+  -"),
+    "J_LCD1": ("LCD", "GND 5V SDA SCL"), "J_NFC1": ("NFC", "GND 3V3 SDA SCL"),
+    "J_BTN_R1": ("BTN_R", "SW GND L+ L-"), "J_BTN_B1": ("BTN_B", "SW GND L+ L-"), "J_BUZ1": ("BUZ", "+  -"),
+    "J_SPK1": ("SPK (BTL, not GND)", "OUT- OUT+"),
+}
+# free text: (text, x, y, rot, size, left-justified)
+TEXTS = [
+    ("AirsoftCounter v2 carrier", 9, 56.5, 0, 1.0, True), ("2026-09", 9, 58.3, 0, 1.0, True),
+    ("USB", 40.5, 38.43, 90, 1.0, False), ("ANT →", 84, 38.43, 0, 1.0, False),
+]
+
+
+# Locked GND vias gen_pcb places before routing (route.py keeps them): (x, y, pad it is tied to).
+# C_AMP1/C_AMP2 get a via beside their GND pad, so the amp decoupling returns straight to the B.Cu
+# pour instead of through a long F.Cu detour (the F.Cu pour around U3 is cut up by traces).
+# The untied three stitch the pours along the I2S corridor, next to where the I2S lines change layer
+# and cross B.Cu traces (+5V/LED_B_G, +3V3, BTN_B_IN), so their return current can follow them.
+GND_VIAS = [(18.0, 14.2, ("C_AMP1", "2")), (12.9, 18.4, ("C_AMP2", "2")),
+            (21.4, 28.3, None), (29.0, 43.6, None), (37.2, 45.5, None)]
+HELTEC_PADS = {("J3", "1"): (44.82, 27.00), ("J3", "18"): (88.00, 27.00),
+               ("J2", "1"): (44.82, 49.86), ("J2", "18"): (88.00, 49.86)}
+
+
+SIZE_MM = (W, H)
+# Mounting-hole centres checked against the NPTH drill file (check_gerbers.py).
+NPTH_XY = sorted((PLACE[r][0], PLACE[r][1]) for r in ("H1", "H2", "H3", "H4"))
+
 def check():
     pins = [p for members in NETS.values() for p in members]
     dupes = {p for p in pins if pins.count(p) > 1}

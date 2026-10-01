@@ -1,6 +1,6 @@
-"""Generate carrier.kicad_sch and carrier.kicad_pro from design.py.
+"""Generate <BOARD>.kicad_sch and <BOARD>.kicad_pro from the BOARD module (board.py).
 
-Block-structured, wired schematic. BLOCKS places every part by hand in a functional block
+Block-structured, wired schematic. The board module's BLOCKS places every part by hand in a block
 (power, amp, Heltec headers, level shifter, expander + buttons, drivers). Inside a block each net
 is drawn with orthogonal wires, routed by A* on the 1.27 mm grid. A net that spans blocks gets one
 global label per block. GND everywhere, and +3V3/+5V/VBAT_SW outside the blocks that draw them as
@@ -24,13 +24,7 @@ SYMDIR = Path("/usr/share/kicad/symbols")
 NS = uuid.UUID("5b0c7d8e-2f4a-4c1e-9a53-0d6e8f1b2c3a")  # fixed: stable uuids across runs
 STEP = 1.27  # connection grid; every pin, wire and label sits on it
 CH = 1.05  # approx glyph advance (mm) of the 1.27 mm font, for text boxes
-RAILS = ("GND", "+3V3", "+5V", "VBAT_SW")
-# Power ports name their net by Value, so VBAT_SW reuses the stock +BATT arrow: a stock
-# symbol keeps ERC's library check (lib_symbol_issues) clean with no ignore.
-PORT_LIB = {"GND": "power:GND", "+3V3": "power:+3V3", "+5V": "power:+5V", "VBAT_SW": "power:+BATT"}
-NC_PARTS = {"J2", "J3"}  # every unconnected pin gets a no-connect flag
-NC_PINS = {"U1.6",  # MT3608 NC
-           "U2.11", "U2.12"}  # TCA9534 P6/P7 spare
+
 DIRS = {"L": (-1, 0), "R": (1, 0), "U": (0, -1), "D": (0, 1)}
 DIRS_OF = {v: k for k, v in DIRS.items()}
 BEND, CROSS, NEAR = 2.0, 4.0, 1.0  # router costs on top of 1 per grid step
@@ -159,75 +153,6 @@ def graphic_points(node):
                 yield from graphic_points(x)
 
 
-# --- Layout: blocks of hand-placed parts ---
-# Block: title, sheet origin (x, y), size (w, h), parts {ref: (dx, dy, rot, mirror)},
-# wired rails (drawn as wires in this block, with one power port each in "tags"),
-# tags {net: [(dx, dy, dir)]}: a global label (or the power port of a wired rail) at that point,
-# pointing dir; flags [(net, dx, dy)]: a PWR_FLAG wired to a port of that rail;
-# fields {ref: {"Reference"/"Value": (dx, dy, justify)}}: horizontal text at that offset from the part.
-# Nets without a tag get a label on a wire (one-block nets) or at a pin (a lone pin in a block).
-def _driver(x0, n, load):
-    """One low-side driver at x offset x0: gate resistor, pull-down, BSS138, load resistor."""
-    parts = {f"R_G{n}1": (x0 + 10.16, 38.1, 90, None), f"R_PD{n}1": (x0 + 17.78, 45.72, 0, None),
-             f"Q_{n}1": (x0 + 33.02, 38.1, 0, None)}
-    if load:
-        parts[f"R_L{n}1"] = (x0 + 35.56, 16.51, 180, None)
-    return parts
-
-
-BLOCKS = [
-    {"title": "Battery, key switch, 5 V boost", "at": (12.7, 12.7), "size": (190.5, 63.5),
-     "parts": {"J_BAT1": (7.62, 25.4, 0, "y"), "F1": (35.56, 22.86, 90, None),
-               "J_KEY1": (53.34, 17.78, 90, None), "J_HBAT1": (60.96, 38.1, 0, None),
-               "C_BULK1": (73.66, 31.75, 0, None), "C_BULK2": (86.36, 31.75, 0, None),
-               "C_IN1": (99.06, 31.75, 0, None), "U1": (121.92, 40.64, 0, None),
-               "L1": (121.92, 22.86, 90, None), "D1": (140.97, 22.86, 180, None),
-               "R_FB1": (152.4, 35.56, 0, None), "R_FB2": (152.4, 46.99, 0, None),
-               "C_OUT1": (165.1, 31.75, 0, None), "C_OUT2": (177.8, 31.75, 0, None),
-               "U4": (38.1, 43.18, 0, None), "C_PROT1": (17.78, 45.72, 0, None),
-               "R_PROT1": (17.78, 33.02, 0, None)},
-     "wired": {"VBAT_SW", "+5V"},
-     "tags": {"VBAT_SW": [(66.04, 22.86, "U")], "+5V": [(185.42, 22.86, "U")], "PROT_VDD": [(22.86, 40.64, "U")]},
-     "flags": [("GND", 7.62, 55.88), ("VBAT_SW", 30.48, 55.88), ("+5V", 53.34, 55.88)],
-     "fields": {"J_KEY1": {"Reference": (-5.08, -1.27, "right"), "Value": (-5.08, 1.27, "right")},
-                "U4": {"Reference": (-7.62, -6.35, "left"), "Value": (7.62, -6.35, "right")}}},
-    {"title": "I2S speaker amp", "at": (208.28, 12.7), "size": (104.14, 63.5),
-     "parts": {"U3": (55.88, 38.1, 0, None), "R_SD1": (25.4, 40.64, 90, None),
-               "R_SDPD1": (17.78, 45.72, 0, None),
-               "C_AMP1": (68.58, 17.78, 0, None), "C_AMP2": (81.28, 17.78, 0, None),
-               "J_SPK1": (96.52, 30.48, 0, "x")},
-     "tags": {"AMP_SD": [(13.97, 40.64, "L")]}},
-    {"title": "Heltec V4 headers", "at": (317.5, 12.7), "size": (86.36, 76.2),
-     "parts": {"J2": (30.48, 38.1, 0, None), "J3": (73.66, 38.1, 0, None)},
-     "flags": [("+3V3", 40.64, 68.58)]},
-    {"title": "I2C level shifter, LCD (5 V), NFC (3.3 V)", "at": (12.7, 81.28), "size": (111.76, 76.2),
-     "parts": {"J_NFC1": (7.62, 38.1, 0, "y"), "C_NFC1": (7.62, 60.96, 0, None),
-               "R_SDA3": (33.02, 24.13, 0, None), "Q_SDA1": (45.72, 25.4, 270, None),
-               "R_SDA5": (62.23, 24.13, 0, None),
-               "R_SCL3": (33.02, 46.99, 0, None), "Q_SCL1": (45.72, 48.26, 270, None),
-               "R_SCL5": (62.23, 46.99, 0, None), "J_LCD1": (91.44, 25.4, 0, None)},
-     "tags": {"SDA_3V3": [(22.86, 20.32, "U")], "SCL_3V3": [(22.86, 60.96, "D")]},
-     "fields": {"Q_SDA1": {"Reference": (3.81, -5.08, "left"), "Value": (3.81, -2.54, "left")},
-                "Q_SCL1": {"Reference": (3.81, -5.08, "left"), "Value": (3.81, -2.54, "left")}}},
-    {"title": "GPIO expander (0x20), button inputs", "at": (129.54, 81.28), "size": (182.88, 76.2),
-     "parts": {"U2": (55.88, 50.8, 0, None), "C_EXP1": (38.1, 30.48, 0, None),
-               "R_INT1": (25.4, 40.64, 0, None),
-               "R_SR1": (82.55, 22.86, 270, None), "R_PUR1": (114.3, 15.24, 0, None),
-               "C_BR1": (121.92, 30.48, 0, None), "J_BTN_R1": (152.4, 25.4, 0, None),
-               "R_SB1": (99.06, 43.18, 270, None), "R_PUB1": (111.76, 35.56, 0, None),
-               "C_BB1": (119.38, 50.8, 0, None), "J_BTN_B1": (152.4, 45.72, 0, None)},
-     "tags": {"EXP_INT": [(15.24, 48.26, "L")]}},
-    {"title": "Low-side drivers: button LEDs, buzzer", "at": (12.7, 162.56), "size": (190.5, 60.96),
-     "parts": {**_driver(12.7, "LR", True), **_driver(71.12, "LB", True), **_driver(129.54, "BZ", False),
-               "D_FLY1": (165.1, 20.32, 270, None), "J_BUZ1": (182.88, 25.4, 0, None)},
-     "tags": {"LED_R_G": [(12.7, 38.1, "L")], "LED_B_G": [(71.12, 38.1, "L")], "BUZ_G": [(129.54, 38.1, "L")],
-              "BTN_R_LEDK": [(50.8, 10.16, "R")], "BTN_B_LEDK": [(109.22, 10.16, "R")]}},
-    {"title": "Mounting holes", "at": (208.28, 162.56), "size": (50.8, 25.4),
-     "parts": {"H1": (7.62, 15.24, 0, None), "H2": (17.78, 15.24, 0, None),
-               "H3": (27.94, 15.24, 0, None), "H4": (38.1, 15.24, 0, None)}},
-]
-
-
 def xf(px, py, rot=0, mirror=None):
     """Symbol coords (Y up) -> schematic offset (Y down), rotated rot degrees CCW, then mirrored."""
     x, y = px, -py
@@ -302,7 +227,7 @@ def wire(a, b, key):
 
 
 def instances(root, ref):
-    return ["instances", ["project", q("carrier"), ["path", q(f"/{root}"), ["reference", q(ref)], ["unit", "1"]]]]
+    return ["instances", ["project", q(design.NAME), ["path", q(f"/{root}"), ["reference", q(ref)], ["unit", "1"]]]]
 
 
 class Sheet:
@@ -395,7 +320,7 @@ def place_part(sh, ref, x, y, rot, mirror, fields):
         pin = f"{ref}.{n}"
         net = pin_net.get(n)
         if net is None:
-            if ref not in NC_PARTS and pin not in NC_PINS and pin not in design.XH_SPARE:
+            if ref not in design.NC_PARTS and pin not in design.NC_PINS and pin not in design.XH_SPARE:
                 raise SystemExit(f"{pin} is neither on a net nor marked no-connect")
             sh.items.append(["no_connect", at(c[0] * STEP, c[1] * STEP)[:3], ["uuid", uid(f"nc/{ref}/{n}")]])
             sh.mark([c], ref)
@@ -462,7 +387,7 @@ def add_power(sh, lib_id, value, c, d, ref):
 
 def port(sh, net, c, d):
     sh.nports += 1
-    add_power(sh, PORT_LIB[net], net, c, d, f"#PWR{sh.nports:02d}")
+    add_power(sh, design.PORT_LIB[net], net, c, d, f"#PWR{sh.nports:02d}")
 
 
 def natural(net):
@@ -479,7 +404,7 @@ def port_on_pin(sh, net, c, s, bound):
     for n, d in cands:
         e = add(c, s, n)
         stub = {add(c, s, k) for k in range(1, n + 1)}
-        if sh.free(stub | port_shape(PORT_LIB[net], net, e, d)[2], net, bound):
+        if sh.free(stub | port_shape(design.PORT_LIB[net], net, e, d)[2], net, bound):
             sh.stub(net, c, e)
             port(sh, net, e, d)
             return
@@ -495,7 +420,7 @@ def port_comb(sh, net, cells, s, bound):
         ends = [add(c, s, n) for c in cells]
         need = {add(c, s, k) for c in cells for k in range(1, n + 1)}
         need |= {(ends[0][0], j) for j in range(min(e[1] for e in ends), max(e[1] for e in ends) + 1)}
-        if sh.free(need | port_shape(PORT_LIB[net], net, ends[-1], natural(net))[2], net, bound):
+        if sh.free(need | port_shape(design.PORT_LIB[net], net, ends[-1], natural(net))[2], net, bound):
             for c, e in zip(cells, ends):
                 sh.stub(net, c, e)
             sh.stub(net, ends[0], ends[-1])
@@ -737,14 +662,14 @@ def paper_for(w, h):
 def schematic():
     sh = Sheet()
     sh.pins = {}
-    placed = [r for b in BLOCKS for r in b["parts"]]
+    placed = [r for b in design.BLOCKS for r in b["parts"]]
     missing = set(design.PARTS) - set(placed)
     dupes = {r for r in placed if placed.count(r) > 1}
     if missing or dupes or set(placed) - set(design.PARTS):
-        raise SystemExit(f"BLOCKS: missing {sorted(missing)}, twice {sorted(dupes)}, "
+        raise SystemExit(f"design.BLOCKS: missing {sorted(missing)}, twice {sorted(dupes)}, "
                          f"unknown {sorted(set(placed) - set(design.PARTS))}")
     block_of, bounds = {}, []
-    for i, b in enumerate(BLOCKS):
+    for i, b in enumerate(design.BLOCKS):
         (bx, by), (bw, bh) = b["at"], b["size"]
         bounds.append((round(bx / STEP) + 1, round(by / STEP) + 1, round((bx + bw) / STEP) - 1,
                        round((by + bh) / STEP) - 1))
@@ -760,7 +685,7 @@ def schematic():
             sh.pins |= place_part(sh, ref, bx + dx, by + dy, rot, mirror, b.get("fields", {}))
             block_of[ref] = i
     nflags = 0
-    for i, b in enumerate(BLOCKS):
+    for i, b in enumerate(design.BLOCKS):
         for net, dx, dy in b.get("flags", []):
             nflags += 1
             flag(sh, net, gk(b["at"][0] + dx, b["at"][1] + dy), nflags)
@@ -772,7 +697,7 @@ def schematic():
             groups[net][block_of[p.split(".")[0]]].append(p)
     terms = collections.defaultdict(list)  # (net, block) -> [(cell, stub dir)]
     # explicit tags first (their boxes must be free before anything else claims the space)
-    for i, b in enumerate(BLOCKS):
+    for i, b in enumerate(design.BLOCKS):
         for net, tags in b.get("tags", {}).items():
             if i not in groups[net]:
                 raise SystemExit(f"tag {net} in block {b['title']!r}, which has none of its pins")
@@ -782,17 +707,17 @@ def schematic():
                     sh.clashes.append(f"tag {net} at {c[0] * STEP:.2f},{c[1] * STEP:.2f} is not free")
                 sh.term[c] = (net, neg(DIRS[d]))
                 terms[(net, i)].append((c, neg(DIRS[d])))
-                if net in RAILS:
+                if net in design.RAILS:
                     port(sh, net, c, d)
                 else:
                     glabel(sh, net, c, d)
-    for net in RAILS:
+    for net in design.RAILS:
         for i, pins in sorted(groups[net].items()):
-            if net not in BLOCKS[i].get("wired", ()):
+            if net not in design.BLOCKS[i].get("wired", ()):
                 rail_ports(sh, net, pins, bounds[i])
     # a lone pin of a multi-block net gets its label on a stub
     for net, by_block in groups.items():
-        if net in RAILS or len(by_block) == 1:
+        if net in design.RAILS or len(by_block) == 1:
             continue
         for i, pins in sorted(by_block.items()):
             if not terms[(net, i)] and len(pins) == 1:
@@ -800,26 +725,26 @@ def schematic():
                 terms[(net, i)].append((label_on_pin(sh, net, c, s, bounds[i]), s))
     for net, by_block in groups.items():
         for i in by_block:
-            if net not in RAILS and len(by_block) > 1 and not terms[(net, i)]:
-                raise SystemExit(f"{net} needs a tag in block {BLOCKS[i]['title']!r}")
+            if net not in design.RAILS and len(by_block) > 1 and not terms[(net, i)]:
+                raise SystemExit(f"{net} needs a tag in block {design.BLOCKS[i]['title']!r}")
 
     def spread(net, i):
         cs = [sh.pins[p][0] for p in groups[net][i]]
         return max(c[0] for c in cs) - min(c[0] for c in cs) + max(c[1] for c in cs) - min(c[1] for c in cs)
 
     todo = [(net, i) for net, by_block in groups.items() for i in by_block
-            if net not in RAILS or net in BLOCKS[i].get("wired", ())]
+            if net not in design.RAILS or net in design.BLOCKS[i].get("wired", ())]
     for net, i in sorted(todo, key=lambda t: (spread(*t), t[0], t[1])):
         ts = [sh.pins[p][0] for p in groups[net][i]] + [c for c, _ in terms[(net, i)]]
         route(sh, net, list(dict.fromkeys(ts)), bounds[i])
     # name one-block nets
     for net, by_block in groups.items():
-        if net not in RAILS and len(by_block) == 1 and not terms[(net, next(iter(by_block)))]:
+        if net not in design.RAILS and len(by_block) == 1 and not terms[(net, next(iter(by_block)))]:
             deg = degree(sh.edges[net])
             stops = {c for c, (n, _) in sh.term.items() if n == net} | {c for c in deg if deg[c] > 2}
             name_label(sh, net, segments(sh.edges[net], stops))
     inside = set().union(*(box_cells((b["at"][0], b["at"][1], b["at"][0] + b["size"][0], b["at"][1] + b["size"][1]),
-                                     -0.1) for b in BLOCKS))
+                                     -0.1) for b in design.BLOCKS))
     sh.clashes += [f"{o} outside its block at {c[0] * STEP:.2f},{c[1] * STEP:.2f}"
                    for c, o in sh.hard.items() if c not in inside]
 
@@ -833,8 +758,8 @@ def schematic():
             body.append(wire(a, b, f"wire/{net}/{k}"))
         body += [["junction", at(c[0] * STEP, c[1] * STEP)[:3], ["diameter", "0"], ["color", "0", "0", "0", "0"],
                   ["uuid", uid(f"junction/{net}/{c[0]}/{c[1]}")]] for c in dots]
-    w = max(b["at"][0] + b["size"][0] for b in BLOCKS)
-    h = max(b["at"][1] + b["size"][1] for b in BLOCKS)
+    w = max(b["at"][0] + b["size"][0] for b in design.BLOCKS)
+    h = max(b["at"][1] + b["size"][1] for b in design.BLOCKS)
     head = [["lib_symbols", *[embedded(i) for i in sorted(sh.lib_ids)]]]
     return ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")], ["generator_version", q("9.0")],
             ["uuid", q(sh.root)], ["paper", q(paper_for(w, h))], *head, *body, *sh.items, *sh.symbols,
@@ -869,7 +794,7 @@ def unspecified_pins():
 def project(root):
     assert unspecified_pins() == UNSPEC_OK, f"Unspecified pins {unspecified_pins()}: review PIN_MAP"
     return {
-        "meta": {"filename": "carrier.kicad_pro", "version": 3},
+        "meta": {"filename": f"{design.NAME}.kicad_pro", "version": 3},
         "board": {"design_settings": {"rules": {
             # 0.15 mm (JLCPCB 2-layer minimum is 0.127 mm): headroom for Freerouting neck-downs into
             # the U1/U2/U3 fine-pitch pads (earlier routes necked to ~0.19 mm; the current narrowest
@@ -903,15 +828,15 @@ def main():
     sch, root, clashes = schematic()
     if clashes:  # keep the broken sheet for inspection, out of the tree
         (HERE / "build").mkdir(exist_ok=True)
-        (HERE / "build" / "carrier_bad.kicad_sch").write_text(dump(sch) + "\n")
+        (HERE / "build" / f"{design.NAME}_bad.kicad_sch").write_text(dump(sch) + "\n")
         first = {}
         for m in clashes:  # one line per kind of problem, at its first spot
             first.setdefault(m.split(" at ")[0], m)
-        raise SystemExit("layout problems (sheet in build/carrier_bad.kicad_sch):\n  "
+        raise SystemExit(f"layout problems (sheet in build/{design.NAME}_bad.kicad_sch):\n  "
                          + "\n  ".join(sorted(first.values())))
-    (HERE / "carrier.kicad_sch").write_text(dump(sch) + "\n")
-    (HERE / "carrier.kicad_pro").write_text(json.dumps(project(root), indent=2) + "\n")
-    print("wrote carrier.kicad_sch, carrier.kicad_pro")
+    (HERE / f"{design.NAME}.kicad_sch").write_text(dump(sch) + "\n")
+    (HERE / f"{design.NAME}.kicad_pro").write_text(json.dumps(project(root), indent=2) + "\n")
+    print(f"wrote {design.NAME}.kicad_sch, {design.NAME}.kicad_pro")
 
 
 if __name__ == "__main__":
