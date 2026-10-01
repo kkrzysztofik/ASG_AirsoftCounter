@@ -9,6 +9,34 @@ part on top (2026-10-01 rework; the first layout, 140 x 100 mm with Keystone 104
 placed parts under the holder floor). Re-check the holder against its drawing and the hole pattern
 against the ZP240.190 plate before ordering.
 
+## Simplification delta (2026-10-02)
+
+The first quote was about $140 for 5 assembled boards, mostly Extended setup fees (15 types x ~$3) and
+per-board chip cost. Changes, regenerated with `make BOARD=pack all` (ERC/DRC/gerbers green):
+
+- **No protector IC.** The four XB8089D (and their 1k/100nF) are gone; holder- goes straight to GND.
+  Each job it did is covered elsewhere: short circuit by the per-cell 5 A fuse and the output PTC;
+  overcharge by the BQ25601 (CV 4.208 V plus its battery over-voltage cutoff, *unverified: check the
+  datasheet figure*); over-discharge by the default-off switches (a dead or reset MCU leaves every cell
+  open through `R_PD`) and the firmware UV limit; reversed cell by the crowbar and fuse, as before.
+  Remaining gap: firmware that runs but keeps a switch closed below 2.5 V. The firmware must run the
+  IWDG and host-test the UV disconnect in `asg-core`.
+- **One shared protector was rejected.** With the switches open the pack rail is at 0 V, the protector
+  stays off and cuts the cells' negative from GND, so the MCU (powered through the diode-OR) never boots
+  to close a switch: a lock-out.
+- **Diode-OR:** 3x BAT54C (Extended) -> 5x B5819W SOD-123 (C8598, Basic), one per cell (`D_OR1-4`, in
+  each cell's band) and one for SYS (`D_OR5`).
+- **TS bias:** 5.23k/30.9k (Extended) -> 5.1k/30k (C27834/C17621, Basic). With the 10k B3435 NTC the
+  thresholds move from 0/60 C to 0.5/60.8 C.
+- **Sense taps** `R_SNSF*`/`R_SNSS*`: 0R -> 10R (C17415, Basic). Holder- is now solid GND, so a reversed
+  cell's crowbar holds `CELL_F` at about -0.5 to -1 V until the fuse clears (ms), below the INA3221's
+  -0.3 V input limit; 10 Ohm (the datasheet's filter maximum) limits the clamp current.
+- **Result:** 11 SMD Extended types instead of 15, 105 placements instead of 115, 12 parts fewer per
+  board. Assemble 2 of the 5 boards at JLC to cut the per-board chip cost further.
+- Not changed: per-cell switching (any 1-4 cell combination), per-cell current/voltage/temperature,
+  the MCU, charger, boost and connectors. Per-cell numbers further down still describe the XB8089D
+  design where they mention it; this section overrides them.
+
 ## Goal
 
 Move all battery and power management off the carrier (`2026-09-28-esp32-lora-carrier-design.md`)
@@ -70,25 +98,25 @@ holder+ ─ fuse ─┬─ shunt 20 mOhm ─┬─ back-to-back P-FET (2x AO3401
                 │                 │    gates: 1M to source (4 uA when on), pulled low by an N-FET <- MCU GPIO
                 │                 └─ INA3221 IN-/bus = this cell's voltage, also when switched off
                 ├─ crowbar Schottky to holder- (a reversed cell blows the fuse)
-                └─ BAT54C diode-OR -> LDO -> MCU
-holder- ─ XB8089D (C79928, own 1k/100nF) ─ GND        bead NTC on each cell -> MCU ADC
+                └─ B5819W diode-OR -> LDO -> MCU
+holder- ─ GND (no protector IC since 2026-10-02)       bead NTC on each cell -> MCU ADC
 ```
 
 - **Switch on the positive side, shunt on the cell side of it.** INA3221 measures bus voltage at IN-;
   with the shunt between cell and switch each channel reads its own cell even while it is disconnected,
   which the connect check needs. (The earlier FS8205-in-the-negative-lead idea read only the pack rail.)
-- **Switch defaults to OFF.** A dead MCU leaves an open pack; the XB8089D protects regardless.
+- **Switch defaults to OFF.** A dead MCU leaves an open pack, which is also the over-discharge protection.
   Each switch has a **DNP 0 Ohm bypass** footprint for bring-up without firmware.
-- **MCU power does not depend on the switches:** the four cell+ nodes and SYS are diode-ORed (3x BAT54C) into the
+- **MCU power does not depend on the switches:** the four cell+ nodes and SYS are diode-ORed (5x B5819W) into the
   LDO, so the MCU runs from the highest cell at uA load even with every switch open, and from USB with no cells (DFU).
 - **Shunt 20 mOhm:** 1.2 mV (30 LSB at 40 uV) for 60 mA per cell, 8 A full scale (one cell carrying all
   load plus charge). INA3221 offset is a few mA, so thresholds need margin.
-- **Fuse 5 A fast-blow:** above the per-cell working current (about 2 A) and below the XB8089D's 10 A
-  overcurrent trip, so it is the backup to the protector; it must clear the crowbar current before the
-  Schottky fails (see the fuse ruling under Datasheet facts).
-- Series resistance per branch (fuse, shunt, two FETs, XB8089D) is about 150 mOhm, larger than the cell IR
+- **Fuse 5 A fast-blow:** above the per-cell working current (about 2 A); with no protector IC it is the
+  hardware short-circuit protection. It must clear the crowbar current before the Schottky fails (see the
+  fuse ruling under Datasheet facts).
+- Series resistance per branch (fuse, shunt, two FETs) is about 130 mOhm, larger than the cell IR
   (about 35 mOhm) and matched between branches, so it helps current sharing.
-- AO3401A and BAT54C are JLC Basic. FS8205A is no longer used.
+- AO3401A and B5819W are JLC Basic. FS8205A is no longer used.
 
 ### MCU
 
@@ -141,7 +169,7 @@ Source: `HTIT-WB32LAF_V4.3.pdf` from resource.heltec.cn, read 2026-10-01.
   and D2 (LMBR340) diode-ORs USB in. Feeding JP2 from `VBAT_SW` is the configuration the board is designed for.
 - **Decision:** the Heltec keeps its feed through `J_HBAT1` from `VBAT_SW`. While the Heltec USB is plugged
   in, its CN3165 (540 mA, `I=1188/R13`) charges the pack in parallel with the BQ25601; harmless (both CC/CV
-  to 4.2 V, per-cell protectors in the path). With the key off it feeds only `VBAT_SW` loads, as today.
+  to 4.2 V, BQ25601 OVP and the MCU switches in the path). With the key off it feeds only `VBAT_SW` loads, as today.
 
 ## Carrier changes
 
@@ -182,7 +210,8 @@ the pack quiescent current and the branch series drop.
 2. Bench, with a current-limited PSU in place of cells:
    - USB DFU enumerates (`dfu-util -l`).
    - With bypasses fitted: rail, LDO and charger come up; key-off quiescent current (target tens of uA).
-   - XB8089D trips: UV/OV with the PSU, short via the PSU limit; observe whether it recovers by itself.
+   - BQ25601 stops at 4.208 V and its battery OVP trips with the PSU above it; firmware opens a cell
+     at its UV limit; a short through the PSU limit is seen by the INA3221 alert.
    - Reversed "cell": PSU at low current limit confirms the crowbar path; then one sacrificial cell with the
      real fuse.
    - Once firmware exists: switches close in order, a cell 200 mV off stays open; 2 A charge of four
@@ -191,8 +220,9 @@ the pack quiescent current and the branch series drop.
 
 ## Risks
 
-- **Protected cells in parallel can fight.** After one cell trips on over-discharge, the others try to charge
-  it back through the protector. Mitigated by the MCU switches (default off, voltage check) and per-cell fuses.
+- **No protector IC (2026-10-02).** Over-discharge protection is firmware plus the default-off switches;
+  a running MCU with wrong firmware can over-discharge a cell. Mitigated by the IWDG, a host-tested UV
+  disconnect and the Heltec's own brown-out cutting the load with the key on.
 - **Reversed cell.** Crowbar Schottky plus fuse; the fuse and Schottky I2t are unverified.
 - **Ageing mismatch:** use matched cells from one batch and check capacity before building a pack.
 - **No MCU, no power:** a firmware fault leaves the pack open until watchdog reset; bypass footprints exist
@@ -216,11 +246,11 @@ library type (B = Basic, P = Preferred Extended, E = Extended), maker and stock 
 | MCU | STM32C071KBT6, LQFP-32, `MCU_ST_STM32C0:STM32C071KBTx` | C42116633 | E | 600 | JLCPCB API |
 | Charger | BQ25601RTWR, QFN-24, `Battery_Management:BQ25601` | C468236 | E | 5877 | JLCPCB API |
 | Current monitor | INA3221AIRGVR, VQFN-16, `Power_Management:INA3221` | C181255 | E | 8652 | JLCPCB API |
-| Cell protector | XB8089D, SOP-8-EP, `local:XB8089D` | C79928 | E | 9381 | JLCPCB API |
+| Cell protector | none since 2026-10-02 (was XB8089D C79928, see the simplification delta) | | | | |
 | LDO | XC6206P332MR, SOT-23-3, `Regulator_Linear:XC6206PxxxMR` | C5446 | B | 474563 | JLCPCB API |
 | P-FET (x8) | AO3401A, SOT-23, `Transistor_FET:AO3401A` | C15127 | B | 782223 | JLCPCB API |
 | N-FET | BSS138, SOT-23, `Transistor_FET:BSS138` | C7420339 | P | (carrier part) | `design.py` |
-| Diode-OR | BAT54C,215 (Nexperia), SOT-23, `Diode:BAT54C` | C37704 | E | 351362 | JLCPCB API |
+| Diode-OR (x5) | B5819W (SL), SOD-123, `Device:D_Schottky` (was BAT54C C37704) | C8598 | B | 512045 | JLCPCB API 2026-10-02 |
 | Crowbar + boost diode | SS34, SMA, `Diode:SS34` | C8678 | B | 4440087 | JLCPCB API |
 | Charger inductor | Murata DFE322512F-1R5M, 1210, 1.5 uH, Irms 3.0 A, Isat 3.9 A, DCR 48 mOhm | C703084 | E | 4596 | Murata dynamic-model list + JLCPCB API |
 | Boost IC / L / caps | MT3608 + 10 uH 2 A + 22 uF 25 V, copied from the carrier | C84817 / C2046332 / C12891 | E / E / B | | `design.py` |
@@ -239,7 +269,7 @@ library type (B = Basic, P = Preferred Extended, E = Extended), maker and stock 
 
 Pack-only passives (Basic where noted, all live-checked 2026-10-01): 1M 0805 C17514, 100k 0805 C149504,
 5.1k 0805 C27834 (also CC1/CC2), 10 uF 0805 C15850, 4.7 uF 0805 C1779, 1 uF 0805 C28323,
-47 nF 0805 C53134. TS bias resistors are the datasheet values 5.23 kOhm C17739 and 30.9 kOhm
+47 nF 0805 C53134. TS bias resistors were the datasheet values 5.23 kOhm C17739 and 30.9 kOhm
 C204398 (both Extended; kept exact because they set the JEITA window). The 5.2 mm-pitch TS-1187A
 was dropped for the 2-pad TS-1088 so the symbol (`Switch:SW_Push`) pairs with a 2-pad footprint
 without unconnected pads.
@@ -310,10 +340,10 @@ common-cathode. Use C37704. There is no Basic BAT54C at JLC; it is Extended.
   -0.3 V to 26 V**. The -0.3 V floor is the crowbar-event limit called out in the design.
 - Input filter (section 7.4.3, Figure 7-8): **series R <= 10 Ohm** per input plus 0.1-1 uF to GND.
   **Not fitted** (ruling in `docs/HANDOVER-2026-10-01-pack-board-P0-P2.md`): the datasheet makes the
-  filter conditional on noise above 1 MHz and the INA's averaging covers it. The sense taps are 0R
-  (`R_SNSF*`/`R_SNSS*`, 0805), so the filter can be retrofitted by swapping them for 10 Ohm. The
-  -0.3 V crowbar case is low risk: with the protector off, the reversed cell's crowbar loop floats
-  relative to GND.
+  filter conditional on noise above 1 MHz and the INA's averaging covers it. The sense taps
+  (`R_SNSF*`/`R_SNSS*`, 0805) were 0R; since 2026-10-02 they are 10 Ohm, because without the protector
+  holder- is solid GND and a reversed cell's crowbar pulls the INA inputs below -0.3 V until the fuse
+  clears (simplification delta). No filter caps are fitted.
 
 **XB8089D** (XySemi datasheet Apr 2022; read 2026-10-01)
 
@@ -369,7 +399,7 @@ Still open, and only answerable with real hardware or the pack firmware:
   and a sacrificial cell are used (bench item).
 - Pack quiescent current as built: the model puts the MCU Stop contribution at about 85 uA, so the
   "tens of uA" target is revised upward and measured on the bench (P6.1).
-- Total LDO + protector + monitor quiescent current as built.
+- Total LDO + monitor quiescent current as built.
 - 18650 capacity (3350 mAh is the datasheet minimum used by `power_budget.py`) for the actual cells.
 - embassy-stm32 support level for STM32C071 USB and Stop mode (firmware, deferred).
 - ZP240.190 plate and enclosure hole pattern (M3 corners of the 96 x 90 mm board are provisional).

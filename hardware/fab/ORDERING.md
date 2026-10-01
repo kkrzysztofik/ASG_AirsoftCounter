@@ -154,8 +154,8 @@ assembly only (the cell holders go on the bottom, by hand). Upload it as its own
 size and layer count; if it shows something else, stop). Schematic `fab/pack/schematic.pdf`, renders
 `fab/pack/top.png` / `bottom.png`.
 
-**Assembly.** Same Economic PCBA flow. BOM `fab/pack/jlc_bom.csv` (39 lines), CPL
-`fab/pack/jlc_cpl.csv` (115 placements, all top side). The DNP 0R bring-up bypasses R_BYP1-R_BYP4 are
+**Assembly.** Same Economic PCBA flow. BOM `fab/pack/jlc_bom.csv` (37 lines), CPL
+`fab/pack/jlc_cpl.csv` (105 placements, all top side). The DNP 0R bring-up bypasses R_BYP1-R_BYP4 are
 left off on purpose. **By hand, after the board arrives:**
 1. **Bead NTCs TH1-TH4** (MF52A103F3435, LCSC C84036) on the **bottom** side, bead in the middle of each
    holder outline (it sits in the holder's floor window and touches the cell), leads soldered on top.
@@ -165,12 +165,13 @@ left off on purpose. **By hand, after the board arrives:**
    four face the same way.
 The holders and NTCs are not in the BOM/CPL (JLC's Economic PCBA is top side only).
 
-**Setup fees (SMD Extended types, about $3 each).** 15 types, about $45 per order:
-BQ25601RTWR (C468236), STM32C071KBTx (C42116633), 2x INA3221 (C181255), XB8089D (C79928),
+**Setup fees (SMD Extended types, about $3 each).** 11 types, about $33 per order:
+BQ25601RTWR (C468236), STM32C071KBTx (C42116633), 2x INA3221 (C181255),
 MT3608 (C84817), the 1.5 uH charger inductor (C703084), the 10 uH boost inductor (C2046332),
-the USB-C receptacle (C2894897), the 20 mOhm shunt (C163047), the TS divider 5.23k/30.9k
-(C17739/C204398), the 10k NTC (C2889056), the 5 A fuse (C48332), the 2 A PTC (C22374899) and
-BAT54C (C37704). **2 through-hole Extended types** (no loading fee, per-joint charge):
+the USB-C receptacle (C2894897), the 20 mOhm shunt (C163047), the 10k NTC (C2889056),
+the 5 A fuse (C48332) and the 2 A PTC (C22374899). None has a Basic replacement at JLC (parts API,
+2026-10-02). The 2026-10-02 simplification removed the XB8089D, BAT54C and the 5.23k/30.9k TS pair
+(design doc, "Simplification delta"). To cut the per-board chip cost, assemble 2 of the 5 boards. **2 through-hole Extended types** (no loading fee, per-joint charge):
 J_KEY1 (XH 4-pin, C144395) and J_PWR1 (XH 6-pin, C144397). **Preferred (no fee):** 75k (C17819) and
 BSS138 (C7420339). Everything else is Basic.
 
@@ -182,12 +183,12 @@ BSS138 (C7420339). Everything else is Basic.
 | U_MCU (STM32C071, LQFP-32) | The pin-1 dot sits at the silkscreen pin-1 mark. |
 | U_INA1, U_INA2 (VQFN-16) | The pin-1 dot sits at the silkscreen pin-1 mark; the exposed pad is centred. |
 | Q_A*/Q_B*/Q_N* (SOT-23) | The single pin (drain, pin 3) is on the single-pad side. Most likely to be off by 90/180 deg. |
-| D_CB*, D_OR*, D1 (SMA / SOT-23) | The cathode band is on the silkscreen band side. |
+| D_CB*, D_OR*, D1 (SMA / SOD-123) | The cathode band is on the silkscreen band side. |
 | J_USB1 (USB-C) | The opening faces the right board edge (the "USB" silk); the shield pads straddle their holes. |
 | BT1-BT4, TH1-TH4 (bottom side) | Not in the CPL: hand-soldered (see Assembly above). |
 | LED_STAT, LED_MCU | The cathode (bar) is on the silkscreen band side. |
 
-**Board facts.** 96 x 90 mm, 1 oz; 196 vias of 0.6/0.3 mm (tented); signal tracks 0.25 mm, power
+**Board facts.** 96 x 90 mm, 1 oz; 165 vias of 0.6/0.3 mm (tented); signal tracks 0.25 mm, power
 0.8 mm (0.15 mm rule for necks into the fine-pitch QFN/LQFP/VQFN pads); NPTH: 4 x 3.2 mm M3
 mounting, 12 holder snap pegs (3.3/2.4 mm) and 2 USB-C shell pins (0.65 mm); PTH: 8 plated holder-tab
 slots 1.3 x 2.6 mm, 0.95/1.0 mm (J_KEY1/J_PWR1), 0.8 mm (bead NTCs) and 0.6 mm (the USB-C shell).
