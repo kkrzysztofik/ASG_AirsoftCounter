@@ -281,7 +281,11 @@ def place_part(sh, ref, x, y, rot, mirror, fields):
     body = [(x + dx, y + dy) for b in unit_bodies(sym) for px, py in graphic_points(b)
             for dx, dy in [xf(px, py, rot, mirror)]] or [(x, y)]
     bx = bounds_box(body)
-    sh.mark(box_cells(bx, 0.4), ref)
+    # A pin is a connection point: some symbols (the NTC thermistor) draw graphics over their own
+    # pin, and a body cell there would make that pin unreachable to the router.
+    pin_cells = {gk(x + dx, y + dy) for px, py, _, _ in pins_of(sym).values()
+                 for dx, dy in [xf(px, py, rot, mirror)]}
+    sh.mark(box_cells(bx, 0.4) - pin_cells, ref)
     shown = {"Reference": ref, "Value": value, "Footprint": fp}
     props = []
     for p in kids(sym, "property"):

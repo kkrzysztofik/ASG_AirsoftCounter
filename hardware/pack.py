@@ -277,6 +277,140 @@ for i in range(1, 5):
 # Cell 4 is channel 1 of U_INA2; its spare channels 2-3 share the ch1 IN- reference (P0).
 NETS["CELL4_S"] += ["U_INA2.15", "U_INA2.14", "U_INA2.2", "U_INA2.1"]
 
+# --- layout (read by gen_sch.py / gen_pcb.py / check_gerbers.py) --------------------------------
+# Rails carry power_in pins, so ERC needs a driver on each: +3V3 has the LDO's power_out, the others
+# take a PWR_FLAG (their sources are all passive). +5V and SYS have no power_in pin, so they stay
+# ordinary labelled nets.
+NETCLASS_POWER = ("VBAT*", "VPACK", "SYS", "VBUS", "CELL*_RAW", "CELL*_F", "CELL*_S", "CELL*_SRC",
+                  "CELL*_N", "+5V", "SW*")
+RAILS = ("GND", "+3V3", "VPACK", "VBUS", "VMCU_IN", "VBAT_SW")
+# A power port names its net by Value, so each rail reuses a stock symbol (carrier convention).
+PORT_LIB = {"GND": "power:GND", "+3V3": "power:+3V3", "VPACK": "power:VDC",
+            "VBUS": "power:VBUS", "VMCU_IN": "power:+VDC", "VBAT_SW": "power:+BATT"}
+
+
+def _tags(nets, x0, y0, per_row=7, pitch=20.32, row=12.7):
+    """One global label per net, in a free strip along the bottom of a block."""
+    return {n: [(x0 + (k % per_row) * pitch, y0 + (k // per_row) * row, "R")]
+            for k, n in enumerate(nets)}
+
+
+def _cell(i, x0, y0):
+    """One cell's branch (design doc order: holder+ -> fuse -> shunt -> back-to-back P-FET) plus
+    the protector, the NTC and the switch gate drive. Four copies, one per cell block."""
+    def a(x, y, rot=0):
+        return (x0 + x, y0 + y, rot, None)
+
+    return {
+        f"BT{i}": a(12.7, 20.32), f"F{i}": a(12.7, 40.64), f"R_SH{i}": a(12.7, 60.96),
+        f"Q_A{i}": a(12.7, 82.55), f"Q_B{i}": a(31.75, 82.55),
+        f"R_GS{i}": a(24.13, 100.33), f"R_BYP{i}": a(43.18, 100.33),
+        f"Q_N{i}": a(12.7, 116.84), f"R_PD{i}": a(7.62, 134.62), f"R_SW{i}": a(25.4, 134.62),
+        f"D_CB{i}": a(60.96, 20.32), f"U_P{i}": a(78.74, 35.56),
+        f"R_PROT{i}": a(60.96, 50.8), f"C_PROT{i}": a(45.72, 50.8),
+        f"TH{i}": a(83.82, 60.96), f"R_NTC{i}": a(83.82, 78.74),
+    }
+
+
+def _blocks():
+    """Hand-placed parts, one block per sheet area. Tags are the global labels that carry a
+    multi-block net across a block boundary (rails use power ports instead)."""
+    out = []
+    # Charger + USB-C receptacle. Caps sit on the side of U_CHG whose pins they decouple.
+    out.append({
+        "title": "USB-C input, BQ25601 charger", "at": (12.7, 12.7), "size": (203.2, 139.7),
+        "parts": {
+            "U_CHG": (48.26, 50.8, 0, None),
+            "C_VBUS": (15.24, 25.4, 0, None), "C_PMID": (15.24, 50.8, 0, None),
+            "R_CE": (15.24, 76.2, 0, None), "R_INT_CHG": (15.24, 101.6, 0, None),
+            "L_CHG": (81.28, 27.94, 0, None), "C_BTST": (100.33, 27.94, 0, None),
+            "C_SYS": (81.28, 55.88, 0, None), "C_BAT": (100.33, 60.96, 0, None),
+            "C_REGN": (81.28, 78.74, 0, None), "RT1": (100.33, 78.74, 0, None),
+            "RT2": (100.33, 95.25, 0, None), "TH_CHG": (116.84, 95.25, 0, None),
+            "R_STAT": (95.25, 48.26, 90, None), "LED_STAT": (76.2, 48.26, 0, None),
+            "J_USB1": (152.4, 71.12, 0, None),
+            "R_CC1": (182.88, 60.96, 90, None), "R_CC2": (182.88, 68.58, 90, None),
+        },
+        "tags": _tags(["SCL_INT", "SDA_INT", "CHG_INT", "CHG_CE", "USB_DP", "USB_DM", "SYS",
+                       "CC2", "LED_STAT_A"], 12.7, 118.11),
+    })
+    # Monitoring: 2x INA3221, the diode-OR into the LDO and the MCU supply LDO.
+    out.append({
+        "title": "Cell monitoring (INA3221 x2), diode-OR, 3V3 LDO", "at": (228.6, 12.7),
+        "size": (139.7, 165.1),
+        "parts": {
+            "U_INA1": (30.48, 40.64, 0, None), "U_INA2": (30.48, 106.68, 0, None),
+            "C_INA1": (7.62, 22.86, 0, None), "C_INA2": (7.62, 78.74, 0, None),
+            "R_SCL_INT": (60.96, 30.48, 90, None), "R_SDA_INT": (60.96, 43.18, 90, None),
+            "R_CRIT": (60.96, 55.88, 90, None), "R_WARN": (60.96, 68.58, 90, None),
+            "D_OR1": (78.74, 30.48, 0, None), "D_OR2": (78.74, 60.96, 0, None),
+            "D_OR3": (78.74, 91.44, 0, None), "U_LDO": (105.41, 91.44, 0, None),
+            "C_LDO1": (105.41, 68.58, 0, None), "C_LDO2": (105.41, 111.76, 0, None),
+        },
+        "tags": _tags(["CELL1_F", "CELL1_S", "CELL2_F", "CELL2_S", "CELL3_F", "CELL3_S",
+                       "CELL4_F", "CELL4_S", "SCL_INT", "SDA_INT", "INA_CRIT", "INA_WARN", "SYS"],
+                      12.7, 137.16, per_row=6),
+    })
+    # MCU, decoupling, reset/boot, test pads and the status LED.
+    out.append({
+        "title": "STM32C071 MCU, reset/boot, test pads", "at": (381.0, 12.7), "size": (139.7, 190.5),
+        "parts": {
+            "U_MCU": (45.72, 63.5, 0, None),
+            "C_MCU1": (17.78, 25.4, 0, None), "C_MCU2": (17.78, 45.72, 0, None),
+            "C_NRST": (17.78, 66.04, 0, None), "SW_RST": (20.32, 78.74, 0, None),
+            "R_BOOT": (17.78, 91.44, 0, None), "SW_BOOT": (25.4, 104.14, 0, None),
+            "TP_NRST": (12.7, 111.76, 0, None), "TP_SWCLK": (12.7, 119.38, 0, None),
+            "TP_SWDIO": (74.93, 76.2, 0, None), "TP_GND": (68.58, 119.38, 0, None),
+            "R_LED_MCU": (68.58, 90.17, 0, None), "LED_MCU": (81.28, 90.17, 90, None),
+        },
+        # Bare test-pad symbols carry their text over the pad; move it aside, or the pad cannot route.
+        "fields": {r: {"Reference": (5.08, -2.54, "left"), "Value": (5.08, 2.54, "left")}
+                   for r in ("TP_NRST", "TP_SWCLK", "TP_SWDIO", "TP_GND")},
+        "tags": _tags(["SW1_DRV", "SW2_DRV", "SW3_DRV", "SW4_DRV", "USB_DP", "USB_DM",
+                       "NTC1", "NTC2", "NTC3", "NTC4", "NTC_PWR", "CHG_CE", "SDA_EXT", "SCL_EXT",
+                       "CHG_INT", "INA_CRIT", "INA_WARN", "SCL_INT", "SDA_INT",
+                       "LED_MCU_A", "LED_MCU_DRV", "SWDIO"],
+                      12.7, 135.89, per_row=6),
+    })
+    # Power out: key switch, 2 A PTC, 5 V boost and the 6-pin XH to the carrier.
+    out.append({
+        "title": "Key switch, 2 A PTC, 5 V boost, J_PWR1", "at": (533.4, 12.7),
+        "size": (165.1, 114.3),
+        "parts": {
+            "J_KEY1": (12.7, 20.32, 0, None), "F_SYS1": (40.64, 25.4, 0, None),
+            "U1": (58.42, 45.72, 0, None), "L1": (83.82, 30.48, 0, None),
+            "D1": (99.06, 30.48, 180, None),
+            "R_FB1": (99.06, 55.88, 0, None), "R_FB2": (99.06, 71.12, 0, None),
+            "C_IN1": (50.8, 71.12, 0, None), "C_OUT1": (83.82, 55.88, 0, None),
+            "C_OUT2": (83.82, 74.93, 0, None), "J_PWR1": (124.46, 45.72, 0, None),
+        },
+        "tags": _tags(["SDA_EXT", "SCL_EXT", "GND", "SYS"], 12.7, 95.25), "wired": {"GND"},
+    })
+    # One identical block per cell branch.
+    for i, bx in enumerate((12.7, 114.3, 215.9, 317.5)):
+        out.append({
+            "title": f"Cell {i + 1} branch", "at": (bx, 190.5), "size": (99.06, 180.34),
+            "parts": _cell(i + 1, 0, 0),
+            "tags": {f"CELL{i + 1}_F": [(12.7, 152.4, "R")], f"CELL{i + 1}_S": [(33.02, 152.4, "R")],
+                     f"NTC{i + 1}": [(83.82, 120.65, "R")],
+                     f"CELL{i + 1}_RAW": [(12.7, 163.83, "R")],
+                     f"CELL{i + 1}_SRC": [(33.02, 163.83, "R")],
+                     f"PROT{i + 1}_VDD": [(53.34, 163.83, "R")]},
+        })
+    # Mounting holes and one PWR_FLAG per rail whose source is passive.
+    out.append({
+        "title": "Mounting holes and power flags", "at": (419.1, 190.5), "size": (127.0, 55.88),
+        "parts": {"H1": (7.62, 16.51, 0, None), "H2": (22.86, 16.51, 0, None),
+                  "H3": (38.1, 16.51, 0, None), "H4": (53.34, 16.51, 0, None)},
+        "flags": [("GND", 10.16, 36.83), ("VPACK", 33.02, 36.83), ("VBUS", 55.88, 36.83),
+                  ("VMCU_IN", 78.74, 36.83), ("VBAT_SW", 101.6, 36.83)],
+    })
+    return out
+
+
+BLOCKS = _blocks()
+
+
 MODULES = {}
 VARIANTS = {"standard": set()}
 
