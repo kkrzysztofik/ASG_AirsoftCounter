@@ -29,13 +29,20 @@ per-board chip cost. Changes, regenerated with `make BOARD=pack all` (ERC/DRC/ge
 - **TS bias:** 5.23k/30.9k (Extended) -> 5.1k/30k (C27834/C17621, Basic). With the 10k B3435 NTC the
   thresholds move from 0/60 C to 0.5/60.8 C.
 - **Sense taps** `R_SNSF*`/`R_SNSS*`: 0R -> 10R (C17415, Basic). Holder- is now solid GND, so a reversed
-  cell's crowbar holds `CELL_F` at about -0.5 to -1 V until the fuse clears (ms), below the INA3221's
-  -0.3 V input limit; 10 Ohm (the datasheet's filter maximum) limits the clamp current.
-- **Result:** 11 SMD Extended types instead of 15, 105 placements instead of 115, 12 parts fewer per
+  cell's crowbar holds `CELL_F` at about -0.5 to -1 V until the fuse clears (ms), below the monitor's
+  -0.3 V input limit; 10 Ohm limits the clamp current (PAC1934: +-100 mA per pin).
+- **Monitor: 2x INA3221 -> 1x PAC1934T-I/JQ** (C623960, UQFN-16 4x4, Extended, 583 in stock), four
+  channels in one chip, `Sensor_Energy:PAC1934x-xJQ`. Cell n on channel n; ADDRSEL to GND = 0x10;
+  SLOW/ALERT -> MCU pin 28 (`R_ALERT` pull-up), PWRDN -> MCU pin 29 (`R_PWRDN` pull-up, so it runs
+  without firmware). On-chip power accumulators do the coulomb counting. Facts under Datasheet facts.
+- **Shunt 20 -> 10 mOhm** (FMF06FTHR010-LH, C105362, 1 W, 1 %): the PAC1934's differential limit is
+  500 mV (INA3221: 26 V). Without the protector a hard short drives about 25 A per cell until the fuse
+  clears; 10 mOhm keeps that at 0.25 V and gives a +-10 A full scale.
+- **Result:** 11 SMD Extended types instead of 15, 104 placements instead of 115, 13 parts fewer per
   board. Assemble 2 of the 5 boards at JLC to cut the per-board chip cost further.
 - Not changed: per-cell switching (any 1-4 cell combination), per-cell current/voltage/temperature,
-  the MCU, charger, boost and connectors. Per-cell numbers further down still describe the XB8089D
-  design where they mention it; this section overrides them.
+  the MCU, charger, boost and connectors. The INA3221 and XB8089D datasheet notes further down are
+  kept for the record; this section overrides them.
 
 ## Goal
 
@@ -70,7 +77,7 @@ by the healthy ones, and ageing mismatch (shows as slightly less runtime).
 USB-C (5.1k CC; D+/D- to the MCU for DFU)
   └─ BQ25601 charger (I2C to pack MCU, TS <- board NTC, ~2 A)
        ├─ BAT ── pack rail (1S4P, per-cell chain below)
-       └─ SYS ─┬─ LDO 3.3 V (low Iq) ── STM32C071, INA3221 x2          [always on]
+       └─ SYS ─┬─ LDO 3.3 V (low Iq) ── STM32C071, PAC1934             [always on]
                └─ J_KEY (off-board) ─ F1 ─ VBAT_SW ─┬─ MT3608 boost ─ +5V ─┐
                                                     └──────────────────────┼─ 6-pin XH to carrier
                                                                            │  GND,GND,VBAT_SW,+5V,SDA,SCL
@@ -94,23 +101,23 @@ carrier: VBAT_SW -> J_HBAT1 -> Heltec battery socket;  VBAT_SW -> amp;  +5V -> L
 ### Per-cell chain
 
 ```
-holder+ ─ fuse ─┬─ shunt 20 mOhm ─┬─ back-to-back P-FET (2x AO3401A) ─ pack rail
+holder+ ─ fuse ─┬─ shunt 10 mOhm ─┬─ back-to-back P-FET (2x AO3401A) ─ pack rail
                 │                 │    gates: 1M to source (4 uA when on), pulled low by an N-FET <- MCU GPIO
-                │                 └─ INA3221 IN-/bus = this cell's voltage, also when switched off
+                │                 └─ PAC1934 SENSE-; SENSE+ (= VBUS) on the fuse side reads this cell, also when off
                 ├─ crowbar Schottky to holder- (a reversed cell blows the fuse)
                 └─ B5819W diode-OR -> LDO -> MCU
 holder- ─ GND (no protector IC since 2026-10-02)       bead NTC on each cell -> MCU ADC
 ```
 
-- **Switch on the positive side, shunt on the cell side of it.** INA3221 measures bus voltage at IN-;
+- **Switch on the positive side, shunt on the cell side of it.** The PAC1934 measures bus voltage at SENSE+;
   with the shunt between cell and switch each channel reads its own cell even while it is disconnected,
   which the connect check needs. (The earlier FS8205-in-the-negative-lead idea read only the pack rail.)
 - **Switch defaults to OFF.** A dead MCU leaves an open pack, which is also the over-discharge protection.
   Each switch has a **DNP 0 Ohm bypass** footprint for bring-up without firmware.
 - **MCU power does not depend on the switches:** the four cell+ nodes and SYS are diode-ORed (5x B5819W) into the
   LDO, so the MCU runs from the highest cell at uA load even with every switch open, and from USB with no cells (DFU).
-- **Shunt 20 mOhm:** 1.2 mV (30 LSB at 40 uV) for 60 mA per cell, 8 A full scale (one cell carrying all
-  load plus charge). INA3221 offset is a few mA, so thresholds need margin.
+- **Shunt 10 mOhm:** 0.6 mV (200 LSB at 3 uV, bidirectional mode) for 60 mA per cell, +-10 A full scale
+  (one cell carrying all load plus charge). The PAC1934 cancels its offset in the averaged result.
 - **Fuse 5 A fast-blow:** above the per-cell working current (about 2 A); with no protector IC it is the
   hardware short-circuit protection. It must clear the crowbar current before the Schottky fails (see the
   fuse ruling under Datasheet facts).
@@ -123,10 +130,11 @@ holder- ─ GND (no protector IC since 2026-10-02)       bead NTC on each cell -
 | Function | Pins / parts |
 |---|---|
 | USB DFU | PA11/PA12 <- USB-C D-/D+ (crystal-less USB, ROM DFU, flashed with `dfu-util`) |
-| Internal I2C (master) | INA3221 x2 (0x40, 0x41), BQ25601 (0x6B); pull-ups to pack 3.3 V |
+| Internal I2C (master) | PAC1934 (0x10), BQ25601 (0x6B); pull-ups to pack 3.3 V |
 | External I2C (slave 0x30) | to the 6-pin XH; no pull-ups on the pack (the carrier's 3V3 ones are used) |
 | GPIO out | 4x switch drive, BQ25601 /CE, one status LED |
-| GPIO in / EXTI | BQ25601 /INT, INA3221 Critical/Warning |
+| GPIO in / EXTI | BQ25601 /INT, PAC1934 SLOW/ALERT (pin 28) |
+| GPIO out (monitor) | PAC1934 PWRDN (pin 29), pulled up |
 | ADC | 4x cell NTC (divider fed from a GPIO, off between samples) |
 | BOOT0 (PA14, shared with SWCLK), NRST (PF2) | BOOT0 button to 3V3 and a reset button: the MCU runs from the cells, so replugging USB does not reset it. A blank chip boots DFU by itself; later firmware can jump to DFU on command |
 | SWD | 3 test pads |
@@ -139,8 +147,9 @@ pull-ups are on the carrier, so the pack cannot back-power the carrier through S
 - Crate `firmware/pack` (embassy-stm32). The pure logic goes in an `asg-core` `pack` module (no_std,
   host-tested): connection sequence, disable policy, coulomb counting, and the register map, so the
   Heltec and the pack MCU share one definition.
-- Loop: wake every few seconds (key off) or every second (load or charging), INA3221 one-shot then
-  power-down, apply policy, kick the BQ25601 watchdog, Stop mode. INA3221 alerts wake it early.
+- Loop: wake every few seconds (key off) or every second (load or charging), PAC1934 REFRESH then
+  SLEEP (5 uA; PWRDN loses the configuration), apply policy, kick the BQ25601 watchdog, Stop mode. The
+  PAC1934 ALERT wakes it early. Set the channels bidirectional (NEG_PWR register): charge current is negative.
 - **Connection sequence:** read all four cells, close the median one, then every cell within about 50 mV
   of the rail. Others stay open and are flagged; no on-board equalising, rebalance such a cell externally.
 - **Disable policy:** a cell is disconnected and flagged when, for longer than a debounce time, its current
@@ -211,7 +220,7 @@ the pack quiescent current and the branch series drop.
    - USB DFU enumerates (`dfu-util -l`).
    - With bypasses fitted: rail, LDO and charger come up; key-off quiescent current (target tens of uA).
    - BQ25601 stops at 4.208 V and its battery OVP trips with the PSU above it; firmware opens a cell
-     at its UV limit; a short through the PSU limit is seen by the INA3221 alert.
+     at its UV limit; a short through the PSU limit is seen by the PAC1934 alert.
    - Reversed "cell": PSU at low current limit confirms the crowbar path; then one sacrificial cell with the
      real fuse.
    - Once firmware exists: switches close in order, a cell 200 mV off stays open; 2 A charge of four
@@ -245,7 +254,7 @@ library type (B = Basic, P = Preferred Extended, E = Extended), maker and stock 
 |---|---|---|---|---|---|
 | MCU | STM32C071KBT6, LQFP-32, `MCU_ST_STM32C0:STM32C071KBTx` | C42116633 | E | 600 | JLCPCB API |
 | Charger | BQ25601RTWR, QFN-24, `Battery_Management:BQ25601` | C468236 | E | 5877 | JLCPCB API |
-| Current monitor | INA3221AIRGVR, VQFN-16, `Power_Management:INA3221` | C181255 | E | 8652 | JLCPCB API |
+| Current monitor | PAC1934T-I/JQ, UQFN-16 4x4, `Sensor_Energy:PAC1934x-xJQ` (was 2x INA3221 C181255) | C623960 | E | 583 | JLCPCB API 2026-10-02 |
 | Cell protector | none since 2026-10-02 (was XB8089D C79928, see the simplification delta) | | | | |
 | LDO | XC6206P332MR, SOT-23-3, `Regulator_Linear:XC6206PxxxMR` | C5446 | B | 474563 | JLCPCB API |
 | P-FET (x8) | AO3401A, SOT-23, `Transistor_FET:AO3401A` | C15127 | B | 782223 | JLCPCB API |
@@ -255,7 +264,7 @@ library type (B = Basic, P = Preferred Extended, E = Extended), maker and stock 
 | Charger inductor | Murata DFE322512F-1R5M, 1210, 1.5 uH, Irms 3.0 A, Isat 3.9 A, DCR 48 mOhm | C703084 | E | 4596 | Murata dynamic-model list + JLCPCB API |
 | Boost IC / L / caps | MT3608 + 10 uH 2 A + 22 uF 25 V, copied from the carrier | C84817 / C2046332 / C12891 | E / E / B | | `design.py` |
 | Branch fuse | Bourns SF-1206F500-2, 1206, 5 A fast, I2t 0.966 A2s | C48332 | E | 9975 | Bourns SF-1206F datasheet + JLCPCB API |
-| Shunt | TA-I RLS12FTCR020, 1206, 20 mOhm 1% | C163047 | E | 26562 | JLCPCB API |
+| Shunt | FOJAN FMF06FTHR010-LH, 1206, 10 mOhm 1% 1 W (was RLS12FTCR020 20 mOhm C163047) | C105362 | E | 244330 | JLCPCB API 2026-10-02 |
 | NTC (charger TS) | Nanjing Shiheng CMFB 103F3435, 0805, 10k B3435 1% | C2889056 | E | 15625 | JLCPCB API |
 | Tact switch (BOOT0, NRST) | XUNPU TS-1088-AR02016, SMD 4x3 mm, 2-pad, `Button_Switch_SMD:SW_SPST_TS-1088-xR020` | C720477 | B | 787409 | JLCPCB API |
 | LED red (STAT) | NCD0805R1, 0805 | C84256 | B | 4820981 | JLCPCB API |
@@ -325,7 +334,21 @@ common-cathode. Use C37704. There is no Basic BAT54C at JLC; it is Extended.
   unconnected; not used.
 - VAC is pin 1, VBUS is pin 24 (separate pins on the symbol): tie both to USB VBUS.
 
-**INA3221** (SBOS576C, revised September 2026; read 2026-10-01)
+**PAC1934** (Microchip DS20005850E; read 2026-10-02)
+
+- Pins (table 3-1, UQFN-16): SLOW/ALERT 1, VDD 2, GND 3, SM_CLK 4, SM_DATA 5, ADDRSEL 6, SENSE3- 7,
+  SENSE3+ 8, SENSE4- 9, SENSE4+ 10, SENSE1+ 11, SENSE1- 12, SENSE2+ 13, SENSE2- 14, VDD I/O 15,
+  PWRDN 16, EP 17 (not connected inside, "recommended" to GND). Matches `Sensor_Energy:PAC1934x-xJQ`.
+- VDD 2.7-5.5 V, VDD I/O 1.62-5.5 V, 100 nF on each. Active 585 uA at 1024 samples/s, 16 uA at 8/s,
+  SLEEP 5 uA, PWRDN 0.1 uA, but PWRDN keeps no configuration or data (section 4.1.6).
+- Address (table 5-1): ADDRSEL resistor to GND, 0 Ohm = 0x10 ... tie to VDD = 0x1F.
+- VBUS is measured at **SENSE+** (section 4); SENSE+ goes on the supply side of the shunt.
+- Limits: SENSE pins -0.3 to 40 V absolute, common mode -0.2 to 32 V; **|SENSE+ - SENSE-| 500 mV
+  absolute**; +-100 mA into any pin; back-to-back ESD diodes between SENSE+/- with 1 kOhm in series.
+- VSENSE +-100 mV full scale; bidirectional per channel (NEG_PWR, 1Dh), default unipolar.
+- SLOW/ALERT: input at power-up (high forces 8 samples/s); can be reprogrammed as open-drain ALERT.
+
+**INA3221** (SBOS576C, revised September 2026; read 2026-10-01; replaced by the PAC1934 on 2026-10-02)
 
 - A0 straps (Table 7-1): **GND = 0x40, VS = 0x41, SDA = 0x42, SCL = 0x43**. So U_INA1 A0 = GND (0x40),
   U_INA2 A0 = +3V3 (0x41).
@@ -378,7 +401,8 @@ All named footprints/symbols exist in KiCad 9.0.8: `Connector_USB:USB_C_Receptac
 `Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical`,
 `Battery:BatteryHolder_Keystone_1042_1x18650`,
 `Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm` (BQ25601),
-`Package_DFN_QFN:Texas_RGV0016A_VQFN-16-1EP_4x4mm_P0.65mm_EP2.1x2.1mm` (INA3221 RGV).
+`Package_DFN_QFN:Texas_RGV0016A_VQFN-16-1EP_4x4mm_P0.65mm_EP2.1x2.1mm` (INA3221 RGV, no longer used),
+`Package_DFN_QFN:UQFN-16-1EP_4x4mm_P0.65mm_EP2.6x2.6mm` (PAC1934, since 2026-10-02).
 
 **18650 holder:** MYOUNG BH-18650-A6AJ012 (drawing MY-CP-0373, 2023-09-01): body 77 x 20.7 x
 14.9 mm, flat SUS304 contacts (0.35 mm), THT tabs in plated slots 1.3 x 2.6 mm at 71.45 mm pitch, snap
