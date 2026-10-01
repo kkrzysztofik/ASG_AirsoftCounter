@@ -388,14 +388,13 @@ SIZE_MM = (W, H)
 NPTH_XY = sorted((PLACE[r][0], PLACE[r][1]) for r in ("H1", "H2", "H3", "H4"))
 
 def check():
+    # Board-independent structure lives in board.check_structure, so pack.py runs the same checks.
+    import sys
+
+    import board  # pyright: ignore[reportMissingImports]
+    board.check_structure(sys.modules[__name__])
+    # Carrier specifics: every Heltec header pin known/mapped, no reserved GPIO, a variant loads an input.
     pins = [p for members in NETS.values() for p in members]
-    dupes = {p for p in pins if pins.count(p) > 1}
-    assert not dupes, f"pin on several nets: {dupes}"
-    for net, members in NETS.items():
-        assert len(members) >= 2, f"{net} has a single pin"
-        for p in members:
-            assert p.split(".")[0] in PARTS, f"{net}: unknown part in {p}"
-    assert DNP <= PARTS.keys(), f"unknown DNP parts: {DNP - PARTS.keys()}"
     net_of = {p: net for net, m in NETS.items() for p in m}
     for p, net in HEADER_POWER.items():
         assert net_of.get(p) == net, f"{p} must be on {net}, is on {net_of.get(p)}"
@@ -410,17 +409,7 @@ def check():
             assert g not in FORBIDDEN_GPIO, f"{p} is {name}, reserved on V4"
     got = sorted((n, HELTEC_GPIO[p]) for n, m in NETS.items() for p in m if p in HELTEC_GPIO)
     assert got == sorted(EXPECTED_GPIO.items()), got
-    unused = [r for r in PARTS if PARTS[r][1] != "Mechanical:MountingHole"
-              and not any(p.split(".")[0] == r for p in pins)]
-    assert not unused, f"parts with no connections: {unused}"
-    missing = sorted(r for r in assembled() if (PARTS[r][0], PARTS[r][2]) not in LCSC)
-    assert not missing, f"assembled parts without an LCSC number: {missing}"
-    stale = LCSC.keys() - {(PARTS[r][0], PARTS[r][2]) for r in assembled()}
-    assert not stale, f"LCSC entries no assembled part uses: {stale}"
-    for m, refs in MODULES.items():
-        assert refs <= PARTS.keys(), f"module {m}: unknown parts {refs - PARTS.keys()}"
     for v, mods in VARIANTS.items():
-        assert mods <= MODULES.keys(), f"variant {v}: unknown modules {mods - MODULES.keys()}"
         assert mods & {"buttons", "rfid"}, f"variant {v} has no input (needs buttons or rfid)"
     print(f"design ok: {len(PARTS)} parts, {len(NETS)} nets, variants {sorted(VARIANTS)}")
 

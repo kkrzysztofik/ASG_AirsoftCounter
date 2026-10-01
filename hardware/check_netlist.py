@@ -4,11 +4,10 @@ kicad-cli sch export netlist --format kicadxml -o build/<BOARD>.xml <BOARD>.kica
 /usr/bin/python3 check_netlist.py [build/<BOARD>.xml]
 """
 import sys
-from pathlib import Path
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
-from board import design
-
+from board import design  # pyright: ignore[reportMissingImports]
 
 XML = Path(__file__).resolve().parent / "build" / f"{design.NAME}.xml"
 

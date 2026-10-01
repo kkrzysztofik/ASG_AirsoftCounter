@@ -7,10 +7,10 @@ Run: /usr/bin/python3 gen_pcb.py
 """
 from pathlib import Path
 
-import pcbnew
+import pcbnew  # pyright: ignore[reportMissingImports]
 
-from board import design
 import gen_sch
+from board import design  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).parent
 PCB = HERE / f"{design.NAME}.kicad_pcb"

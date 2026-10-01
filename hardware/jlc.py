@@ -19,18 +19,19 @@ import sys
 import zipfile
 from pathlib import Path
 
-import pcbnew
+import pcbnew  # pyright: ignore[reportMissingImports]
 
-from board import design
+from board import design  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).parent
 PCB = HERE / f"{design.NAME}.kicad_pcb"
 ZIP = HERE / f"fab/{design.NAME}_gerbers_jlcpcb.zip"
+DEFAULT_VARIANT = next(iter(design.VARIANTS))  # carrier: deluxe; pack: standard
 
 
 def out(kind, variant):
-    """fab/jlc_bom.csv is the deluxe (full) board; other variants get a suffix."""
-    return HERE / f"fab/jlc_{kind}{'' if variant == 'deluxe' else '_' + variant}.csv"
+    """The default (first) variant is the unsuffixed fab/jlc_<kind>.csv; other variants get a suffix."""
+    return HERE / f"fab/jlc_{kind}{'' if variant == DEFAULT_VARIANT else '_' + variant}.csv"
 
 
 def natural(ref):
@@ -55,7 +56,8 @@ def board_outline():
     """Edge.Cuts extent from the Gerber itself: (xmin, xmax, ymin, ymax) in mm."""
     with zipfile.ZipFile(ZIP) as z:
         edge = z.read(f"{design.NAME}-Edge_Cuts.gm1").decode()
-    xs, ys = zip(*((int(x) / 1e6, int(y) / 1e6) for x, y in re.findall(r"^X(-?\d+)Y(-?\d+)", edge, re.M)))
+    xs, ys = zip(*((int(x) / 1e6, int(y) / 1e6) for x, y in re.findall(r"^X(-?\d+)Y(-?\d+)", edge, re.M)),
+                strict=True)
     return min(xs), max(xs), min(ys), max(ys)
 
 
@@ -81,10 +83,13 @@ def cpl_rows(variant):
 
 
 def write(path, header, rows):
-    with open(path, "w", newline="") as f:
-        w = csv.writer(f, lineterminator="\n")
-        w.writerow(header)
-        w.writerows(rows)
+    try:
+        with open(path, "w", newline="") as f:
+            w = csv.writer(f, lineterminator="\n")
+            w.writerow(header)
+            w.writerows(rows)
+    except OSError as e:
+        raise SystemExit(f"cannot write {path}: {e}") from e
 
 
 def main():

@@ -11,10 +11,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import pcbnew
+import pcbnew  # pyright: ignore[reportMissingImports]
 
 import gen_pcb
-from board import design
+from board import design  # pyright: ignore[reportMissingImports]
 
 JAR = gen_pcb.HERE / "tools" / "freerouting-2.4.1.jar"
 PASSES = 100
@@ -44,11 +44,11 @@ def freeroute(board, tmp):
     cmd = ["java", "-jar", str(JAR), "-de", str(dsn), "-do", str(ses), "-mp", str(PASSES),
            "--gui.enabled=false", "--api_server.enabled=false",
            "--usage_and_diagnostic_data.disable_analytics=true"]
-    with open(log, "w") as f:
-        try:
+    try:
+        with open(log, "w") as f:
             subprocess.run(cmd, check=True, stdout=f, stderr=subprocess.STDOUT, timeout=TIMEOUT_S)
-        except (OSError, subprocess.SubprocessError) as e:
-            raise SystemExit(f"freerouting failed ({e}):\n{log.read_text()[-3000:]}")
+    except (OSError, subprocess.SubprocessError) as e:
+        raise SystemExit(f"freerouting failed ({e}):\n{log.read_text()[-3000:]}") from e
     text = log.read_text()
     # Regex tied to Freerouting 2.4.1 log wording; the post-import unconnected check is the real gate
     done = re.findall(r"Auto-routing stage completed: .*?final score: ([\d.]+) \((\d+) unrouted", text)

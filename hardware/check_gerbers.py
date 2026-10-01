@@ -11,7 +11,7 @@ import re
 import sys
 import zipfile
 
-from board import design
+from board import design  # pyright: ignore[reportMissingImports]
 
 LAYERS = ["F_Cu.gtl", "B_Cu.gbl", "F_Mask.gts", "B_Mask.gbs", "F_Paste.gtp", "B_Paste.gbp",
           "F_Silkscreen.gto", "B_Silkscreen.gbo", "Edge_Cuts.gm1"]

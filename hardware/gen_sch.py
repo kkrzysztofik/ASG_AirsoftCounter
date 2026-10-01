@@ -17,7 +17,7 @@ import re
 import uuid
 from pathlib import Path
 
-from board import design
+from board import design  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).parent
 SYMDIR = Path("/usr/share/kicad/symbols")
