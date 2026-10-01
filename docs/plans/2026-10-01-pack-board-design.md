@@ -57,7 +57,7 @@ carrier: VBAT_SW -> J_HBAT1 -> Heltec battery socket;  VBAT_SW -> amp;  +5V -> L
 
 ```
 holder+ ─ fuse ─┬─ shunt 20 mOhm ─┬─ back-to-back P-FET (2x AO3401A) ─ pack rail
-                │                 │    gates: 100k to source, pulled low by an N-FET <- MCU GPIO
+                │                 │    gates: 1M to source (4 uA when on), pulled low by an N-FET <- MCU GPIO
                 │                 └─ INA3221 IN-/bus = this cell's voltage, also when switched off
                 ├─ crowbar Schottky to holder- (a reversed cell blows the fuse)
                 └─ BAT54C diode-OR -> LDO -> MCU
@@ -69,8 +69,8 @@ holder- ─ XB8089D (C79928, own 1k/100nF) ─ GND        NTC under each cell ->
   which the connect check needs. (The earlier FS8205-in-the-negative-lead idea read only the pack rail.)
 - **Switch defaults to OFF.** A dead MCU leaves an open pack; the XB8089D protects regardless.
   Each switch has a **DNP 0 Ohm bypass** footprint for bring-up without firmware.
-- **MCU power does not depend on the switches:** the four cell+ nodes are diode-ORed (2x BAT54C) into the
-  LDO, so the MCU runs from the highest cell at uA load even with every switch open.
+- **MCU power does not depend on the switches:** the four cell+ nodes and SYS are diode-ORed (3x BAT54C) into the
+  LDO, so the MCU runs from the highest cell at uA load even with every switch open, and from USB with no cells (DFU).
 - **Shunt 20 mOhm:** 1.2 mV (30 LSB at 40 uV) for 60 mA per cell, 8 A full scale (one cell carrying all
   load plus charge). INA3221 offset is a few mA, so thresholds need margin.
 - **Fuse about 5 A fast-blow:** above the XB8089D overcurrent trip, and must clear the crowbar current
@@ -89,7 +89,7 @@ holder- ─ XB8089D (C79928, own 1k/100nF) ─ GND        NTC under each cell ->
 | GPIO out | 4x switch drive, BQ25601 /CE, one status LED |
 | GPIO in / EXTI | BQ25601 /INT, INA3221 Critical/Warning |
 | ADC | 4x cell NTC (divider fed from a GPIO, off between samples) |
-| BOOT0 | button to 3V3 (a blank chip boots DFU by itself; later firmware can jump to DFU on command) |
+| BOOT0 (PA14, shared with SWCLK), NRST (PF2) | BOOT0 button to 3V3 and a reset button: the MCU runs from the cells, so replugging USB does not reset it. A blank chip boots DFU by itself; later firmware can jump to DFU on command |
 | SWD | 3 test pads |
 
 Two I2C buses keep the Heltec the only master on the carrier bus. The slave pins are open-drain and the
