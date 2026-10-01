@@ -66,10 +66,6 @@
       },
       {
         "netclass": "Power",
-        "pattern": "CELL*_N"
-      },
-      {
-        "netclass": "Power",
         "pattern": "+5V"
       },
       {

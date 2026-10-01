@@ -5,7 +5,8 @@ Same role as design.py for the carrier. gen_sch.py / gen_pcb.py read it through 
 (`/usr/bin/python3 pack.py`).
 
 check() runs the shared structural checks (board.check_structure) plus the pack-specific
-per-cell branch order: holder+ -> fuse -> shunt -> back-to-back P-FET -> pack rail. Source of
+per-cell branch order: holder+ -> fuse -> shunt -> back-to-back P-FET -> pack rail, holder- on GND.
+No protector IC: the default-off MCU switches, the fuses and the charger cover it. Source of
 truth for the design: docs/plans/2026-10-01-pack-board-design.md. Part choices and the LCSC
 numbers are the P0 facts recorded there.
 """
@@ -19,14 +20,14 @@ SOT23 = "Package_TO_SOT_SMD:SOT-23"
 SMA = "Diode_SMD:D_SMA"
 BSS138 = ("Transistor_FET:BSS138", SOT23)
 AO3401A = ("Transistor_FET:AO3401A", SOT23)
-BAT54C = ("Diode:BAT54C", SOT23)
+SOD123 = "Diode_SMD:D_SOD-123"
+B5819W = ("Device:D_Schottky", SOD123)
 SS34 = ("Diode:SS34", SMA)
 C1206 = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
 R1206 = "Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder"
 FUSE1206 = "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"
 SOT23_3 = "Package_TO_SOT_SMD:SOT-23-3"
 SOT23_6 = "Package_TO_SOT_SMD:SOT-23-6"
-SOIC8EP = "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.41x3.3mm"
 QFN24 = "Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm"
 VQFN16 = "Package_DFN_QFN:Texas_RGV0016A_VQFN-16-1EP_4x4mm_P0.65mm_EP2.1x2.1mm"
 LQFP32 = "Package_QFP:LQFP-32_7x7mm_P0.8mm"
@@ -59,9 +60,10 @@ PARTS = {
     "R_BAT2": ("0R", "Device:R", R1206),
     "R_SYS1": ("0R", "Device:R", R1206),
     "C_BTST": ("47nF", *C0805),
-    # TS bias network for a 10k B3435 NTC: 0-60 C (datasheet section 9.3.7.4)
-    "RT1": ("5k23", *R0805),
-    "RT2": ("30k9", *R0805),
+    # TS bias network for a 10k B3435 NTC: 0-60 C (datasheet section 9.3.7.4). TI's 5.23k/30.9k
+    # rounded to Basic 5.1k/30k; the window moves by under 1 C (design doc, simplification delta).
+    "RT1": ("5k1", *R0805),
+    "RT2": ("30k", *R0805),
     "TH_CHG": ("10k NTC", "Device:Thermistor_NTC", R0805[1]),
     "R_CE": ("10k", *R0805),        # /CE low: charging runs with the MCU unpowered
     "R_INT_CHG": ("10k", *R0805),   # /INT pull-up
@@ -71,13 +73,11 @@ PARTS = {
     "R_CC2": ("5k1", *R0805),
     # --- USB-C input (5.1k CC; D+/D- to the MCU) ---
     "J_USB1": ("HC-TYPE-C-16P-01A", "Connector:USB_C_Receptacle_USB2.0_14P", USBC),
-    # --- LDO and MCU diode-OR (cell+ / SYS -> VMCU_IN) ---
+    # --- LDO and MCU diode-OR (cell+ / SYS -> VMCU_IN; D_OR1-4 per cell, D_OR5 for SYS) ---
     "U_LDO": ("XC6206P332MR", "Regulator_Linear:XC6206PxxxMR", SOT23_3),
     "C_LDO1": ("1uF", *C0805),
     "C_LDO2": ("1uF", *C0805),
-    "D_OR1": ("BAT54C", *BAT54C),
-    "D_OR2": ("BAT54C", *BAT54C),
-    "D_OR3": ("BAT54C", *BAT54C),
+    "D_OR5": ("B5819W", *B5819W),
     # --- monitoring: 2x INA3221 (U_INA1 = cells 1-3, U_INA2 = cell 4) ---
     "U_INA1": ("INA3221", "Power_Management:INA3221", VQFN16),
     "U_INA2": ("INA3221", "Power_Management:INA3221", VQFN16),
@@ -119,8 +119,6 @@ PARTS = {
 # INA3221 channel inputs: cell 1-3 on U_INA1 channels 1-3, cell 4 on U_INA2 channel 1.
 INA_IN = {1: ("12", "11"), 2: ("15", "14"), 3: ("2", "1"), 4: ("12", "11")}
 INA_OF = {1: "U_INA1", 2: "U_INA1", 3: "U_INA1", 4: "U_INA2"}
-# Diode-OR anode that taps each cell after its fuse: cell -> (ref, pin).
-OR_ANODE = {1: ("D_OR1", "1"), 2: ("D_OR1", "2"), 3: ("D_OR2", "1"), 4: ("D_OR2", "2")}
 # MCU pin per cell: switch gate drive (PB0/PB1/PB2/PA8) and NTC ADC (PA0..PA3).
 SW_PIN = {1: "15", 2: "16", 3: "17", 4: "18"}
 NTC_PIN = {1: "7", 2: "8", 3: "9", 4: "10"}
@@ -137,15 +135,15 @@ for i in range(1, 5):
     PARTS[f"R_PD{i}"] = ("100k", *R0805)
     PARTS[f"R_SW{i}"] = ("1k", *R0805)
     PARTS[f"R_BYP{i}"] = ("0R", *R0805)                             # bring-up bypass, DNP
-    PARTS[f"U_P{i}"] = ("XB8089D", "local:XB8089D", SOIC8EP)
-    PARTS[f"R_PROT{i}"] = ("1k", *R0805)
-    PARTS[f"C_PROT{i}"] = ("100nF", *C0805)
+    PARTS[f"D_OR{i}"] = ("B5819W", *B5819W)                        # cell+ -> MCU supply diode-OR
     PARTS[f"TH{i}"] = ("10k NTC", "Device:Thermistor_NTC", NTC_BEAD)  # MF52 bead, hand-soldered
     PARTS[f"R_NTC{i}"] = ("10k", *R0805)
     # Kelvin sense split (plan P4.2): the shunt's two pads feed the INA3221 through their own 0R, so
-    # the sense net is thin (Default class) while the branch stays wide.
-    PARTS[f"R_SNSF{i}"] = ("0R", *R0805)
-    PARTS[f"R_SNSS{i}"] = ("0R", *R0805)
+    # the sense net is thin (Default class) while the branch stays wide. 10 Ohm (the datasheet's
+    # filter maximum) limits the INA3221 input-clamp current while a reversed cell's crowbar holds
+    # CELL_F below GND, now that holder- sits directly on GND.
+    PARTS[f"R_SNSF{i}"] = ("10R", *R0805)
+    PARTS[f"R_SNSS{i}"] = ("10R", *R0805)
 
 for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", MH)
@@ -181,18 +179,16 @@ LCSC = {
     ("4k7", R0805[1]): "C17673",     # B
     ("5k1", R0805[1]): "C27834",     # B
     ("75k", R0805[1]): "C17819",     # P
-    ("5k23", R0805[1]): "C17739",    # E TS bias (BQ25601 datasheet)
-    ("30k9", R0805[1]): "C204398",   # E
+    ("30k", R0805[1]): "C17621",     # B UNI-ROYAL 0805W8F3002T5E (TS bias, 2026-10-02)
+    ("10R", R0805[1]): "C17415",     # B UNI-ROYAL 0805W8F100JT5E (sense taps, 2026-10-02)
     ("10k NTC", R0805[1]): "C2889056",  # E CMFB 103F3435, 0805 B3435
-    ("0R", R0805[1]): "C17477",   # B UNI-ROYAL 0805W8F0000T5E (sense split)
     ("0R", R1206): "C17888",         # B UNI-ROYAL 1206W4F0000T5E, jumper 2 A rated (BAT/SYS split)
     ("5A fuse", FUSE1206): "C48332",    # E Bourns SF-1206F500-2, I2t 0.966 A2s
     ("2A PTC", FUSE1206): "C22374899",  # E LUTE 1206L200/16NR
     ("SS34", SMA): "C8678",             # B
-    ("BAT54C", SOT23): "C37704",        # E Nexperia BAT54C,215 (common cathode)
+    ("B5819W", SOD123): "C8598",        # B SL B5819W, 40 V 1 A Schottky (2026-10-02)
     ("AO3401A", SOT23): "C15127",       # B
     ("BSS138", SOT23): "C7420339",      # P
-    ("XB8089D", SOIC8EP): "C79928",     # E
     ("BQ25601RTWR", QFN24): "C468236",  # E
     ("INA3221", VQFN16): "C181255",     # E
     ("XC6206P332MR", SOT23_3): "C5446",  # B
@@ -215,7 +211,7 @@ NETS = {
               "R_BAT1.2", "R_BAT2.2"],
     "BAT_CHG": ["U_CHG.13", "U_CHG.14", "C_BAT.1", "R_BAT1.1", "R_BAT2.1"],
     "SYS_CHG": ["U_CHG.15", "U_CHG.16", "L_CHG.2", "C_SYS.1", "R_SYS1.1"],
-    "SYS": ["R_SYS1.2", "D_OR3.1", "D_OR3.2", "J_KEY1.1"],
+    "SYS": ["R_SYS1.2", "D_OR5.2", "J_KEY1.1"],
     "KEY_OUT": ["J_KEY1.2", "F_SYS1.1"],
     "VBAT_SW": ["F_SYS1.2", "U1.5", "U1.4", "L1.1", "C_IN1.1", "J_PWR1.3"],
     "SW": ["L1.2", "U1.1", "D1.2"],
@@ -227,7 +223,7 @@ NETS = {
     "BTST": ["U_CHG.21", "C_BTST.1"],
     "REGN": ["U_CHG.22", "C_REGN.1", "RT1.1"],
     "TS": ["U_CHG.11", "RT1.2", "RT2.1", "TH_CHG.1"],
-    "VMCU_IN": ["D_OR1.3", "D_OR2.3", "D_OR3.3", "U_LDO.3", "C_LDO1.1"],
+    "VMCU_IN": [*(f"D_OR{i}.1" for i in range(1, 6)), "U_LDO.3", "C_LDO1.1"],
     "+3V3": ["U_LDO.2", "C_LDO2.1",
              "U_INA1.4", "U_INA1.16", "C_INA1.1", "U_INA2.4", "U_INA2.16", "C_INA2.1", "U_INA2.5",
              "R_SCL_INT.1", "R_SDA_INT.1", "R_CRIT.1", "R_WARN.1",
@@ -256,8 +252,8 @@ NETS = {
     "SCL_EXT": ["U_MCU.14", "J_PWR1.6"],
     # NTC divider supply (PA4), switched off between samples
     "NTC_PWR": ["U_MCU.11", *(f"TH{i}.1" for i in range(1, 5))],
-    # ground: battery protectors (VM), FET sources, charger, MCU, earth
-    "GND": [*(f"U_P{i}.{n}" for i in range(1, 5) for n in (1, 2, 3, 4)),
+    # ground: holder- (no protector IC), crowbar anodes, gate drive, charger, MCU, earth
+    "GND": [*(f"BT{i}.2" for i in range(1, 5)), *(f"D_CB{i}.2" for i in range(1, 5)),
             *(f"Q_N{i}.2" for i in range(1, 5)),
             *(f"R_PD{i}.2" for i in range(1, 5)),
             *(f"R_NTC{i}.2" for i in range(1, 5)),
@@ -276,18 +272,14 @@ NETS = {
 }
 
 for i in range(1, 5):
-    or_ref, or_pin = OR_ANODE[i]
     ina, (in_p, in_m) = INA_OF[i], INA_IN[i]
     NETS[f"CELL{i}_RAW"] = [f"BT{i}.1", f"F{i}.1"]
-    NETS[f"CELL{i}_F"] = [f"F{i}.2", f"D_CB{i}.1", f"R_SH{i}.1", f"R_PROT{i}.1", f"{or_ref}.{or_pin}",
-                          f"R_SNSF{i}.1"]
+    NETS[f"CELL{i}_F"] = [f"F{i}.2", f"D_CB{i}.1", f"R_SH{i}.1", f"D_OR{i}.2", f"R_SNSF{i}.1"]
     NETS[f"CELL{i}_S"] = [f"R_SH{i}.2", f"Q_A{i}.3", f"R_BYP{i}.1", f"R_SNSS{i}.1"]
     NETS[f"INA_F{i}"] = [f"R_SNSF{i}.2", f"{ina}.{in_p}"]
     NETS[f"INA_S{i}"] = [f"R_SNSS{i}.2", f"{ina}.{in_m}"]
     NETS[f"CELL{i}_SRC"] = [f"Q_A{i}.2", f"Q_B{i}.2", f"R_GS{i}.2"]
     NETS[f"CELL{i}_G"] = [f"Q_A{i}.1", f"Q_B{i}.1", f"R_GS{i}.1", f"Q_N{i}.3"]
-    NETS[f"CELL{i}_N"] = [f"BT{i}.2", f"D_CB{i}.2", *(f"U_P{i}.{n}" for n in (5, 7, 8, 9)), f"C_PROT{i}.2"]
-    NETS[f"PROT{i}_VDD"] = [f"U_P{i}.6", f"R_PROT{i}.2", f"C_PROT{i}.1"]
     NETS[f"SW{i}_G"] = [f"Q_N{i}.1", f"R_PD{i}.1", f"R_SW{i}.2"]
     NETS[f"SW{i}_DRV"] = [f"R_SW{i}.1", f"U_MCU.{SW_PIN[i]}"]
     NETS[f"NTC{i}"] = [f"TH{i}.2", f"R_NTC{i}.1", f"U_MCU.{NTC_PIN[i]}"]
@@ -305,7 +297,7 @@ NETS["INA_S4"] += ["U_INA2.15", "U_INA2.14", "U_INA2.2", "U_INA2.1"]
 # ran 151-294 mOhm, unbalancing the matched ~150 mOhm branches; at 0.8 mm it is 43-85 mOhm. The QFN24 side of each (BAT_CHG,
 # SYS_CHG) stays Default behind the R_BAT/R_SYS 0R jumpers: the 0.8 mm class cannot leave those
 # 0.5 mm-pitch pads without a clearance error. VBUS stays Default (short, connector beside U_CHG).
-NETCLASS_POWER = ("VBAT*", "KEY_OUT", "CELL*_RAW", "CELL*_F", "CELL*_S", "CELL*_SRC", "CELL*_N",
+NETCLASS_POWER = ("VBAT*", "KEY_OUT", "CELL*_RAW", "CELL*_F", "CELL*_S", "CELL*_SRC",
                   "+5V", "SW", "SW_CHG", "VPACK", "SYS")
 RAILS = ("GND", "+3V3", "VPACK", "VBUS", "VMCU_IN", "VBAT_SW", "BAT_CHG")
 # A power port names its net by Value, so each rail reuses a stock symbol (carrier convention).
@@ -322,7 +314,7 @@ def _tags(nets, x0, y0, per_row=7, pitch=20.32, row=12.7):
 
 def _cell(i, x0, y0):
     """One cell's branch (design doc order: holder+ -> fuse -> shunt -> back-to-back P-FET) plus
-    the protector, the NTC and the switch gate drive. Four copies, one per cell block."""
+    the crowbar, the diode-OR tap, the NTC and the switch gate drive. Four copies, one per cell block."""
     def a(x, y, rot=0):
         return (x0 + x, y0 + y, rot, None)
 
@@ -331,9 +323,8 @@ def _cell(i, x0, y0):
         f"Q_A{i}": a(12.7, 82.55), f"Q_B{i}": a(31.75, 82.55),
         f"R_GS{i}": a(24.13, 100.33), f"R_BYP{i}": a(43.18, 100.33),
         f"Q_N{i}": a(12.7, 116.84), f"R_PD{i}": a(7.62, 134.62), f"R_SW{i}": a(25.4, 134.62),
-        f"D_CB{i}": a(60.96, 20.32), f"U_P{i}": a(78.74, 35.56),
+        f"D_CB{i}": a(60.96, 20.32), f"D_OR{i}": a(78.74, 35.56),
         f"R_SNSF{i}": a(45.72, 64.77), f"R_SNSS{i}": a(45.72, 78.74),
-        f"R_PROT{i}": a(60.96, 50.8), f"C_PROT{i}": a(45.72, 50.8),
         f"TH{i}": a(83.82, 60.96), f"R_NTC{i}": a(83.82, 78.74),
     }
 
@@ -371,12 +362,10 @@ def _blocks():
             "C_INA1": (7.62, 22.86, 0, None), "C_INA2": (7.62, 78.74, 0, None),
             "R_SCL_INT": (60.96, 30.48, 90, None), "R_SDA_INT": (60.96, 43.18, 90, None),
             "R_CRIT": (60.96, 55.88, 90, None), "R_WARN": (60.96, 68.58, 90, None),
-            "D_OR1": (78.74, 30.48, 0, None), "D_OR2": (78.74, 60.96, 0, None),
-            "D_OR3": (78.74, 91.44, 0, None), "U_LDO": (105.41, 91.44, 0, None),
+            "D_OR5": (78.74, 91.44, 0, None), "U_LDO": (105.41, 91.44, 0, None),
             "C_LDO1": (105.41, 68.58, 0, None), "C_LDO2": (105.41, 111.76, 0, None),
         },
-        "tags": _tags(["CELL1_F", "CELL2_F", "CELL3_F", "CELL4_F",
-                       "INA_F1", "INA_F2", "INA_F3", "INA_F4",
+        "tags": _tags(["INA_F1", "INA_F2", "INA_F3", "INA_F4",
                        "INA_S1", "INA_S2", "INA_S3", "INA_S4",
                        "SCL_INT", "SDA_INT", "INA_CRIT", "INA_WARN", "SYS"],
                       12.7, 137.16, per_row=6),
@@ -422,7 +411,7 @@ def _blocks():
             "title": f"Cell {i + 1} branch", "at": (bx, 190.5), "size": (99.06, 180.34),
             "parts": _cell(i + 1, 0, 0),
             "tags": _tags([f"CELL{i + 1}_F", f"CELL{i + 1}_S", f"CELL{i + 1}_RAW", f"CELL{i + 1}_SRC",
-                           f"PROT{i + 1}_VDD", f"INA_F{i + 1}", f"INA_S{i + 1}"], 12.7, 152.4,
+                           f"INA_F{i + 1}", f"INA_S{i + 1}"], 12.7, 152.4,
                           per_row=4)
                      | {f"NTC{i + 1}": [(83.82, 120.65, "R")]},
         })
@@ -474,10 +463,9 @@ _STRIP = {
     "RT1": (47, 23.18, 0), "RT2": (51.5, 23.18, 0), "TH_CHG": (56, 23.18, 0),
     "R_CE": (60.5, 23.18, 0), "R_INT_CHG": (65, 23.18, 0), "R_STAT": (69.5, 23.18, 0),
     "LED_STAT": (75.5, 23.18, 0),
-    # band 2: U_INA1 (cells 1-3), the LDO and the diode-OR
-    "U_INA1": (64, 34.01, 0), "C_INA1": (64, 29.5, 0), "D_OR3": (64, 41, 0),
+    # band 2: U_INA1 (cells 1-3), the LDO and the SYS leg of the diode-OR
+    "U_INA1": (64, 34.01, 0), "C_INA1": (64, 29.5, 0), "D_OR5": (64, 41, 0),
     "U_LDO": (75, 28.5, 0), "C_LDO1": (69.8, 30, 90), "C_LDO2": (74.5, 35.5, 0),
-    "D_OR1": (69.5, 38.5, 0), "D_OR2": (77.5, 38, 0),
     # row between cells 2 and 3: internal I2C pull-ups, INA alert pull-ups
     "R_SCL_INT": (61, 44.84, 0), "R_SDA_INT": (65.6, 44.84, 0),
     "R_CRIT": (70.2, 44.84, 0), "R_WARN": (74.8, 44.84, 0),
@@ -507,8 +495,7 @@ def _pcb_place():
         # One branch per cell, a copy of the same three rows, in the design-doc branch order.
         row_a = (("D_CB", 17.0), ("F", 24.5), ("R_SH", 30.5), ("Q_A", 36.0), ("Q_B", 41.0),
                  ("R_GS", 46.5), ("Q_N", 52.0))
-        row_b = (("R_PD", 17.0), ("R_SW", 21.5), ("R_PROT", 26.0), ("C_PROT", 30.5),
-                 ("U_P", 37.5), ("R_NTC", 46.0))
+        row_b = (("R_PD", 17.0), ("R_SW", 21.5), ("D_OR", 28.0), ("R_NTC", 46.0))
         for name, x in row_a:
             place[f"{name}{i}"] = (x, cy - 4.0, 0)
         for name, x in row_b:
@@ -534,13 +521,12 @@ def _ref_at():
     out = {}
     for i, cy in enumerate(_CELL_Y, start=1):
         out[f"D_CB{i}"] = (17.0, cy - 1.3, 0)  # above it sits the d3.3 peg
-        out |= {f"{r}{i}": below(f"{r}{i}", 1.9) for r in ("R_SW", "C_PROT")}
-        out[f"U_P{i}"] = below(f"U_P{i}", 3.6)
+        out |= {f"{r}{i}": below(f"{r}{i}", 1.9) for r in ("R_SW", "D_OR")}
     out |= {r: below(r, 1.65) for r in ("RT2", "R_CE", "R_STAT", "LED_STAT", "R_SDA_INT", "R_WARN",
                                         "R_FB2")}
     out |= {r: below(r, 3.6) for r in ("U_INA1", "U_INA2")}
     # rotated, to the right of the part (free strip before the - tab / USB-C)
-    out |= {"D_OR2": (80.3, 38, 90), "C_IN1": (80.6, 49, 90), "R_CC1": (81.6, 20, 90),
+    out |= {"C_IN1": (80.6, 49, 90), "R_CC1": (81.6, 20, 90),
             "R_CC2": (81.6, 25.5, 90)}
     return out
 
@@ -594,7 +580,8 @@ def check_branches():
         assert net_of[f"R_SNSS{i}.2"] == net_of[f"{ina}.{in_m}"], f"cell {i}: sense not on IN-"
         assert net_of[f"Q_A{i}.2"] == net_of[f"Q_B{i}.2"], f"cell {i}: FET sources not common"
         assert net_of[f"Q_B{i}.3"] == "VPACK", f"cell {i}: FET not on the pack rail"
-        assert net_of[f"BT{i}.2"] == net_of[f"U_P{i}.5"], f"cell {i}: holder- not on XB8089D BAT-"
+        assert net_of[f"BT{i}.2"] == "GND", f"cell {i}: holder- not on GND"
+        assert net_of[f"D_OR{i}.2"] == net_of[f"F{i}.2"], f"cell {i}: diode-OR not after the fuse"
 
 
 def check():

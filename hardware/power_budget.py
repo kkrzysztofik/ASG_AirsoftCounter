@@ -3,7 +3,7 @@
 Every figure is battery-side mA at ~3.6 V (the 35E's nominal). Sources: Heltec V4 datasheet Rev 1.4
 table 3.4 (RX, TX, WiFi, sleep; measured on USB, and the V4's 3V3 is a CE6260B33M linear LDO, so
 battery current is about the same); game.rs (beep timing); design.py (two button LED rings, gate
-divider); fab/PARTS_REVIEW.md (5.1 V rail, XB8089D); design doc (PN532 polling ~20 mA). Everything
+divider); fab/PARTS_REVIEW.md (5.1 V rail); design doc (PN532 polling ~20 mA). Everything
 marked EST is a guess: replace it with a measurement once the board exists (USB meter or INA219 in
 the J_PWR1 lead). The one worth measuring first is LCD_BACKLIGHT_5V.
 
@@ -65,7 +65,6 @@ GATE_PD = 3.0 / 11e3 * 1e3  # 10k gate pull-down + 1k: 0.27 mA per driver that i
 AMP_ON = 13.0  # NS4168 quiescent with CTRL high; firmware holds CTRL low between clips (1 uA off)
 AMP_PLAYING = 0.4 / VBAT * 1e3  # EST: ~0.4 W average electrical while a clip plays
 BOOST_IDLE = 1.0  # EST: MT3608 switching at near-zero load
-PROT = 0.006  # XB8089D operating current
 # Pack board with the key off (the carrier is unpowered; only the pack's own electronics drain the
 # cells). EST from the P0 datasheets: STM32C071 Stop with RTC/LSI is 85 uA typical, so the design
 # doc's "tens of uA" target is unreachable; 2x INA3221 power-down ~1 uA each, BQ25601 battery-only
@@ -98,7 +97,6 @@ def scenario(deluxe, game, backlight, status_s=30, clip_duty=0.05):
         five += 2 * LED_RING_5V + BUZZER_5V * READY_BUZZ_DUTY  # both panel rings are lit
         ma["Gate pull-downs"] = GATE_PD
     ma["5 V rail via boost"] = from_5v(five) + BOOST_IDLE
-    ma["XB8089D"] = PROT
     return ma
 
 
@@ -133,11 +131,11 @@ def main():
           " (Deluxe, game, backlight on)")
     # Key left on after the game, firmware in deep sleep: what still draws from the cells
     parked = {"Heltec deep sleep": HELTEC_SLEEP, "PN532 module idle": NFC_IDLE,
-              "LCD logic via boost": from_5v(LCD_LOGIC_5V) + BOOST_IDLE, "XB8089D": PROT}
+              "LCD logic via boost": from_5v(LCD_LOGIC_5V) + BOOST_IDLE}
     total = sum(parked.values())
-    days = CELLS_MAH / total / 24  # full pack down to the pack's 2.5 V protector cutoff
+    days = CELLS_MAH / total / 24  # full pack down to the pack MCU's undervoltage disconnect
     print(f"\nKey left on, firmware asleep: {total:.1f} mA -> about {days:.0f} days until the pack "
-          "cuts off at 2.5 V")
+          "MCU disconnects the cells")
     print("  (cut this with the key; firmware cannot switch off the boost or the PN532 module)")
     print("  Optimistic on purpose: this needs the radio off (a live V4 node sits at a 12 mA floor)")
     print("  and the PN532 in PowerDown. Miss either and it is days, not weeks.")
