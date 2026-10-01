@@ -67,10 +67,11 @@ AMP_PLAYING = 0.4 / VBAT * 1e3  # EST: ~0.4 W average electrical while a clip pl
 BOOST_IDLE = 1.0  # EST: MT3608 switching at near-zero load
 # Pack board with the key off (the carrier is unpowered; only the pack's own electronics drain the
 # cells). EST from the P0 datasheets: STM32C071 Stop with RTC/LSI is 85 uA typical, so the design
-# doc's "tens of uA" target is unreachable; 2x INA3221 power-down ~1 uA each, BQ25601 battery-only
+# doc's "tens of uA" target is unreachable; PAC1934 SLEEP 5 uA (DS20005850E; its PWRDN state is
+# 0.1 uA but loses the configuration and accumulators), BQ25601 battery-only
 # ~4.5 uA, XC6206 Iq ~1 uA, plus the 4 x 1M gate resistors (4.2 V / 1M = 4.2 uA each) while the
 # switches are on. Cell self-discharge (~1-3 %/month) dominates this after about a year.
-PACK_IQ_MA = 0.085 + 2 * 0.001 + 0.0045 + 0.001 + 4 * 0.0042
+PACK_IQ_MA = 0.085 + 0.005 + 0.0045 + 0.001 + 4 * 0.0042
 # Cell branch series resistance (5 A fuse + 20 mOhm shunt + back-to-back AO3401A + track) ~150 mOhm
 # EST. Deliberately not modelled: it drops < 0.3 V at these currents, well inside the 0.84 USABLE
 # derate that already covers the 3.5 V shutdown.

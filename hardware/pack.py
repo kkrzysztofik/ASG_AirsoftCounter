@@ -29,7 +29,7 @@ FUSE1206 = "Fuse:Fuse_1206_3216Metric_Pad1.42x1.75mm_HandSolder"
 SOT23_3 = "Package_TO_SOT_SMD:SOT-23-3"
 SOT23_6 = "Package_TO_SOT_SMD:SOT-23-6"
 QFN24 = "Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm"
-VQFN16 = "Package_DFN_QFN:Texas_RGV0016A_VQFN-16-1EP_4x4mm_P0.65mm_EP2.1x2.1mm"
+UQFN16 = "Package_DFN_QFN:UQFN-16-1EP_4x4mm_P0.65mm_EP2.6x2.6mm"
 LQFP32 = "Package_QFP:LQFP-32_7x7mm_P0.8mm"
 L1210 = "Inductor_SMD:L_1210_3225Metric_Pad1.42x2.65mm_HandSolder"
 LRN6045 = "Inductor_SMD:L_Bourns_SRN6045TA"
@@ -78,15 +78,16 @@ PARTS = {
     "C_LDO1": ("1uF", *C0805),
     "C_LDO2": ("1uF", *C0805),
     "D_OR5": ("B5819W", *B5819W),
-    # --- monitoring: 2x INA3221 (U_INA1 = cells 1-3, U_INA2 = cell 4) ---
-    "U_INA1": ("INA3221", "Power_Management:INA3221", VQFN16),
-    "U_INA2": ("INA3221", "Power_Management:INA3221", VQFN16),
-    "C_INA1": ("100nF", *C0805),
-    "C_INA2": ("100nF", *C0805),
+    # --- monitoring: one PAC1934 (cell n on channel n; ADDRSEL to GND = 0x10, DS20005850E table 5-1) ---
+    "U_MON": ("PAC1934T-I/JQ", "Sensor_Energy:PAC1934x-xJQ", UQFN16),
+    "C_MON1": ("100nF", *C0805),    # VDD
+    "C_MON2": ("100nF", *C0805),    # VDD I/O
     "R_SCL_INT": ("4k7", *R0805),
     "R_SDA_INT": ("4k7", *R0805),
-    "R_CRIT": ("10k", *R0805),
-    "R_WARN": ("10k", *R0805),
+    # SLOW/ALERT: SLOW input at power-up (high = 8 samples/s), firmware reprograms it as open-drain
+    # ALERT. PWRDN is active low: pulled up so the monitor runs without firmware.
+    "R_ALERT": ("10k", *R0805),
+    "R_PWRDN": ("10k", *R0805),
     # --- MCU and support ---
     "U_MCU": ("STM32C071KBTx", "MCU_ST_STM32C0:STM32C071KBTx", LQFP32),
     "C_MCU1": ("100nF", *C0805),
@@ -116,9 +117,9 @@ PARTS = {
 }
 
 # --- per-cell chain (x4), generated like design.py's DRIVERS ---
-# INA3221 channel inputs: cell 1-3 on U_INA1 channels 1-3, cell 4 on U_INA2 channel 1.
-INA_IN = {1: ("12", "11"), 2: ("15", "14"), 3: ("2", "1"), 4: ("12", "11")}
-INA_OF = {1: "U_INA1", 2: "U_INA1", 3: "U_INA1", 4: "U_INA2"}
+# PAC1934 (SENSE+, SENSE-) per cell. SENSE+ is also the VBUS input, on the cell side of the shunt,
+# so each channel reads its own cell with the switch open.
+SENSE_IN = {1: ("11", "12"), 2: ("13", "14"), 3: ("8", "7"), 4: ("10", "9")}
 # MCU pin per cell: switch gate drive (PB0/PB1/PB2/PA8) and NTC ADC (PA0..PA3).
 SW_PIN = {1: "15", 2: "16", 3: "17", 4: "18"}
 NTC_PIN = {1: "7", 2: "8", 3: "9", 4: "10"}
@@ -127,7 +128,7 @@ for i in range(1, 5):
     PARTS[f"BT{i}"] = ("18650", "Device:Battery_Cell", HOLDER)      # hand-soldered, not in the JLC BOM
     PARTS[f"F{i}"] = ("5A fuse", "Device:Fuse", FUSE1206)
     PARTS[f"D_CB{i}"] = ("SS34", *SS34)                             # crowbar across the holder
-    PARTS[f"R_SH{i}"] = ("20mOhm", "Device:R", R1206)
+    PARTS[f"R_SH{i}"] = ("10mOhm", "Device:R", R1206)  # PAC1934 +-100 mV FSR -> +-10 A
     PARTS[f"Q_A{i}"] = ("AO3401A", *AO3401A)
     PARTS[f"Q_B{i}"] = ("AO3401A", *AO3401A)
     PARTS[f"R_GS{i}"] = ("1M", *R0805)
@@ -138,10 +139,10 @@ for i in range(1, 5):
     PARTS[f"D_OR{i}"] = ("B5819W", *B5819W)                        # cell+ -> MCU supply diode-OR
     PARTS[f"TH{i}"] = ("10k NTC", "Device:Thermistor_NTC", NTC_BEAD)  # MF52 bead, hand-soldered
     PARTS[f"R_NTC{i}"] = ("10k", *R0805)
-    # Kelvin sense split (plan P4.2): the shunt's two pads feed the INA3221 through their own 0R, so
-    # the sense net is thin (Default class) while the branch stays wide. 10 Ohm (the datasheet's
-    # filter maximum) limits the INA3221 input-clamp current while a reversed cell's crowbar holds
-    # CELL_F below GND, now that holder- sits directly on GND.
+    # Kelvin sense split (plan P4.2): the shunt's two pads feed the monitor through their own
+    # resistor, so the sense net is thin (Default class) while the branch stays wide. 10 Ohm limits
+    # the input-clamp current while a reversed cell's crowbar holds CELL_F below GND (PAC1934
+    # absolute minimum -0.3 V, +-100 mA per pin), now that holder- sits directly on GND.
     PARTS[f"R_SNSF{i}"] = ("10R", *R0805)
     PARTS[f"R_SNSS{i}"] = ("10R", *R0805)
 
@@ -157,7 +158,6 @@ NOT_ASSEMBLED = ({f"BT{i}" for i in range(1, 5)} | {f"TH{i}" for i in range(1, 5
 XH_SPARE = {"J_KEY1.3", "J_KEY1.4"}
 # Pins with no connection: charger NC pins and unused control outputs, unused MCU pins, boost NC.
 NC_PINS = {"U_CHG.3", "U_CHG.8", "U_CHG.10", "U_CHG.12",
-           "U_INA1.10", "U_INA1.13", "U_INA2.10", "U_INA2.13",
            "U_MCU.1", "U_MCU.2", "U_MCU.3", "U_MCU.19", "U_MCU.20", "U_MCU.21", "U_MCU.32",
            "U1.6"}
 NC_PARTS = set()
@@ -171,7 +171,7 @@ LCSC = {
     ("1uF", C0805[1]): "C28323",     # B Samsung CL21B105KBFNNNE 50V X7R
     ("47nF", C0805[1]): "C53134",    # B Samsung CL21B473KBCNNNC 50V X7R
     ("22uF 25V", C1206): "C12891",   # B Samsung CL31A226KAHNNNE
-    ("20mOhm", R1206): "C163047",    # E TA-I RLS12FTCR020 1%
+    ("10mOhm", R1206): "C105362",    # E FOJAN FMF06FTHR010-LH 1% 1 W (2026-10-02)
     ("1M", R0805[1]): "C17514",      # B
     ("100k", R0805[1]): "C149504",   # B
     ("1k", R0805[1]): "C17513",      # B
@@ -190,7 +190,7 @@ LCSC = {
     ("AO3401A", SOT23): "C15127",       # B
     ("BSS138", SOT23): "C7420339",      # P
     ("BQ25601RTWR", QFN24): "C468236",  # E
-    ("INA3221", VQFN16): "C181255",     # E
+    ("PAC1934T-I/JQ", UQFN16): "C623960",  # E Microchip, 583 in stock (2026-10-02)
     ("XC6206P332MR", SOT23_3): "C5446",  # B
     ("MT3608", SOT23_6): "C84817",      # E
     ("10uH 2A", LRN6045): "C2046332",   # E
@@ -225,14 +225,14 @@ NETS = {
     "TS": ["U_CHG.11", "RT1.2", "RT2.1", "TH_CHG.1"],
     "VMCU_IN": [*(f"D_OR{i}.1" for i in range(1, 6)), "U_LDO.3", "C_LDO1.1"],
     "+3V3": ["U_LDO.2", "C_LDO2.1",
-             "U_INA1.4", "U_INA1.16", "C_INA1.1", "U_INA2.4", "U_INA2.16", "C_INA2.1", "U_INA2.5",
-             "R_SCL_INT.1", "R_SDA_INT.1", "R_CRIT.1", "R_WARN.1",
+             "U_MON.2", "U_MON.15", "C_MON1.1", "C_MON2.1",
+             "R_SCL_INT.1", "R_SDA_INT.1", "R_ALERT.1", "R_PWRDN.1",
              "R_INT_CHG.2", "R_STAT.1", "U_MCU.4", "C_MCU1.1", "C_MCU2.1", "SW_BOOT.2"],
-    # internal I2C (MCU master): INA3221 x2 + BQ25601, pull-ups to +3V3
-    "SCL_INT": ["U_MCU.30", "U_INA1.6", "U_INA2.6", "U_CHG.5", "R_SCL_INT.2"],
-    "SDA_INT": ["U_MCU.31", "U_INA1.7", "U_INA2.7", "U_CHG.6", "R_SDA_INT.2"],
-    "INA_CRIT": ["U_INA1.9", "U_INA2.9", "R_CRIT.2", "U_MCU.28"],
-    "INA_WARN": ["U_INA1.8", "U_INA2.8", "R_WARN.2", "U_MCU.29"],
+    # internal I2C (MCU master): PAC1934 + BQ25601, pull-ups to +3V3
+    "SCL_INT": ["U_MCU.30", "U_MON.4", "U_CHG.5", "R_SCL_INT.2"],
+    "SDA_INT": ["U_MCU.31", "U_MON.5", "U_CHG.6", "R_SDA_INT.2"],
+    "MON_ALERT": ["U_MON.1", "R_ALERT.2", "U_MCU.28"],
+    "MON_PWRDN": ["U_MON.16", "R_PWRDN.2", "U_MCU.29"],
     "CHG_INT": ["U_CHG.7", "R_INT_CHG.1", "U_MCU.27"],
     "CHG_CE": ["U_CHG.9", "R_CE.1", "U_MCU.12"],
     "STAT": ["U_CHG.4", "LED_STAT.1"],
@@ -261,8 +261,7 @@ NETS = {
             "C_VBUS.2", "C_PMID.2", "C_SYS.2", "C_BAT.2", "C_REGN.2",
             "RT2.2", "TH_CHG.2",
             "U_LDO.1", "C_LDO1.2", "C_LDO2.2",
-            "U_INA1.3", "U_INA1.5", "U_INA1.17", "C_INA1.2",   # A0 = GND -> 0x40
-            "U_INA2.3", "U_INA2.17", "C_INA2.2",
+            "U_MON.3", "U_MON.6", "U_MON.17", "C_MON1.2", "C_MON2.2",   # ADDRSEL = GND -> 0x10
             "R_CC1.2", "R_CC2.2",
             "J_USB1.A1", "J_USB1.A12", "J_USB1.B1", "J_USB1.B12", "J_USB1.S1",
             "U_MCU.5", "C_MCU1.2", "C_MCU2.2", "C_NRST.2", "SW_RST.2", "R_BOOT.2",
@@ -272,20 +271,18 @@ NETS = {
 }
 
 for i in range(1, 5):
-    ina, (in_p, in_m) = INA_OF[i], INA_IN[i]
+    s_p, s_m = SENSE_IN[i]
     NETS[f"CELL{i}_RAW"] = [f"BT{i}.1", f"F{i}.1"]
     NETS[f"CELL{i}_F"] = [f"F{i}.2", f"D_CB{i}.1", f"R_SH{i}.1", f"D_OR{i}.2", f"R_SNSF{i}.1"]
     NETS[f"CELL{i}_S"] = [f"R_SH{i}.2", f"Q_A{i}.3", f"R_BYP{i}.1", f"R_SNSS{i}.1"]
-    NETS[f"INA_F{i}"] = [f"R_SNSF{i}.2", f"{ina}.{in_p}"]
-    NETS[f"INA_S{i}"] = [f"R_SNSS{i}.2", f"{ina}.{in_m}"]
+    NETS[f"SNS_F{i}"] = [f"R_SNSF{i}.2", f"U_MON.{s_p}"]
+    NETS[f"SNS_S{i}"] = [f"R_SNSS{i}.2", f"U_MON.{s_m}"]
     NETS[f"CELL{i}_SRC"] = [f"Q_A{i}.2", f"Q_B{i}.2", f"R_GS{i}.2"]
     NETS[f"CELL{i}_G"] = [f"Q_A{i}.1", f"Q_B{i}.1", f"R_GS{i}.1", f"Q_N{i}.3"]
     NETS[f"SW{i}_G"] = [f"Q_N{i}.1", f"R_PD{i}.1", f"R_SW{i}.2"]
     NETS[f"SW{i}_DRV"] = [f"R_SW{i}.1", f"U_MCU.{SW_PIN[i]}"]
     NETS[f"NTC{i}"] = [f"TH{i}.2", f"R_NTC{i}.1", f"U_MCU.{NTC_PIN[i]}"]
 
-# Cell 4 is channel 1 of U_INA2; its spare channels 2-3 tie to the ch1 IN- reference (P0).
-NETS["INA_S4"] += ["U_INA2.15", "U_INA2.14", "U_INA2.2", "U_INA2.1"]
 
 # --- layout (read by gen_sch.py / gen_pcb.py / check_gerbers.py) --------------------------------
 # Rails carry power_in pins, so ERC needs a driver on each: +3V3 has the LDO's power_out, the others
@@ -353,21 +350,21 @@ def _blocks():
         "tags": _tags(["SCL_INT", "SDA_INT", "CHG_INT", "CHG_CE", "USB_DP", "USB_DM", "SYS",
                        "CC2", "LED_STAT_A"], 12.7, 118.11),
     })
-    # Monitoring: 2x INA3221, the diode-OR into the LDO and the MCU supply LDO.
+    # Monitoring: PAC1934, the SYS diode-OR leg and the MCU supply LDO.
     out.append({
-        "title": "Cell monitoring (INA3221 x2), diode-OR, 3V3 LDO", "at": (228.6, 12.7),
+        "title": "Cell monitoring (PAC1934), diode-OR, 3V3 LDO", "at": (228.6, 12.7),
         "size": (139.7, 177.8),
         "parts": {
-            "U_INA1": (30.48, 40.64, 0, None), "U_INA2": (30.48, 106.68, 0, None),
-            "C_INA1": (7.62, 22.86, 0, None), "C_INA2": (7.62, 78.74, 0, None),
+            "U_MON": (30.48, 60.96, 0, None),
+            "C_MON1": (7.62, 22.86, 0, None), "C_MON2": (7.62, 78.74, 0, None),
             "R_SCL_INT": (60.96, 30.48, 90, None), "R_SDA_INT": (60.96, 43.18, 90, None),
-            "R_CRIT": (60.96, 55.88, 90, None), "R_WARN": (60.96, 68.58, 90, None),
+            "R_ALERT": (60.96, 55.88, 90, None), "R_PWRDN": (60.96, 68.58, 90, None),
             "D_OR5": (78.74, 91.44, 0, None), "U_LDO": (105.41, 91.44, 0, None),
             "C_LDO1": (105.41, 68.58, 0, None), "C_LDO2": (105.41, 111.76, 0, None),
         },
-        "tags": _tags(["INA_F1", "INA_F2", "INA_F3", "INA_F4",
-                       "INA_S1", "INA_S2", "INA_S3", "INA_S4",
-                       "SCL_INT", "SDA_INT", "INA_CRIT", "INA_WARN", "SYS"],
+        "tags": _tags(["SNS_F1", "SNS_F2", "SNS_F3", "SNS_F4",
+                       "SNS_S1", "SNS_S2", "SNS_S3", "SNS_S4",
+                       "SCL_INT", "SDA_INT", "MON_ALERT", "MON_PWRDN", "SYS"],
                       12.7, 137.16, per_row=6),
     })
     # MCU, decoupling, reset/boot, test pads and the status LED.
@@ -387,7 +384,7 @@ def _blocks():
                    for r in ("TP_NRST", "TP_SWCLK", "TP_SWDIO", "TP_GND")},
         "tags": _tags(["SW1_DRV", "SW2_DRV", "SW3_DRV", "SW4_DRV", "USB_DP", "USB_DM",
                        "NTC1", "NTC2", "NTC3", "NTC4", "NTC_PWR", "CHG_CE", "SDA_EXT", "SCL_EXT",
-                       "CHG_INT", "INA_CRIT", "INA_WARN", "SCL_INT", "SDA_INT",
+                       "CHG_INT", "MON_ALERT", "MON_PWRDN", "SCL_INT", "SDA_INT",
                        "LED_MCU_A", "LED_MCU_DRV", "SWDIO"],
                       12.7, 135.89, per_row=6),
     })
@@ -411,7 +408,7 @@ def _blocks():
             "title": f"Cell {i + 1} branch", "at": (bx, 190.5), "size": (99.06, 180.34),
             "parts": _cell(i + 1, 0, 0),
             "tags": _tags([f"CELL{i + 1}_F", f"CELL{i + 1}_S", f"CELL{i + 1}_RAW", f"CELL{i + 1}_SRC",
-                           f"INA_F{i + 1}", f"INA_S{i + 1}"], 12.7, 152.4,
+                           f"SNS_F{i + 1}", f"SNS_S{i + 1}"], 12.7, 152.4,
                           per_row=4)
                      | {f"NTC{i + 1}": [(83.82, 120.65, "R")]},
         })
@@ -433,7 +430,7 @@ BLOCKS = _blocks()
 # --- PCB (read by gen_pcb.py / route.py / check_gerbers.py) -------------------------------------
 # The four 18650 holders (MYOUNG BH-18650-A6AJ012, THT) sit on the bottom side, so the whole top side
 # above them takes the single-side SMD assembly: each cell's branch in its own band, and the charger,
-# LDO/INA, boost and MCU groups in the free x 59-80 strip of bands 1-4. The cell NTC beads sit on the
+# LDO/monitor, boost and MCU groups in the free x 59-80 strip of bands 1-4. The cell NTC beads sit on the
 # bottom in each holder's floor window. Board edge connectors on the right, M3 holes at the corners
 # clear of the holder ends. The ZP240.190 plate pattern is still unmeasured (design doc, "Unverified").
 W, H, CORNER = 96.0, 90.0, 2.0
@@ -463,21 +460,20 @@ _STRIP = {
     "RT1": (47, 23.18, 0), "RT2": (51.5, 23.18, 0), "TH_CHG": (56, 23.18, 0),
     "R_CE": (60.5, 23.18, 0), "R_INT_CHG": (65, 23.18, 0), "R_STAT": (69.5, 23.18, 0),
     "LED_STAT": (75.5, 23.18, 0),
-    # band 2: U_INA1 (cells 1-3), the LDO and the SYS leg of the diode-OR
-    "U_INA1": (64, 34.01, 0), "C_INA1": (64, 29.5, 0), "D_OR5": (64, 41, 0),
+    # band 2: U_MON (all four cells), the LDO and the SYS leg of the diode-OR
+    "U_MON": (64, 34.01, 0), "C_MON1": (64, 29.5, 0), "C_MON2": (69.5, 38.5, 0), "D_OR5": (64, 41, 0),
     "U_LDO": (75, 28.5, 0), "C_LDO1": (69.8, 30, 90), "C_LDO2": (74.5, 35.5, 0),
-    # row between cells 2 and 3: internal I2C pull-ups, INA alert pull-ups
+    # row between cells 2 and 3: internal I2C pull-ups
     "R_SCL_INT": (61, 44.84, 0), "R_SDA_INT": (65.6, 44.84, 0),
-    "R_CRIT": (70.2, 44.84, 0), "R_WARN": (74.8, 44.84, 0),
     # band 3: 5 V boost (same parts as the carrier)
     "U1": (64, 51, 0), "L1": (71, 55.67, 0), "D1": (63.5, 59.5, 0),
     "C_IN1": (77.5, 49, 0), "C_OUT1": (77.5, 52.5, 0), "C_OUT2": (77.5, 56, 0),
     "R_FB1": (78, 59.5, 0), "R_FB2": (78, 62.3, 0),
     # row between cells 3 and 4: key-switch PTC
     "F_SYS1": (62, 66.5, 0),
-    # band 4: MCU, its decoupling, U_INA2 (cell 4)
+    # band 4: MCU, its decoupling, the monitor's ALERT/PWRDN pull-ups beside MCU pins 28/29
+    "R_ALERT": (76.5, 69.3, 0), "R_PWRDN": (76.5, 73.5, 0),
     "U_MCU": (66, 77.33, 0), "C_MCU1": (63.5, 70, 0), "C_MCU2": (68, 70, 0),
-    "U_INA2": (76.5, 73.5, 0), "C_INA2": (76.5, 69.3, 0),
     # bottom edge row: buttons, test pads, status LED, NRST/BOOT0 parts
     "SW_BOOT": (16, 87.4, 0), "SW_RST": (23, 87.4, 0),
     "TP_SWDIO": (28.5, 87.4, 0), "TP_SWCLK": (31.5, 87.4, 0), "TP_NRST": (34.5, 87.4, 0),
@@ -522,9 +518,9 @@ def _ref_at():
     for i, cy in enumerate(_CELL_Y, start=1):
         out[f"D_CB{i}"] = (17.0, cy - 1.3, 0)  # above it sits the d3.3 peg
         out |= {f"{r}{i}": below(f"{r}{i}", 1.9) for r in ("R_SW", "D_OR")}
-    out |= {r: below(r, 1.65) for r in ("RT2", "R_CE", "R_STAT", "LED_STAT", "R_SDA_INT", "R_WARN",
+    out |= {r: below(r, 1.65) for r in ("RT2", "R_CE", "R_STAT", "LED_STAT", "R_SDA_INT",
                                         "R_FB2")}
-    out |= {r: below(r, 3.6) for r in ("U_INA1", "U_INA2")}
+    out["U_MON"] = below("U_MON", 3.6)
     # rotated, to the right of the part (free strip before the - tab / USB-C)
     out |= {"C_IN1": (80.6, 49, 90), "R_CC1": (81.6, 20, 90),
             "R_CC2": (81.6, 25.5, 90)}
@@ -567,17 +563,17 @@ def assembled(variant="standard"):
 
 def check_branches():
     """Every cell: holder+ -> fuse -> shunt -> back-to-back P-FET -> pack rail, in that order, with
-    the INA3221 sensing across the shunt through its own 0R split off the shunt pads."""
+    the PAC1934 sensing across the shunt through its own 10R split off the shunt pads."""
     net_of = {p: n for n, m in NETS.items() for p in m}
     for i in range(1, 5):
-        ina, (in_p, in_m) = f"U_INA{(i - 1) // 3 + 1}", INA_IN[i]
+        s_p, s_m = SENSE_IN[i]
         assert net_of[f"BT{i}.1"] == net_of[f"F{i}.1"], f"cell {i}: holder+ not on fuse"
         assert net_of[f"F{i}.2"] == net_of[f"R_SH{i}.1"] == net_of[f"R_SNSF{i}.1"], \
             f"cell {i}: fuse -> shunt"
-        assert net_of[f"R_SNSF{i}.2"] == net_of[f"{ina}.{in_p}"], f"cell {i}: sense not on IN+"
+        assert net_of[f"R_SNSF{i}.2"] == net_of[f"U_MON.{s_p}"], f"cell {i}: sense not on SENSE+"
         assert net_of[f"R_SH{i}.2"] == net_of[f"Q_A{i}.3"] == net_of[f"R_SNSS{i}.1"], \
             f"cell {i}: shunt -> FET"
-        assert net_of[f"R_SNSS{i}.2"] == net_of[f"{ina}.{in_m}"], f"cell {i}: sense not on IN-"
+        assert net_of[f"R_SNSS{i}.2"] == net_of[f"U_MON.{s_m}"], f"cell {i}: sense not on SENSE-"
         assert net_of[f"Q_A{i}.2"] == net_of[f"Q_B{i}.2"], f"cell {i}: FET sources not common"
         assert net_of[f"Q_B{i}.3"] == "VPACK", f"cell {i}: FET not on the pack rail"
         assert net_of[f"BT{i}.2"] == "GND", f"cell {i}: holder- not on GND"
