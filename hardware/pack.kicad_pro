@@ -13,8 +13,7 @@
         "min_hole_clearance": 0.15
       },
       "rule_severities": {
-        "lib_footprint_mismatch": "ignore",
-        "courtyards_overlap": "ignore"
+        "lib_footprint_mismatch": "ignore"
       }
     }
   },
@@ -80,6 +79,14 @@
       {
         "netclass": "Power",
         "pattern": "SW_CHG"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "VPACK"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "SYS"
       }
     ]
   },

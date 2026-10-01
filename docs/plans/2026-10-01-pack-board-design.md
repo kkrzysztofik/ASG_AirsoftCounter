@@ -4,9 +4,10 @@ Date: 2026-10-01
 Status: hardware done 2026-10-01 (pack.py generated, routed and fabbed; `make boards` green). Pack
 firmware is designed here but its implementation is deferred. Lines marked "verified" were checked
 against a source; everything else is listed under "Unverified" at the end. The generated board is
-140 x 100 mm: the four Keystone 1042 courtyards alone are 87.88 x 86.64, so the "about 90 x 85"
-earlier in this document is superseded. Re-check that, and the hole pattern, against the real holder
-and the ZP240.190 plate before ordering the enclosure.
+96 x 90 mm with the four holders (MYOUNG BH-18650-A6AJ012, THT) on the **bottom** side and every SMD
+part on top (2026-10-01 rework; the first layout, 140 x 100 mm with Keystone 1042 holders on top,
+placed parts under the holder floor). Re-check the holder against its drawing and the hole pattern
+against the ZP240.190 plate before ordering.
 
 ## Goal
 
@@ -55,7 +56,8 @@ carrier: VBAT_SW -> J_HBAT1 -> Heltec battery socket;  VBAT_SW -> amp;  +5V -> L
    cells), NVDC power path, I2C, /CE, /INT, TS input. Its power-on defaults (about 2 A, 4.208 V) charge
    correctly with a dead or unflashed MCU; its I2C watchdog restores them if the MCU hangs. A fifth NTC on
    TS gives the charger its own temperature limits without the MCU.
-3. **Four cell holders**, THT, hand-soldered (none at JLC; e.g. Keystone 1042P). Polarity on silkscreen.
+3. **Four cell holders**, MYOUNG BH-18650-A6AJ012 (LCSC C19184084), THT on the bottom side, hand-soldered.
+   Polarity on the bottom silkscreen.
 4. **Per-cell chain (x4)**, see below.
 5. **MCU: STM32C071KBT6** (C42116633, LQFP-32, 600 in stock), see below.
 6. **Boost and rails moved from the carrier:** MT3608 with L1, D1, R_FB1/2, C_IN1, C_OUT1/2, the
@@ -69,7 +71,7 @@ holder+ ─ fuse ─┬─ shunt 20 mOhm ─┬─ back-to-back P-FET (2x AO3401
                 │                 └─ INA3221 IN-/bus = this cell's voltage, also when switched off
                 ├─ crowbar Schottky to holder- (a reversed cell blows the fuse)
                 └─ BAT54C diode-OR -> LDO -> MCU
-holder- ─ XB8089D (C79928, own 1k/100nF) ─ GND        NTC under each cell -> MCU ADC
+holder- ─ XB8089D (C79928, own 1k/100nF) ─ GND        bead NTC on each cell -> MCU ADC
 ```
 
 - **Switch on the positive side, shunt on the cell side of it.** INA3221 measures bus voltage at IN-;
@@ -81,8 +83,9 @@ holder- ─ XB8089D (C79928, own 1k/100nF) ─ GND        NTC under each cell ->
   LDO, so the MCU runs from the highest cell at uA load even with every switch open, and from USB with no cells (DFU).
 - **Shunt 20 mOhm:** 1.2 mV (30 LSB at 40 uV) for 60 mA per cell, 8 A full scale (one cell carrying all
   load plus charge). INA3221 offset is a few mA, so thresholds need margin.
-- **Fuse about 5 A fast-blow:** above the XB8089D overcurrent trip, and must clear the crowbar current
-  before the Schottky fails.
+- **Fuse 5 A fast-blow:** above the per-cell working current (about 2 A) and below the XB8089D's 10 A
+  overcurrent trip, so it is the backup to the protector; it must clear the crowbar current before the
+  Schottky fails (see the fuse ruling under Datasheet facts).
 - Series resistance per branch (fuse, shunt, two FETs, XB8089D) is about 150 mOhm, larger than the cell IR
   (about 35 mOhm) and matched between branches, so it helps current sharing.
 - AO3401A and BAT54C are JLC Basic. FS8205A is no longer used.
@@ -163,9 +166,10 @@ the pack quiescent current and the branch series drop.
 
 ## Mechanical and assembly
 
-- Board about 90 x 85 mm (four holders side by side, about 77 mm long): measure the real holder and
-  check the ZP240.190-PCB plate and enclosure.
-- Holders are hand-soldered THT; keep all SMD parts on one side for JLCPCB single-side assembly.
+- Board 96 x 90 mm: four holders (77 x 20.7 mm bodies, 21.66 mm pitch) on the bottom, all SMD parts on
+  top above them; check the ZP240.190-PCB plate and enclosure (cells hang under the board).
+- Holders and the four cell bead NTCs are hand-soldered THT on the bottom; all SMD parts stay on the top
+  side for JLCPCB single-side assembly.
 - Spring-contact holders can open momentarily under shock (airsoft use): choose holders with positive
   retention and add a strap or lid. Four parallel cells ride through a brief dropout of one.
 - Keep the charger, boost and inductor away from the cells; NTCs must touch the cells.
@@ -222,14 +226,15 @@ library type (B = Basic, P = Preferred Extended, E = Extended), maker and stock 
 | Boost IC / L / caps | MT3608 + 10 uH 2 A + 22 uF 25 V, copied from the carrier | C84817 / C2046332 / C12891 | E / E / B | | `design.py` |
 | Branch fuse | Bourns SF-1206F500-2, 1206, 5 A fast, I2t 0.966 A2s | C48332 | E | 9975 | Bourns SF-1206F datasheet + JLCPCB API |
 | Shunt | TA-I RLS12FTCR020, 1206, 20 mOhm 1% | C163047 | E | 26562 | JLCPCB API |
-| NTC (x5) | Nanjing Shiheng CMFB 103F3435, 0805, 10k B3435 1% | C2889056 | E | 15625 | JLCPCB API |
+| NTC (charger TS) | Nanjing Shiheng CMFB 103F3435, 0805, 10k B3435 1% | C2889056 | E | 15625 | JLCPCB API |
 | Tact switch (BOOT0, NRST) | XUNPU TS-1088-AR02016, SMD 4x3 mm, 2-pad, `Button_Switch_SMD:SW_SPST_TS-1088-xR020` | C720477 | B | 787409 | JLCPCB API |
 | LED red (STAT) | NCD0805R1, 0805 | C84256 | B | 4820981 | JLCPCB API |
 | LED green (MCU status) | KT-0805G, 0805 | C2297 | B | 3140725 | JLCPCB API |
 | USB-C receptacle | HCTL HC-TYPE-C-16P-01A, `Connector_USB:USB_C_Receptacle_HCTL_HC-TYPE-C-16P-01A` | C2894897 | E | 43482 | JLCPCB API |
 | USB-C symbol | `Connector:USB_C_Receptacle_USB2.0_14P` | | | | KiCad 9.0.8 |
 | 6-pin XH | JST B6B-XH-A(LF)(SN), `Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical` | C144397 | E | 43646 | JLCPCB API |
-| 18650 holder | Keystone 1042, `Battery:BatteryHolder_Keystone_1042_1x18650`, hand-soldered | none (off-board) | | | KiCad footprint |
+| 18650 holder | MYOUNG BH-18650-A6AJ012, `local:BatteryHolder_MYOUNG_BH-18650-A6AJ012` (from drawing MY-CP-0373), bottom side, hand-soldered | C19184084 (off-board) | E | 3748 | JLCPCB API + MYOUNG drawing |
+| Cell NTC (x4) | MF52A103F3435 bead, `local:NTC_Bead_P2.54mm`, bottom side, hand-soldered | C84036 (off-board) | E | 32878 | JLCPCB API |
 | 4-pin XH | JST B4B-XH-A(LF)(SN), carrier part | C144395 | E | | `design.py` |
 
 Pack-only passives (Basic where noted, all live-checked 2026-10-01): 1M 0805 C17514, 100k 0805 C149504,
@@ -304,7 +309,11 @@ common-cathode. Use C37704. There is no Basic BAT54C at JLC; it is Extended.
 - Absolute maximum (section 6.1): differential (IN+)-(IN-) +/-26 V; **common-mode (IN+ + IN-)/2
   -0.3 V to 26 V**. The -0.3 V floor is the crowbar-event limit called out in the design.
 - Input filter (section 7.4.3, Figure 7-8): **series R <= 10 Ohm** per input plus 0.1-1 uF to GND.
-  Use 10 Ohm + 100 nF on each used IN+/IN- pair; place the filter at the shunt (Kelvin).
+  **Not fitted** (ruling in `docs/HANDOVER-2026-10-01-pack-board-P0-P2.md`): the datasheet makes the
+  filter conditional on noise above 1 MHz and the INA's averaging covers it. The sense taps are 0R
+  (`R_SNSF*`/`R_SNSS*`, 0805), so the filter can be retrofitted by swapping them for 10 Ohm. The
+  -0.3 V crowbar case is low risk: with the protector off, the reversed cell's crowbar loop floats
+  relative to GND.
 
 **XB8089D** (XySemi datasheet Apr 2022; read 2026-10-01)
 
@@ -341,10 +350,12 @@ All named footprints/symbols exist in KiCad 9.0.8: `Connector_USB:USB_C_Receptac
 `Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm` (BQ25601),
 `Package_DFN_QFN:Texas_RGV0016A_VQFN-16-1EP_4x4mm_P0.65mm_EP2.1x2.1mm` (INA3221 RGV).
 
-**18650 holder:** the Keystone 1042 footprint F.Fab body is **77.78 x 21.37 mm** (x = ±38.89,
-y = ±10.685); the contact-tab guides reach x = ±43.94. Four holders side by side are about
-**85.5 mm** wide (4 x 21.37 mm) plus margin, and 77.8 mm long. That fixes the board outline in P4.1;
-the plan's "77 mm long" is the holder body, not the footprint.
+**18650 holder:** MYOUNG BH-18650-A6AJ012 (drawing MY-CP-0373, 2023-09-01): body 77 x 20.7 x
+14.9 mm, flat SUS304 contacts (0.35 mm), THT tabs in plated slots 1.3 x 2.6 mm at 71.45 mm pitch, snap
+pegs d3.3 at (+27.6, -8) / (-27.6, +8) and d2.4 at (+35.8, +8) mm (top view, + on the right). The bottom
+view shows a floor window about 67 x 8 mm (scaled from the drawing, not dimensioned) that the bead NTC
+uses. The Keystone 1042 used first is only 14.86 mm tall around an 18.3 mm cell, so its floor lies on
+the board: the SMD parts placed under it in the first layout could not have fitted.
 
 ## Unverified (check before building)
 
@@ -361,4 +372,6 @@ Still open, and only answerable with real hardware or the pack firmware:
 - Total LDO + protector + monitor quiescent current as built.
 - 18650 capacity (3350 mAh is the datasheet minimum used by `power_budget.py`) for the actual cells.
 - embassy-stm32 support level for STM32C071 USB and Stop mode (firmware, deferred).
-- ZP240.190 plate and enclosure hole pattern; the holder footprint fixes the board outline (P4.1).
+- ZP240.190 plate and enclosure hole pattern (M3 corners of the 96 x 90 mm board are provisional).
+- BH-18650-A6AJ012 on the 1:1 print: tab slots, pegs, and the floor window (size and position are
+  scaled from the drawing) leaving room for the bead NTC to reach the cell.

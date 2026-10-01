@@ -36,7 +36,8 @@ LED0805 = "LED_SMD:LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder"
 XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 XH6 = "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical"
 USBC = "Connector_USB:USB_C_Receptacle_HCTL_HC-TYPE-C-16P-01A"
-HOLDER = "Battery:BatteryHolder_Keystone_1042_1x18650"
+HOLDER = "local:BatteryHolder_MYOUNG_BH-18650-A6AJ012"   # THT, mounted on the bottom side
+NTC_BEAD = "local:NTC_Bead_P2.54mm"                       # bottom side, in the holder floor window
 MH = "MountingHole:MountingHole_3.2mm_M3"
 TP = "TestPoint:TestPoint_Pad_D1.5mm"
 TACT = "Button_Switch_SMD:SW_SPST_TS-1088-xR020"
@@ -51,6 +52,12 @@ PARTS = {
     "C_SYS": ("10uF", *C0805),
     "C_BAT": ("10uF", *C0805),
     "C_REGN": ("4u7", *C0805),
+    # 1206 0R jumpers (2 A rated, <50 mOhm) split the QFN's BAT/SYS pins from the wide rails, so the
+    # rails can take the 0.8 mm Power class without crowding the 0.5 mm-pitch pads. Two in parallel
+    # for BAT: the 2.048 A charge default (I2C watchdog) crosses them. SYS carries only the load.
+    "R_BAT1": ("0R", "Device:R", R1206),
+    "R_BAT2": ("0R", "Device:R", R1206),
+    "R_SYS1": ("0R", "Device:R", R1206),
     "C_BTST": ("47nF", *C0805),
     # TS bias network for a 10k B3435 NTC: 0-60 C (datasheet section 9.3.7.4)
     "RT1": ("5k23", *R0805),
@@ -133,7 +140,7 @@ for i in range(1, 5):
     PARTS[f"U_P{i}"] = ("XB8089D", "local:XB8089D", SOIC8EP)
     PARTS[f"R_PROT{i}"] = ("1k", *R0805)
     PARTS[f"C_PROT{i}"] = ("100nF", *C0805)
-    PARTS[f"TH{i}"] = ("10k NTC", "Device:Thermistor_NTC", R0805[1])
+    PARTS[f"TH{i}"] = ("10k NTC", "Device:Thermistor_NTC", NTC_BEAD)  # MF52 bead, hand-soldered
     PARTS[f"R_NTC{i}"] = ("10k", *R0805)
     # Kelvin sense split (plan P4.2): the shunt's two pads feed the INA3221 through their own 0R, so
     # the sense net is thin (Default class) while the branch stays wide.
@@ -143,10 +150,11 @@ for i in range(1, 5):
 for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", MH)
 
-# Bring-up 0R bypasses, off by default. Cell holders and bare test-point pads are populated by
-# hand, so they are not in the JLCPCB BOM/CPL (NOT_ASSEMBLED) and need no LCSC number.
+# Bring-up 0R bypasses, off by default. Cell holders, cell NTC beads and bare test-point pads are
+# populated by hand, so they are not in the JLCPCB BOM/CPL (NOT_ASSEMBLED) and need no LCSC number.
 DNP = {f"R_BYP{i}" for i in range(1, 5)}
-NOT_ASSEMBLED = {f"BT{i}" for i in range(1, 5)} | {"TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND"}
+NOT_ASSEMBLED = ({f"BT{i}" for i in range(1, 5)} | {f"TH{i}" for i in range(1, 5)}
+                 | {"TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND"})
 # J_KEY1 is a 4-pin XH; the off-board key switch uses pins 1-2, pins 3-4 stay unconnected.
 XH_SPARE = {"J_KEY1.3", "J_KEY1.4"}
 # Pins with no connection: charger NC pins and unused control outputs, unused MCU pins, boost NC.
@@ -177,6 +185,7 @@ LCSC = {
     ("30k9", R0805[1]): "C204398",   # E
     ("10k NTC", R0805[1]): "C2889056",  # E CMFB 103F3435, 0805 B3435
     ("0R", R0805[1]): "C17477",   # B UNI-ROYAL 0805W8F0000T5E (sense split)
+    ("0R", R1206): "C17888",         # B UNI-ROYAL 1206W4F0000T5E, jumper 2 A rated (BAT/SYS split)
     ("5A fuse", FUSE1206): "C48332",    # E Bourns SF-1206F500-2, I2t 0.966 A2s
     ("2A PTC", FUSE1206): "C22374899",  # E LUTE 1206L200/16NR
     ("SS34", SMA): "C8678",             # B
@@ -203,8 +212,10 @@ LCSC = {
 NETS = {
     # pack rail and charger
     "VPACK": [*(f"Q_B{i}.3" for i in range(1, 5)), *(f"R_BYP{i}.2" for i in range(1, 5)),
-              "U_CHG.13", "U_CHG.14", "C_BAT.1"],
-    "SYS": ["U_CHG.15", "U_CHG.16", "L_CHG.2", "C_SYS.1", "D_OR3.1", "D_OR3.2", "J_KEY1.1"],
+              "R_BAT1.2", "R_BAT2.2"],
+    "BAT_CHG": ["U_CHG.13", "U_CHG.14", "C_BAT.1", "R_BAT1.1", "R_BAT2.1"],
+    "SYS_CHG": ["U_CHG.15", "U_CHG.16", "L_CHG.2", "C_SYS.1", "R_SYS1.1"],
+    "SYS": ["R_SYS1.2", "D_OR3.1", "D_OR3.2", "J_KEY1.1"],
     "KEY_OUT": ["J_KEY1.2", "F_SYS1.1"],
     "VBAT_SW": ["F_SYS1.2", "U1.5", "U1.4", "L1.1", "C_IN1.1", "J_PWR1.3"],
     "SW": ["L1.2", "U1.1", "D1.2"],
@@ -266,13 +277,13 @@ NETS = {
 
 for i in range(1, 5):
     or_ref, or_pin = OR_ANODE[i]
-    ina, (inn, inp) = INA_OF[i], INA_IN[i]
+    ina, (in_p, in_m) = INA_OF[i], INA_IN[i]
     NETS[f"CELL{i}_RAW"] = [f"BT{i}.1", f"F{i}.1"]
     NETS[f"CELL{i}_F"] = [f"F{i}.2", f"D_CB{i}.1", f"R_SH{i}.1", f"R_PROT{i}.1", f"{or_ref}.{or_pin}",
                           f"R_SNSF{i}.1"]
     NETS[f"CELL{i}_S"] = [f"R_SH{i}.2", f"Q_A{i}.3", f"R_BYP{i}.1", f"R_SNSS{i}.1"]
-    NETS[f"INA_F{i}"] = [f"R_SNSF{i}.2", f"{ina}.{inn}"]
-    NETS[f"INA_S{i}"] = [f"R_SNSS{i}.2", f"{ina}.{inp}"]
+    NETS[f"INA_F{i}"] = [f"R_SNSF{i}.2", f"{ina}.{in_p}"]
+    NETS[f"INA_S{i}"] = [f"R_SNSS{i}.2", f"{ina}.{in_m}"]
     NETS[f"CELL{i}_SRC"] = [f"Q_A{i}.2", f"Q_B{i}.2", f"R_GS{i}.2"]
     NETS[f"CELL{i}_G"] = [f"Q_A{i}.1", f"Q_B{i}.1", f"R_GS{i}.1", f"Q_N{i}.3"]
     NETS[f"CELL{i}_N"] = [f"BT{i}.2", f"D_CB{i}.2", *(f"U_P{i}.{n}" for n in (5, 7, 8, 9)), f"C_PROT{i}.2"]
@@ -290,15 +301,17 @@ NETS["INA_S4"] += ["U_INA2.15", "U_INA2.14", "U_INA2.2", "U_INA2.1"]
 # ordinary labelled nets.
 # Nets that get the wider Power class. "SW*" would also catch the MCU's SW*_DRV gate signals (uA),
 # which must reach the LQFP32's 0.8 mm-pitch pads, so only the two switching nodes are listed.
-# VBUS/SYS/VPACK stay Default (0.25 mm): their 0.5 mm-pitch QFN24 pads are the real current limit
-# (~0.9 A each) and the 0.8 mm class cannot leave them without a clearance error, so a wide class
-# there buys nothing. Revisit with a 0R split or locked fanout stubs if the pad current is raised.
+# VPACK and SYS are wide: VPACK joins the four branches, and at 0.25 mm the cell-to-charger track
+# ran 151-294 mOhm, unbalancing the matched ~150 mOhm branches; at 0.8 mm it is 43-85 mOhm. The QFN24 side of each (BAT_CHG,
+# SYS_CHG) stays Default behind the R_BAT/R_SYS 0R jumpers: the 0.8 mm class cannot leave those
+# 0.5 mm-pitch pads without a clearance error. VBUS stays Default (short, connector beside U_CHG).
 NETCLASS_POWER = ("VBAT*", "KEY_OUT", "CELL*_RAW", "CELL*_F", "CELL*_S", "CELL*_SRC", "CELL*_N",
-                  "+5V", "SW", "SW_CHG")
-RAILS = ("GND", "+3V3", "VPACK", "VBUS", "VMCU_IN", "VBAT_SW")
+                  "+5V", "SW", "SW_CHG", "VPACK", "SYS")
+RAILS = ("GND", "+3V3", "VPACK", "VBUS", "VMCU_IN", "VBAT_SW", "BAT_CHG")
 # A power port names its net by Value, so each rail reuses a stock symbol (carrier convention).
 PORT_LIB = {"GND": "power:GND", "+3V3": "power:+3V3", "VPACK": "power:VDC",
-            "VBUS": "power:VBUS", "VMCU_IN": "power:+VDC", "VBAT_SW": "power:+BATT"}
+            "VBUS": "power:VBUS", "VMCU_IN": "power:+VDC", "VBAT_SW": "power:+BATT",
+            "BAT_CHG": "power:VD"}
 
 
 def _tags(nets, x0, y0, per_row=7, pitch=20.32, row=12.7):
@@ -343,6 +356,8 @@ def _blocks():
             "R_STAT": (95.25, 48.26, 90, None), "LED_STAT": (76.2, 48.26, 0, None),
             "J_USB1": (152.4, 71.12, 0, None),
             "R_CC1": (182.88, 60.96, 90, None), "R_CC2": (182.88, 68.58, 90, None),
+            "R_SYS1": (124.46, 30.48, 0, None),
+            "R_BAT1": (124.46, 55.88, 0, None), "R_BAT2": (137.16, 55.88, 0, None),
         },
         "tags": _tags(["SCL_INT", "SDA_INT", "CHG_INT", "CHG_CE", "USB_DP", "USB_DM", "SYS",
                        "CC2", "LED_STAT_A"], 12.7, 118.11),
@@ -413,11 +428,12 @@ def _blocks():
         })
     # Mounting holes and one PWR_FLAG per rail whose source is passive.
     out.append({
-        "title": "Mounting holes and power flags", "at": (419.1, 190.5), "size": (127.0, 55.88),
+        "title": "Mounting holes and power flags", "at": (419.1, 190.5), "size": (139.7, 55.88),
         "parts": {"H1": (7.62, 16.51, 0, None), "H2": (22.86, 16.51, 0, None),
                   "H3": (38.1, 16.51, 0, None), "H4": (53.34, 16.51, 0, None)},
         "flags": [("GND", 10.16, 36.83), ("VPACK", 33.02, 36.83), ("VBUS", 55.88, 36.83),
-                  ("VMCU_IN", 78.74, 36.83), ("VBAT_SW", 101.6, 36.83)],
+                  ("VMCU_IN", 78.74, 36.83), ("VBAT_SW", 101.6, 36.83),
+                  ("BAT_CHG", 119.38, 36.83)],
     })
     return out
 
@@ -426,90 +442,117 @@ BLOCKS = _blocks()
 
 
 # --- PCB (read by gen_pcb.py / route.py / check_gerbers.py) -------------------------------------
-# The Keystone 1042 courtyard is 87.88 x 21.66 mm; four holders side by side are 87.88 x 86.64, so
-# the cell block alone does not fit the design doc's "about 90 x 85". The board adds a right strip
-# (x = 96..140) for the single-side SMD assembly, the 5 V boost and the board-edge connectors, and
-# the branch parts sit under their own cell. The size is provisional until the real holder and the
-# ZP240.190 plate are measured (design doc, "Unverified").
-W, H, CORNER = 140.0, 100.0, 2.0
+# The four 18650 holders (MYOUNG BH-18650-A6AJ012, THT) sit on the bottom side, so the whole top side
+# above them takes the single-side SMD assembly: each cell's branch in its own band, and the charger,
+# LDO/INA, boost and MCU groups in the free x 59-80 strip of bands 1-4. The cell NTC beads sit on the
+# bottom in each holder's floor window. Board edge connectors on the right, M3 holes at the corners
+# clear of the holder ends. The ZP240.190 plate pattern is still unmeasured (design doc, "Unverified").
+W, H, CORNER = 96.0, 90.0, 2.0
 NETCLASS_EXPECT = (("CELL1_F", [0.8, 0.2]), ("GND", [0.25, 0.2]), ("+5V", [0.8, 0.2]),
-                   ("SW", [0.8, 0.2]), ("VPACK", [0.25, 0.2]), ("SDA_EXT", [0.25, 0.2]))
-# The branch parts sit under their holder, whose courtyard wraps the whole cell (the cell rides
-# ~12 mm above the PCB, so there is no collision): ignore KiCad's 2D courtyard rule for this board.
-RULE_SEVERITIES = {"courtyards_overlap": "ignore"}
+                   ("SW", [0.8, 0.2]), ("VPACK", [0.8, 0.2]), ("SYS", [0.8, 0.2]),
+                   ("BAT_CHG", [0.25, 0.2]), ("SDA_EXT", [0.25, 0.2]))
 # The stock USB-C footprint spaces its own shield NPTH 0.185 mm from its GND pads; JLCPCB's 2-layer
 # minimum "hole to copper" is 0.2 mm nominal, so keep the 0.15 mm track-width grade rather than fail.
 DRC_RULES = {"min_hole_clearance": 0.15}
 
-_CELL_X = 52.0                       # holder centre x (cell block x 8.06..95.94)
-_CELL_Y = (17.51, 39.17, 60.83, 82.49)  # holder centres, 21.66 mm pitch
+BOTTOM = {f"BT{i}" for i in range(1, 5)} | {f"TH{i}" for i in range(1, 5)}
+_CELL_X = 46.5                                  # holder centre x (body x 8..85)
+_CELL_Y = (12.35, 34.01, 55.67, 77.33)          # holder centres, 21.66 mm pitch (body 20.7)
+# Holder drills relative to the holder centre as seen from the top, i.e. after the flip to the bottom
+# (footprint x mirrored): + tab on the left, snap pegs d3.3 / d3.3 / d2.4.
+_HOLDER_NPTH = ((-27.6, -8.0, 3.3), (27.6, 8.0, 3.3), (-35.8, 8.0, 2.4))
 
-
-# ref -> (x, y, rot). Holder pads sit at x = centre -/+ 39.69; the under-cell rows keep clear of the
-# holder's three NPTH locating holes and of the NTC at the cell middle.
+# ref -> (x, y, rot). Groups on top of the free x 59-80 strip, one per cell band.
 _STRIP = {
-    # charger (U_CHG and its application circuit)
-    "U_CHG": (107, 8, 0), "L_CHG": (107, 16, 0),
-    "C_VBUS": (99, 4, 0), "C_PMID": (99, 10, 0), "C_SYS": (99, 16, 0), "C_BAT": (99, 22, 0),
-    "C_REGN": (99, 28, 0), "C_BTST": (99, 34, 0), "R_CE": (99, 40, 0), "R_INT_CHG": (99, 46, 0),
-    "R_STAT": (99, 52, 0), "LED_STAT": (99, 58, 0), "R_CC1": (99, 64, 0), "R_CC2": (99, 70, 0),
-    "RT1": (107, 24, 0), "RT2": (107, 30, 0), "TH_CHG": (107, 36, 0),
-    # LDO and cell diode-OR
-    "U_LDO": (107, 44, 0), "C_LDO1": (107, 50, 0), "C_LDO2": (107, 56, 0),
-    "D_OR1": (107, 62, 0), "D_OR2": (107, 68, 0), "D_OR3": (107, 74, 0),
-    # monitoring support (the INA3221s sit in the cell area, next to the shunts)
-    "R_SCL_INT": (118, 40, 0), "R_SDA_INT": (118, 46, 0),
-    "R_CRIT": (118, 52, 0), "R_WARN": (118, 58, 0),    # boost (same parts as the carrier)
-    "U1": (118, 66, 0), "L1": (118, 74, 0), "D1": (118, 80, 0),
-    "F_SYS1": (123, 4, 0), "C_IN1": (123, 12, 0), "C_OUT1": (123, 18, 0), "C_OUT2": (123, 24, 0),
-    "R_FB1": (123, 30, 0), "R_FB2": (123, 36, 0),
-    # MCU support
-    "SW_BOOT": (123, 44, 0), "SW_RST": (123, 52, 0),
-    "R_LED_MCU": (123, 58, 0), "LED_MCU": (123, 64, 0),
-    "TP_SWDIO": (123, 70, 0), "TP_SWCLK": (123, 74, 0), "TP_NRST": (123, 78, 0),
-    "TP_GND": (123, 82, 0), "C_NRST": (123, 88, 0), "R_BOOT": (123, 92, 0),
-    "U_MCU": (106, 88, 0), "C_MCU1": (99, 78, 0), "C_MCU2": (99, 90, 0),
+    # band 1: charger (U_CHG, its caps either side, 0R rail splits on the right)
+    "U_CHG": (68, 9, 0), "L_CHG": (68, 16, 0),
+    "C_VBUS": (61.5, 3.5, 0), "C_PMID": (66.5, 3.6, 0), "C_BTST": (61.5, 10.5, 0),
+    "C_REGN": (61.5, 14, 0), "C_SYS": (61.5, 17.5, 0),
+    "R_BAT1": (75.5, 4, 0), "R_BAT2": (75.5, 7.5, 0), "R_SYS1": (75.5, 11, 0), "C_BAT": (75.5, 14.5, 0),
+    "R_CC1": (80, 20, 90), "R_CC2": (80, 25.5, 90),
+    # row between cells 1 and 2: TS network and the charger's control pull-ups / STAT LED
+    "RT1": (47, 23.18, 0), "RT2": (51.5, 23.18, 0), "TH_CHG": (56, 23.18, 0),
+    "R_CE": (60.5, 23.18, 0), "R_INT_CHG": (65, 23.18, 0), "R_STAT": (69.5, 23.18, 0),
+    "LED_STAT": (75.5, 23.18, 0),
+    # band 2: U_INA1 (cells 1-3), the LDO and the diode-OR
+    "U_INA1": (64, 34.01, 0), "C_INA1": (64, 29.5, 0), "D_OR3": (64, 41, 0),
+    "U_LDO": (75, 28.5, 0), "C_LDO1": (69.8, 30, 90), "C_LDO2": (74.5, 35.5, 0),
+    "D_OR1": (69.5, 38.5, 0), "D_OR2": (77.5, 38, 0),
+    # row between cells 2 and 3: internal I2C pull-ups, INA alert pull-ups
+    "R_SCL_INT": (61, 44.84, 0), "R_SDA_INT": (65.6, 44.84, 0),
+    "R_CRIT": (70.2, 44.84, 0), "R_WARN": (74.8, 44.84, 0),
+    # band 3: 5 V boost (same parts as the carrier)
+    "U1": (64, 51, 0), "L1": (71, 55.67, 0), "D1": (63.5, 59.5, 0),
+    "C_IN1": (77.5, 49, 0), "C_OUT1": (77.5, 52.5, 0), "C_OUT2": (77.5, 56, 0),
+    "R_FB1": (78, 59.5, 0), "R_FB2": (78, 62.3, 0),
+    # row between cells 3 and 4: key-switch PTC
+    "F_SYS1": (62, 66.5, 0),
+    # band 4: MCU, its decoupling, U_INA2 (cell 4)
+    "U_MCU": (66, 77.33, 0), "C_MCU1": (63.5, 70, 0), "C_MCU2": (68, 70, 0),
+    "U_INA2": (76.5, 73.5, 0), "C_INA2": (76.5, 69.3, 0),
+    # bottom edge row: buttons, test pads, status LED, NRST/BOOT0 parts
+    "SW_BOOT": (16, 87.4, 0), "SW_RST": (23, 87.4, 0),
+    "TP_SWDIO": (28.5, 87.4, 0), "TP_SWCLK": (31.5, 87.4, 0), "TP_NRST": (34.5, 87.4, 0),
+    "TP_GND": (37.5, 87.4, 0), "LED_MCU": (42.5, 87.4, 0), "R_LED_MCU": (49, 87.4, 0),
+    "R_BOOT": (55, 87.4, 0), "C_NRST": (61, 87.4, 0),
     # board-edge connectors (openings face +x)
-    "J_USB1": (133, 20, 90), "J_PWR1": (134, 55, 90), "J_KEY1": (134, 82, 90),
-    "H1": (4.4, 4.4, 0), "H2": (135.6, 4.4, 0), "H3": (4.4, 95.6, 0), "H4": (135.6, 95.6, 0),
+    "J_USB1": (90, 23, 90), "J_PWR1": (90, 55, 90), "J_KEY1": (90, 78, 90),
+    "H1": (4, 4, 0), "H2": (92, 4, 0), "H3": (4, 86, 0), "H4": (92, 86, 0),
 }
 
 
 def _pcb_place():
     place = dict(_STRIP)
-    # The two INA3221s sit in a cell's free middle band, close to the shunts they measure (the 0R
-    # sense split keeps their 0.25 mm sense tracks away from the wide Power trunks).
-    place.update({"U_INA1": (68, _CELL_Y[1], 0), "C_INA1": (60, _CELL_Y[1], 0),
-                  "U_INA2": (68, _CELL_Y[3], 0), "C_INA2": (60, _CELL_Y[3], 0)})
     for i, cy in enumerate(_CELL_Y, start=1):
-        # One branch per cell, a copy of the same two rows, in the design-doc branch order.
-        row_a = (("D_CB", 20.0), ("F", 28.0), ("R_SH", 36.0), ("Q_A", 44.0), ("Q_B", 52.0),
-                 ("R_GS", 60.0), ("R_BYP", 68.0), ("Q_N", 76.0))
-        row_b = (("R_PD", 20.0), ("R_SW", 28.0), ("R_PROT", 36.0), ("C_PROT", 44.0),
-                 ("U_P", 52.0), ("R_NTC", 60.0))
+        # One branch per cell, a copy of the same three rows, in the design-doc branch order.
+        row_a = (("D_CB", 17.0), ("F", 24.5), ("R_SH", 30.5), ("Q_A", 36.0), ("Q_B", 41.0),
+                 ("R_GS", 46.5), ("Q_N", 52.0))
+        row_b = (("R_PD", 17.0), ("R_SW", 21.5), ("R_PROT", 26.0), ("C_PROT", 30.5),
+                 ("U_P", 37.5), ("R_NTC", 46.0))
         for name, x in row_a:
-            place[f"{name}{i}"] = (x, cy - 5.0, 0)
+            place[f"{name}{i}"] = (x, cy - 4.0, 0)
         for name, x in row_b:
-            place[f"{name}{i}"] = (x, cy + 5.0, 0)
-        place[f"TH{i}"] = (_CELL_X, cy, 0)  # NTC under the cell middle
+            place[f"{name}{i}"] = (x, cy + 4.5, 0)
         # 0R sense split right beside the shunt, so the tap leaves the shunt pad, not the wide track
-        place[f"R_SNSF{i}"] = (36.0, cy, 0)
-        place[f"R_SNSS{i}"] = (44.0, cy, 0)
-        place[f"BT{i}"] = (_CELL_X, cy, 0)  # holder, THT, hand-soldered
+        place[f"R_SNSF{i}"] = (30.5, cy, 0)
+        place[f"R_SNSS{i}"] = (36.0, cy, 0)
+        place[f"R_BYP{i}"] = (41.0, cy, 0)  # DNP bypass right under Q_A/Q_B, off the busy row a
+        place[f"BT{i}"] = (_CELL_X, cy, 0)  # holder, bottom side, THT, hand-soldered
+        place[f"TH{i}"] = (_CELL_X, cy, 0)  # bead NTC, bottom side, in the holder floor window
     return place
 
 
 PLACE = _pcb_place()
-REF_AT = {"D1": (115, 84, 0), "C_MCU2": (99, 86, 90),  # clear of neighbouring silkscreen
-          "R_LED_MCU": (127, 58, 90)}
-# Test pads are identified by their value text; R_SDA_INT's reference lands on a via (its value
-# "4k7" identifies it), and the other three test pads' references would sit on a neighbour's pads.
-HIDE_REF = ("TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND", "R_SDA_INT")
+
+
+def _ref_at():
+    """Reference text positions where the default (above the part) lands on a neighbour: rows at a
+    4.5 mm pitch alternate above/below, and a few refs move off a peg hole's mask opening."""
+    def below(ref, dy):
+        x, y, _ = PLACE[ref]
+        return (x, y + dy, 0)
+    out = {}
+    for i, cy in enumerate(_CELL_Y, start=1):
+        out[f"D_CB{i}"] = (17.0, cy - 1.3, 0)  # above it sits the d3.3 peg
+        out |= {f"{r}{i}": below(f"{r}{i}", 1.9) for r in ("R_SW", "C_PROT")}
+        out[f"U_P{i}"] = below(f"U_P{i}", 3.6)
+    out |= {r: below(r, 1.65) for r in ("RT2", "R_CE", "R_STAT", "LED_STAT", "R_SDA_INT", "R_WARN",
+                                        "R_FB2")}
+    out |= {r: below(r, 3.6) for r in ("U_INA1", "U_INA2")}
+    # rotated, to the right of the part (free strip before the - tab / USB-C)
+    out |= {"D_OR2": (80.3, 38, 90), "C_IN1": (80.6, 49, 90), "R_CC1": (81.6, 20, 90),
+            "R_CC2": (81.6, 25.5, 90)}
+    return out
+
+
+REF_AT = _ref_at()
+# Test pads are identified by their value text.
+HIDE_REF = ("TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND")
 LABELS = {}
 TEXTS = [
-    ("AirsoftCounter v2 pack", 99, 96, 0, 1.0, True), ("2026-10", 99, 98, 0, 1.0, True),
-    ("USB", 127, 12, 90, 0.8, False), ("KEY", 127, 70, 90, 0.8, False),
-    ("PACK", 127, 42, 90, 0.8, False),
+    ("AirsoftCounter v2 pack", 24, 1.8, 0, 1.0, True), ("2026-10", 24, 3.6, 0, 1.0, True),
+    ("USB", 85.5, 32, 90, 0.8, False), ("PACK", 85.5, 62, 90, 0.8, False),
+    ("KEY", 85.5, 84, 90, 0.8, False),
 ]
 GND_VIAS = []
 HELTEC_PADS = {}
@@ -517,17 +560,14 @@ HELTEC_PADS = {}
 SIZE_MM = (W, H)
 # Mounting-hole centres checked against the NPTH drill file (check_gerbers.py).
 NPTH_XY = sorted((PLACE[r][0], PLACE[r][1]) for r in ("H1", "H2", "H3", "H4"))
-# The holder footprints add three locating NPTH pins each and the USB-C shell two, so the drill file
-# is checked against every expected hit, not just the mounting holes. Coordinates are the footprint
-# drills (dx, dy, size) added to the placed part; J_USB1 is at (133, 20) rot 90.
-_HOLDER_NPTH = ((-36.13, -8.0, 2.39), (-27.62, 8.0, 3.45), (27.62, -8.0, 3.45))
+# The holders add three snap-peg NPTH each and the USB-C shell two, so the drill file is checked
+# against every expected hit, not just the mounting holes. J_USB1 is at (90, 23) rot 90.
 NPTH_EXPECT = sorted(
     [(x, y, 3.2) for x, y in NPTH_XY]
     + [(_CELL_X + dx, cy + dy, size) for cy in _CELL_Y for dx, dy, size in _HOLDER_NPTH]
-    + [(133.0 - 2.605, 20.0 + s * 2.89, 0.65) for s in (-1, 1)])
+    + [(90.0 - 2.605, 23.0 + s * 2.89, 0.65) for s in (-1, 1)])
 # The USB-C shell pads are 0.6 mm PTH, below the carrier's 0.8 mm component-drill floor.
 PTH_COMPONENT_MIN = 0.6
-
 
 MODULES = {}
 VARIANTS = {"standard": set()}
@@ -544,14 +584,14 @@ def check_branches():
     the INA3221 sensing across the shunt through its own 0R split off the shunt pads."""
     net_of = {p: n for n, m in NETS.items() for p in m}
     for i in range(1, 5):
-        ina, (inn, inp) = f"U_INA{(i - 1) // 3 + 1}", INA_IN[i]
+        ina, (in_p, in_m) = f"U_INA{(i - 1) // 3 + 1}", INA_IN[i]
         assert net_of[f"BT{i}.1"] == net_of[f"F{i}.1"], f"cell {i}: holder+ not on fuse"
         assert net_of[f"F{i}.2"] == net_of[f"R_SH{i}.1"] == net_of[f"R_SNSF{i}.1"], \
             f"cell {i}: fuse -> shunt"
-        assert net_of[f"R_SNSF{i}.2"] == net_of[f"{ina}.{inn}"], f"cell {i}: sense not on IN+"
+        assert net_of[f"R_SNSF{i}.2"] == net_of[f"{ina}.{in_p}"], f"cell {i}: sense not on IN+"
         assert net_of[f"R_SH{i}.2"] == net_of[f"Q_A{i}.3"] == net_of[f"R_SNSS{i}.1"], \
             f"cell {i}: shunt -> FET"
-        assert net_of[f"R_SNSS{i}.2"] == net_of[f"{ina}.{inp}"], f"cell {i}: sense not on IN-"
+        assert net_of[f"R_SNSS{i}.2"] == net_of[f"{ina}.{in_m}"], f"cell {i}: sense not on IN-"
         assert net_of[f"Q_A{i}.2"] == net_of[f"Q_B{i}.2"], f"cell {i}: FET sources not common"
         assert net_of[f"Q_B{i}.3"] == "VPACK", f"cell {i}: FET not on the pack rail"
         assert net_of[f"BT{i}.2"] == net_of[f"U_P{i}.5"], f"cell {i}: holder- not on XB8089D BAT-"

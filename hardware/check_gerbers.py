@@ -16,7 +16,7 @@ from board import design  # pyright: ignore[reportMissingImports]
 
 LAYERS = ["F_Cu.gtl", "B_Cu.gbl", "F_Mask.gts", "B_Mask.gbs", "F_Paste.gtp", "B_Paste.gbp",
           "F_Silkscreen.gto", "B_Silkscreen.gbo", "Edge_Cuts.gm1"]
-MUST_DRAW = set(LAYERS) - {"B_Paste.gbp", "B_Silkscreen.gbo"}  # no bottom parts or bottom silk
+MUST_DRAW = set(LAYERS) - {"B_Paste.gbp", "B_Silkscreen.gbo"}  # no bottom SMD; bottom silk optional
 EXPECTED = {f"{design.NAME}-{x}" for x in LAYERS} | {f"{design.NAME}-PTH.drl", f"{design.NAME}-NPTH.drl"}
 
 

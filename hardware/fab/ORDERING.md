@@ -1,7 +1,7 @@
 # Ordering the PCBs from JLCPCB (bare board or assembled)
 
 **Two boards.** The carrier is `fab/carrier_gerbers_jlcpcb.zip` (90 x 60 mm, sections 1-6 below).
-The 4x18650 pack board is `fab/pack/pack_gerbers_jlcpcb.zip` (140 x 100 mm, section 7). They are two
+The 4x18650 pack board is `fab/pack/pack_gerbers_jlcpcb.zip` (96 x 90 mm, section 7). They are two
 separate orders; the Economic setup fee is per order per Extended part type, so the totals below are
 per board.
 
@@ -133,7 +133,8 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 - Active 5 V buzzer
 - Weatherproof **8 Ω, 2 W speaker** on J_SPK (see below)
 - IP65 key switch (its lead goes to the pack board's J_KEY1)
-- 4x Keystone 1042 holders (hand-soldered on the pack board) and 4 matched INR18650-35E cells
+- 4x MYOUNG BH-18650-A6AJ012 holders and 4x MF52 10k B3435 bead NTCs (hand-soldered on the pack board's
+  bottom side) and 4 matched INR18650-35E cells
 - JST-XH 6-pin cable, straight 1:1, carrier J_PWR1 <-> pack J_PWR1 (pin 1 to pin 1)
 - IP67 USB-C panel extension
 - u.FL-to-SMA bulkhead pigtail and an 868 MHz antenna
@@ -148,16 +149,21 @@ Other files in `fab/`: `schematic.pdf`, `top.png`/`bottom.png` (3D renders), `ge
 
 ## 7. The pack board (4 x 18650)
 
-`fab/pack/pack_gerbers_jlcpcb.zip`, 140 x 100 mm, 2 layers, 1.6 mm, rounded corners, top-side
-assembly only. Upload it as its own order and fill in the form as in section 2 (JLC auto-detects the
+`fab/pack/pack_gerbers_jlcpcb.zip`, 96 x 90 mm, 2 layers, 1.6 mm, rounded corners, top-side
+assembly only (the cell holders go on the bottom, by hand). Upload it as its own order and fill in the form as in section 2 (JLC auto-detects the
 size and layer count; if it shows something else, stop). Schematic `fab/pack/schematic.pdf`, renders
 `fab/pack/top.png` / `bottom.png`.
 
-**Assembly.** Same Economic PCBA flow. BOM `fab/pack/jlc_bom.csv` (38 lines), CPL
-`fab/pack/jlc_cpl.csv` (116 placements, all top side). **Hand-solder the four 18650 holders (BT1-BT4)**
-and the four test pads: the holders are not in the BOM/CPL (their cell contact pads are large SMD pads
-plus three non-plated locating pins each), and the DNP 0R bring-up bypasses R_BYP1-R_BYP4 are left off
-on purpose.
+**Assembly.** Same Economic PCBA flow. BOM `fab/pack/jlc_bom.csv` (39 lines), CPL
+`fab/pack/jlc_cpl.csv` (115 placements, all top side). The DNP 0R bring-up bypasses R_BYP1-R_BYP4 are
+left off on purpose. **By hand, after the board arrives:**
+1. **Bead NTCs TH1-TH4** (MF52A103F3435, LCSC C84036) on the **bottom** side, bead in the middle of each
+   holder outline (it sits in the holder's floor window and touches the cell), leads soldered on top.
+   Fit them before the holders.
+2. **Holders BT1-BT4** (MYOUNG BH-18650-A6AJ012, LCSC C19184084) on the **bottom** side: the snap pegs
+   locate them, the two tabs are soldered on top. The bottom silkscreen `+` marks the positive end; all
+   four face the same way.
+The holders and NTCs are not in the BOM/CPL (JLC's Economic PCBA is top side only).
 
 **Setup fees (SMD Extended types, about $3 each).** 15 types, about $45 per order:
 BQ25601RTWR (C468236), STM32C071KBTx (C42116633), 2x INA3221 (C181255), XB8089D (C79928),
@@ -178,13 +184,16 @@ BSS138 (C7420339). Everything else is Basic.
 | Q_A*/Q_B*/Q_N* (SOT-23) | The single pin (drain, pin 3) is on the single-pad side. Most likely to be off by 90/180 deg. |
 | D_CB*, D_OR*, D1 (SMA / SOT-23) | The cathode band is on the silkscreen band side. |
 | J_USB1 (USB-C) | The opening faces the right board edge (the "USB" silk); the shield pads straddle their holes. |
-| BT1-BT4 (holder) | Not in the CPL. The silkscreen `+` marks the positive contact; the four holders must all face the same way. |
+| BT1-BT4, TH1-TH4 (bottom side) | Not in the CPL: hand-soldered (see Assembly above). |
 | LED_STAT, LED_MCU | The cathode (bar) is on the silkscreen band side. |
 
-**Board facts.** 140 x 100 mm, 1 oz; 195 vias of 0.6/0.3 mm (tented); signal tracks 0.25 mm, power
+**Board facts.** 96 x 90 mm, 1 oz; 196 vias of 0.6/0.3 mm (tented); signal tracks 0.25 mm, power
 0.8 mm (0.15 mm rule for necks into the fine-pitch QFN/LQFP/VQFN pads); NPTH: 4 x 3.2 mm M3
-mounting, 12 holder locating pins (2.39/3.45 mm) and 2 USB-C shell pins (0.65 mm); PTH 0.95/1.0 mm
-(J_KEY1/J_PWR1) and 0.6 mm (the USB-C shell). GND pours on both layers.
+mounting, 12 holder snap pegs (3.3/2.4 mm) and 2 USB-C shell pins (0.65 mm); PTH: 8 plated holder-tab
+slots 1.3 x 2.6 mm, 0.95/1.0 mm (J_KEY1/J_PWR1), 0.8 mm (bead NTCs) and 0.6 mm (the USB-C shell).
+GND pours on both layers.
 
-**Note.** The outline and the M3 hole pattern are provisional: the design doc's Unverified list still
-holds "measure the real holder and the ZP240.190 plate". Check them before ordering an enclosure.
+**Note.** The M3 hole pattern is provisional (the ZP240.190 plate is unmeasured). With the cells under
+the board, standoffs need about 20 mm plus clearance (holder 14.9 mm, the cell top sits higher). Before paying
+for boards, put a real BH-18650-A6AJ012 on the 1:1 print (`fab/pack/print_1to1.pdf`): check the tab
+slots and pegs, and that the floor window leaves room for the bead NTC (design doc, Unverified).

@@ -45,7 +45,8 @@ def unconnected_nets():
 def footprint(board, ref, nets):
     value, _, fpid = design.PARTS[ref]
     lib, name = fpid.split(":")
-    fp = pcbnew.FootprintLoad(str(FPDIR / f"{lib}.pretty"), name)
+    # "local" is the project footprint library (fp-lib-table) for parts KiCad does not ship
+    fp = pcbnew.FootprintLoad(str(HERE / "local.pretty" if lib == "local" else FPDIR / f"{lib}.pretty"), name)
     if fp is None:
         raise SystemExit(f"{ref}: footprint {fpid} not found")
     fp.SetFPID(pcbnew.LIB_ID(lib, name))
@@ -83,6 +84,8 @@ def footprint(board, ref, nets):
     if ref in design.DNP or ref in getattr(design, "NOT_ASSEMBLED", set()):
         fp.SetExcludedFromBOM(True)  # must agree with the symbol's in_bom or DRC flags a mismatch
     board.Add(fp)
+    if ref in getattr(design, "BOTTOM", ()):  # mirrored onto B.Cu about its own centre (needs the board)
+        fp.Flip(fp.GetPosition(), pcbnew.FLIP_DIRECTION_LEFT_RIGHT)
     pads = {}
     for p in fp.Pads():
         pads.setdefault(p.GetNumber(), []).append(p)
