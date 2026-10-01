@@ -215,7 +215,7 @@ library type (B = Basic, P = Preferred Extended, E = Extended), maker and stock 
 | Branch fuse | Bourns SF-1206F500-2, 1206, 5 A fast, I2t 0.966 A2s | C48332 | E | 9975 | Bourns SF-1206F datasheet + JLCPCB API |
 | Shunt | TA-I RLS12FTCR020, 1206, 20 mOhm 1% | C163047 | E | 26562 | JLCPCB API |
 | NTC (x5) | Nanjing Shiheng CMFB 103F3435, 0805, 10k B3435 1% | C2889056 | E | 15625 | JLCPCB API |
-| Tact switch (BOOT0, NRST) | XKB TS-1187A-B-A-B, SMD 5.1x5.1 mm | C318884 | B | 477769 | JLCPCB API |
+| Tact switch (BOOT0, NRST) | XUNPU TS-1088-AR02016, SMD 4x3 mm, 2-pad, `Button_Switch_SMD:SW_SPST_TS-1088-xR020` | C720477 | B | 787409 | JLCPCB API |
 | LED red (STAT) | NCD0805R1, 0805 | C84256 | B | 4820981 | JLCPCB API |
 | LED green (MCU status) | KT-0805G, 0805 | C2297 | B | 3140725 | JLCPCB API |
 | USB-C receptacle | HCTL HC-TYPE-C-16P-01A, `Connector_USB:USB_C_Receptacle_HCTL_HC-TYPE-C-16P-01A` | C2894897 | E | 43482 | JLCPCB API |
@@ -223,6 +223,13 @@ library type (B = Basic, P = Preferred Extended, E = Extended), maker and stock 
 | 6-pin XH | JST B6B-XH-A(LF)(SN), `Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical` | C144397 | E | 43646 | JLCPCB API |
 | 18650 holder | Keystone 1042, `Battery:BatteryHolder_Keystone_1042_1x18650`, hand-soldered | none (off-board) | | | KiCad footprint |
 | 4-pin XH | JST B4B-XH-A(LF)(SN), carrier part | C144395 | E | | `design.py` |
+
+Pack-only passives (Basic where noted, all live-checked 2026-10-01): 1M 0805 C17514, 100k 0805 C149504,
+5.1k 0805 C27834 (also CC1/CC2), 10 uF 0805 C15850, 4.7 uF 0805 C1779, 1 uF 0805 C28323,
+47 nF 0805 C53134. TS bias resistors are the datasheet values 5.23 kOhm C17739 and 30.9 kOhm
+C204398 (both Extended; kept exact because they set the JEITA window). The 5.2 mm-pitch TS-1187A
+was dropped for the 2-pad TS-1088 so the symbol (`Switch:SW_Push`) pairs with a 2-pad footprint
+without unconnected pads.
 
 The `BAT54C` guess in the plan ("C47546 or similar") is wrong: C47546 is a BAT54**S** (series), not
 common-cathode. Use C37704. There is no Basic BAT54C at JLC; it is Extended.
