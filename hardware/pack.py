@@ -34,7 +34,7 @@ LQFP32 = "Package_QFP:LQFP-32_7x7mm_P0.8mm"
 L1210 = "Inductor_SMD:L_1210_3225Metric_Pad1.42x2.65mm_HandSolder"
 LRN6045 = "Inductor_SMD:L_Bourns_SRN6045TA"
 LED0805 = "LED_SMD:LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder"
-XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
+XH2 = "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"
 XH6 = "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical"
 USBC = "Connector_USB:USB_C_Receptacle_HCTL_HC-TYPE-C-16P-01A"
 HOLDER = "local:BatteryHolder_MYOUNG_BH-18650-A6AJ012"   # THT, mounted on the bottom side
@@ -103,7 +103,7 @@ PARTS = {
     "TP_NRST": ("NRST", "Connector:TestPoint", TP),
     "TP_GND": ("GND", "Connector:TestPoint", TP),
     # --- power out: key switch, 2 A PTC, boost (same parts as design.py), 6-pin XH to the carrier ---
-    "J_KEY1": ("KEY", "Connector_Generic:Conn_01x04", XH4),
+    "J_KEY1": ("KEY", "Connector_Generic:Conn_01x02", XH2),
     "F_SYS1": ("2A PTC", "Device:Polyfuse", FUSE1206),
     "U1": ("MT3608", "Regulator_Switching:MT3608", SOT23_6),
     "L1": ("10uH 2A", "Device:L", LRN6045),
@@ -154,8 +154,6 @@ for i in range(1, 5):
 DNP = {f"R_BYP{i}" for i in range(1, 5)}
 NOT_ASSEMBLED = ({f"BT{i}" for i in range(1, 5)} | {f"TH{i}" for i in range(1, 5)}
                  | {"TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND"})
-# J_KEY1 is a 4-pin XH; the off-board key switch uses pins 1-2, pins 3-4 stay unconnected.
-XH_SPARE = {"J_KEY1.3", "J_KEY1.4"}
 # Pins with no connection: charger NC pins and unused control outputs, unused MCU pins, boost NC.
 NC_PINS = {"U_CHG.3", "U_CHG.8", "U_CHG.10", "U_CHG.12",
            "U_MCU.1", "U_MCU.2", "U_MCU.3", "U_MCU.19", "U_MCU.20", "U_MCU.21", "U_MCU.32",
@@ -200,7 +198,7 @@ LCSC = {
     ("TS-1088-AR02016", TACT): "C720477",     # B
     ("red", LED0805): "C84256",         # B NCD0805R1
     ("green", LED0805): "C2297",        # B KT-0805G
-    ("KEY", XH4): "C144395",            # E JST B4B-XH-A(LF)(SN)
+    ("KEY", XH2): "C158012",            # E JST B2B-XH-A(LF)(SN)
     ("PWR", XH6): "C144397",            # E JST B6B-XH-A(LF)(SN)
 }
 

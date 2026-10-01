@@ -18,6 +18,7 @@ BSS138 = ("Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23")  # I2C shifter a
 C1206 = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
 TSSOP16 = "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
 ESOP8 = "Package_SO:HSOP-8-1EP_3.9x4.9mm_P1.27mm_EP2.3x2.3mm_ThermalVias"  # NS4168 eSOP-8, EP 2.0 mm
+XH2 = "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"
 XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 XH6 = "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical"
 SOCKET18 = "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"
@@ -28,9 +29,9 @@ PARTS = {
     # Heltec WiFi LoRa 32 V4 headers (pin 1 at USB end). Rows are 22.86 mm apart.
     "J2": ("Heltec_J2", "Connector_Generic:Conn_01x18", SOCKET18),
     "J3": ("Heltec_J3", "Connector_Generic:Conn_01x18", SOCKET18),
-    # Off-board connectors: one part, JST-XH 4-pin 2.50 mm vertical. 2-wire nets use pins 1-2, pins 3-4 are NC
-    # (see XH_SPARE)
-    "J_HBAT1": ("HELTEC_BAT", "Connector_Generic:Conn_01x04", XH4),
+    # Off-board connectors: JST-XH 2.50 mm vertical, pin count matching the wires (XH-2 for the
+    # 2-wire loads, XH-4 where all four are used). J_PWR1 is the 6-pin link to the pack board.
+    "J_HBAT1": ("HELTEC_BAT", "Connector_Generic:Conn_01x02", XH2),
     # Power from the pack board (the cell protector, key switch and 5 V boost moved there in P5).
     # 1-2 GND, 3 VBAT_SW, 4 +5V, 5 SDA_3V3, 6 SCL_3V3.
     "J_PWR1": ("PWR", "Connector_Generic:Conn_01x06", XH6),
@@ -38,8 +39,8 @@ PARTS = {
     "J_NFC1": ("NFC", "Connector_Generic:Conn_01x04", XH4),
     "J_BTN_R1": ("BTN_R", "Connector_Generic:Conn_01x04", XH4),
     "J_BTN_B1": ("BTN_B", "Connector_Generic:Conn_01x04", XH4),
-    "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x04", XH4),
-    "J_SPK1": ("SPK", "Connector_Generic:Conn_01x04", XH4),
+    "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x02", XH2),
+    "J_SPK1": ("SPK", "Connector_Generic:Conn_01x02", XH2),
     # Cell protection in the negative lead (the Heltec V4 has no under-voltage cutoff, see
     # fab/PARTS_REVIEW.md) now lives on the pack board: J_PWR1.3 already is the protected, switched
     # pack rail and board GND is the pack ground.
@@ -62,8 +63,6 @@ PARTS = {
     "R_SDA5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_SCL5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
 }
-# 2-wire connectors: pins 3-4 are unused (gen_sch.py flags them no-connect).
-XH_SPARE = {f"{r}.{n}" for r in ("J_HBAT1", "J_BUZ1", "J_SPK1") for n in (3, 4)}
 # Do not populate: the LCD backpack has its own 5V-side pull-ups.
 DNP = {"R_SDA5", "R_SCL5"}
 
@@ -115,8 +114,9 @@ LCSC = {
     ("Heltec_J2", SOCKET18): "C2905422",  # E Kinghelm KH-2.54FH-1X18P-H8.5
     ("Heltec_J3", SOCKET18): "C2905422",
 }
-# Connector values are names, so every name maps to the same part.
-LCSC |= {(v, XH4): "C144395" for v in ("HELTEC_BAT", "BUZ", "SPK", "LCD", "NFC", "BTN_R", "BTN_B")}  # E JST B4B-XH-A(LF)(SN)
+# Connector values are names, so every name maps to the part for its pin count.
+LCSC |= {(v, XH4): "C144395" for v in ("LCD", "NFC", "BTN_R", "BTN_B")}  # E JST B4B-XH-A(LF)(SN)
+LCSC |= {(v, XH2): "C158012" for v in ("HELTEC_BAT", "BUZ", "SPK")}  # E JST B2B-XH-A(LF)(SN)
 LCSC[("PWR", XH6)] = "C144397"  # E JST B6B-XH-A(LF)(SN), power in from the pack board
 
 # net: [ "REF.pin", ... ]
@@ -276,12 +276,11 @@ PLACE = {
     # Heltec V4 headers: pin 1 at the USB end (left), pins run +X (asserted in build)
     "J3": (44.82, 27.00, 90), "J2": (44.82, 49.86, 90),
     "H1": (3.5, 3.5, 0), "H2": (86.5, 3.5, 0), "H3": (3.5, 56.5, 0), "H4": (86.5, 56.5, 0),
-    # Top edge: XH open side (-Y at rotation 0) faces the board edge, pin 1 left
-    # (4-pin XH courtyards are 13.5 mm: five fit between H1 and H2, a sixth does not)
-    "J_PWR1": (13, 6, 0), "J_HBAT1": (39, 6, 0),
-    "J_LCD1": (53.5, 6, 0), "J_NFC1": (68, 6, 0),
-    # Bottom edge, under the J2 row: open side faces +Y, pin 1 right
-    "J_BTN_R1": (76, 55.75, 180),
+    # Top edge: XH open side (-Y at rotation 0) faces the board edge, pin 1 left. Pad-1 x comes from
+    # the courtyard widths (2-pin 8.5 mm, 4-pin 13.5, 6-pin 18.5) with ~2 mm gaps; J_BTN_R1 is back on
+    # the top edge now that J_HBAT1 is 2-pin (it sat on the bottom edge only for the 4-pin width)
+    "J_PWR1": (10, 6, 0), "J_HBAT1": (30.5, 6, 0), "J_BTN_R1": (41, 6, 0),
+    "J_LCD1": (56.5, 6, 0), "J_NFC1": (72, 6, 0),
     # Left edge: rotated so the open side faces -X, pin 1 at the bottom
     "J_SPK1": (6, 20.5, 90), "J_BTN_B1": (6, 35, 90), "J_BUZ1": (6, 49.5, 90),
     # I2S amp beside J_SPK1 (outputs face up at 90 deg), VDD caps above it; C_AMP2 at 180 puts its
@@ -309,7 +308,6 @@ PLACE = {
 REF_AT = {
     "U3": (13.45, 23.2, 90),  # inside U3's outline, left of the exposed pad (the SPK label is outside)
     "R_SDPD1": (75.5, 14.7, 0),
-    "J_BTN_R1": (60, 53.1, 0),  # between J2 and its label (default lands inside the body at 180 deg)
 }
 
 # Connector silk labels (name, pins in pin-1-first order). Pin 1 is the left pad at rot 0 and

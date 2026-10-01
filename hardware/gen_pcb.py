@@ -162,9 +162,7 @@ def text(board, s, x, y, rot=0, size=1.0, left=False, top=False):
 
 
 def label(board, fp, name, pins):
-    """Centred on the named pins (all pads if none), just outside the XH body on the board side.
-
-    Two-wire connectors on 4-pin XH name only pins 1-2; the blank pads 3-4 are NC."""
+    """Centred on the named pins (all pads if none), just outside the XH body on the board side."""
     x, y, rot = design.PLACE[fp.GetReference()]
     half_row = ((len(pins.split()) or len(fp.Pads())) - 1) * 1.25
     if rot == 180:  # bottom edge: J2 sits right above, so the label goes left of the body;

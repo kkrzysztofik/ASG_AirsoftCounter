@@ -82,12 +82,12 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 4. Check the parts matching. There are 14 BOM lines, and each should match the LCSC number in its row with stock for your quantity. Nothing should be left unmatched or skipped.
 5. Open the 3D placement preview and do the checks below before you confirm.
 
-**Through-hole parts are included**: J2/J3 (1x18 sockets) and the 9 JST-XH headers. JLC solders them by wave soldering and charges per THT joint on top of the SMD assembly. The price shows on the form. The old THT electrolytics (220 µF C_BULK1, 100 µF C_NFC1) are gone: the bulk capacitors are now 1206 ceramics (2x 47 µF on VBAT_SW, 100 µF on 3V3).
+**Through-hole parts are included**: J2/J3 (1x18 sockets) and the 8 JST-XH headers (7 off-board plus J_PWR1). JLC solders them by wave soldering and charges per THT joint on top of the SMD assembly. The price shows on the form. The old THT electrolytics (220 µF C_BULK1, 100 µF C_NFC1) are gone: the bulk capacitors are now 1206 ceramics (2x 47 µF on VBAT_SW, 100 µF on 3V3).
 
 **Setup fees.** Economic PCBA charges a setup (feeder loading) fee, about $3 per order, for each **SMD Extended** part type. Basic and Preferred Extended parts don't have it, and through-hole parts don't either (JLC lists them as Extended, but they are wave-soldered). This board has:
 
 - **2 SMD Extended types (fee):** U2 (TCA9534PWR, C783615) and U3 (NS4168, C910588). About $6 per order. (U4, U1, L1 and F1 moved to the pack board in P5; see section 7.)
-- **3 through-hole Extended types (no loading fee, per-joint THT charge instead):** J2/J3 socket (C2905422), the JST-XH 4-pin used for the off-board connectors (C144395) and J_PWR1 (JST-XH 6-pin, C144397).
+- **4 through-hole Extended types (no loading fee, per-joint THT charge instead):** J2/J3 socket (C2905422), the JST-XH 4-pin (C144395: LCD, NFC, BTN_R, BTN_B) and 2-pin (C158012: HELTEC_BAT, BUZ, SPK) off-board connectors, and J_PWR1 (JST-XH 6-pin, C144397).
 - None of the two SMD Extended types has a Basic or Preferred replacement (JLC parts API, 2026-09-30: I2C expanders and I2S/class-D amps were searched). The only ways to cut the
   fee are the Budget variant (no U3) or hand-soldering some of them yourself.
 - Cheaper alternatives for U2 and U3 that were considered are in `PART_ALTERNATIVES.md`; other review findings are in `PARTS_REVIEW.md`.
@@ -106,11 +106,11 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 | U4 (XB8089D, SOIC-8-EP) | gone: the protector is on the pack board now (section 7). |
 | J2, J3 | Pin 1 is on the square pad at the USB end, and the socket covers all 18 holes. |
 | J_PWR1 (6-pin XH) | The latch/key side faces the board edge, and pin 1 is at the left (see the silkscreen "PACK" label: GND GND BAT 5V SDA SCL). |
-| JST-XH headers | The latch/key side faces the same way as the silkscreen outline. |
+| JST-XH headers | The latch/key side faces the same way as the silkscreen outline, and each header's pin count matches its label (2-pin HELTEC_BAT/BUZ/SPK, 4-pin LCD/NFC/BTN_*). |
 
 If a part is wrong, fix its `Rotation` in `fab/jlc_cpl.csv` (degrees, counter-clockwise positive) and upload the file again. You can also leave it and note it in the order, because JLC's engineers follow the silkscreen polarity marks. Don't edit the CSVs by hand as a long-term fix: `make all` rewrites them.
 
-**Stock.** The J2/J3 socket (about 2.8k in stock) and L1 (about 3.2k), as of 2026-09-29, are the parts most likely to run out. Verified backups: socket C2897381, JST-XH 4-pin clone C37815, BSS138 C82045. (The old PTC backup C5358568 is a 1 A part and no longer fits F1.) To switch, change the number in `LCSC` in `design.py` and run `make all`. Check the new part's package and pinout on its LCSC page first.
+**Stock.** The J2/J3 socket (about 2.8k in stock) and L1 (about 3.2k), as of 2026-09-29, are the parts most likely to run out. Verified backups: socket C2897381, JST-XH 4-pin clone C37815, BSS138 C82045 (check the 2-pin XH's own clone separately). (The old PTC backup C5358568 is a 1 A part and no longer fits F1.) To switch, change the number in `LCSC` in `design.py` and run `make all`. Check the new part's package and pinout on its LCSC page first.
 
 **Budget variant.** The same board, assembled without the speaker and NFC modules (see `design.py` `VARIANTS`
 and `COSTS.md`). Order the same Gerber zip, then upload **`fab/jlc_bom_budget.csv`** and
@@ -173,7 +173,7 @@ the 5 A fuse (C48332) and the 2 A PTC (C22374899). None has a Basic replacement 
 2026-10-02). The 2026-10-02 simplification removed the XB8089D, BAT54C and the 5.23k/30.9k TS pair
 and replaced the two INA3221s with one PAC1934
 (design doc, "Simplification delta"). To cut the per-board chip cost, assemble 2 of the 5 boards. **2 through-hole Extended types** (no loading fee, per-joint charge):
-J_KEY1 (XH 4-pin, C144395) and J_PWR1 (XH 6-pin, C144397). **Preferred (no fee):** 75k (C17819) and
+J_KEY1 (XH 2-pin, C158012) and J_PWR1 (XH 6-pin, C144397). **Preferred (no fee):** 75k (C17819) and
 BSS138 (C7420339). Everything else is Basic.
 
 **Placement preview checks** (the CPL carries KiCad rotations, no JLC corrections):
