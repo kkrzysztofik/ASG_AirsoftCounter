@@ -135,6 +135,10 @@ for i in range(1, 5):
     PARTS[f"C_PROT{i}"] = ("100nF", *C0805)
     PARTS[f"TH{i}"] = ("10k NTC", "Device:Thermistor_NTC", R0805[1])
     PARTS[f"R_NTC{i}"] = ("10k", *R0805)
+    # Kelvin sense split (plan P4.2): the shunt's two pads feed the INA3221 through their own 0R, so
+    # the sense net is thin (Default class) while the branch stays wide.
+    PARTS[f"R_SNSF{i}"] = ("0R", *R0805)
+    PARTS[f"R_SNSS{i}"] = ("0R", *R0805)
 
 for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", MH)
@@ -172,6 +176,7 @@ LCSC = {
     ("5k23", R0805[1]): "C17739",    # E TS bias (BQ25601 datasheet)
     ("30k9", R0805[1]): "C204398",   # E
     ("10k NTC", R0805[1]): "C2889056",  # E CMFB 103F3435, 0805 B3435
+    ("0R", R0805[1]): "C17477",   # B UNI-ROYAL 0805W8F0000T5E (sense split)
     ("5A fuse", FUSE1206): "C48332",    # E Bourns SF-1206F500-2, I2t 0.966 A2s
     ("2A PTC", FUSE1206): "C22374899",  # E LUTE 1206L200/16NR
     ("SS34", SMA): "C8678",             # B
@@ -264,8 +269,10 @@ for i in range(1, 5):
     ina, (inn, inp) = INA_OF[i], INA_IN[i]
     NETS[f"CELL{i}_RAW"] = [f"BT{i}.1", f"F{i}.1"]
     NETS[f"CELL{i}_F"] = [f"F{i}.2", f"D_CB{i}.1", f"R_SH{i}.1", f"R_PROT{i}.1", f"{or_ref}.{or_pin}",
-                          f"{ina}.{inn}"]
-    NETS[f"CELL{i}_S"] = [f"R_SH{i}.2", f"Q_A{i}.3", f"R_BYP{i}.1", f"{ina}.{inp}"]
+                          f"R_SNSF{i}.1"]
+    NETS[f"CELL{i}_S"] = [f"R_SH{i}.2", f"Q_A{i}.3", f"R_BYP{i}.1", f"R_SNSS{i}.1"]
+    NETS[f"INA_F{i}"] = [f"R_SNSF{i}.2", f"{ina}.{inn}"]
+    NETS[f"INA_S{i}"] = [f"R_SNSS{i}.2", f"{ina}.{inp}"]
     NETS[f"CELL{i}_SRC"] = [f"Q_A{i}.2", f"Q_B{i}.2", f"R_GS{i}.2"]
     NETS[f"CELL{i}_G"] = [f"Q_A{i}.1", f"Q_B{i}.1", f"R_GS{i}.1", f"Q_N{i}.3"]
     NETS[f"CELL{i}_N"] = [f"BT{i}.2", f"D_CB{i}.2", *(f"U_P{i}.{n}" for n in (5, 7, 8, 9)), f"C_PROT{i}.2"]
@@ -274,15 +281,20 @@ for i in range(1, 5):
     NETS[f"SW{i}_DRV"] = [f"R_SW{i}.1", f"U_MCU.{SW_PIN[i]}"]
     NETS[f"NTC{i}"] = [f"TH{i}.2", f"R_NTC{i}.1", f"U_MCU.{NTC_PIN[i]}"]
 
-# Cell 4 is channel 1 of U_INA2; its spare channels 2-3 share the ch1 IN- reference (P0).
-NETS["CELL4_S"] += ["U_INA2.15", "U_INA2.14", "U_INA2.2", "U_INA2.1"]
+# Cell 4 is channel 1 of U_INA2; its spare channels 2-3 tie to the ch1 IN- reference (P0).
+NETS["INA_S4"] += ["U_INA2.15", "U_INA2.14", "U_INA2.2", "U_INA2.1"]
 
 # --- layout (read by gen_sch.py / gen_pcb.py / check_gerbers.py) --------------------------------
 # Rails carry power_in pins, so ERC needs a driver on each: +3V3 has the LDO's power_out, the others
 # take a PWR_FLAG (their sources are all passive). +5V and SYS have no power_in pin, so they stay
 # ordinary labelled nets.
-NETCLASS_POWER = ("VBAT*", "VPACK", "SYS", "VBUS", "CELL*_RAW", "CELL*_F", "CELL*_S", "CELL*_SRC",
-                  "CELL*_N", "+5V", "SW*")
+# Nets that get the wider Power class. "SW*" would also catch the MCU's SW*_DRV gate signals (uA),
+# which must reach the LQFP32's 0.8 mm-pitch pads, so only the two switching nodes are listed.
+# VBUS/SYS/VPACK stay Default (0.25 mm): their 0.5 mm-pitch QFN24 pads are the real current limit
+# (~0.9 A each) and the 0.8 mm class cannot leave them without a clearance error, so a wide class
+# there buys nothing. Revisit with a 0R split or locked fanout stubs if the pad current is raised.
+NETCLASS_POWER = ("VBAT*", "KEY_OUT", "CELL*_RAW", "CELL*_F", "CELL*_S", "CELL*_SRC", "CELL*_N",
+                  "+5V", "SW", "SW_CHG")
 RAILS = ("GND", "+3V3", "VPACK", "VBUS", "VMCU_IN", "VBAT_SW")
 # A power port names its net by Value, so each rail reuses a stock symbol (carrier convention).
 PORT_LIB = {"GND": "power:GND", "+3V3": "power:+3V3", "VPACK": "power:VDC",
@@ -307,6 +319,7 @@ def _cell(i, x0, y0):
         f"R_GS{i}": a(24.13, 100.33), f"R_BYP{i}": a(43.18, 100.33),
         f"Q_N{i}": a(12.7, 116.84), f"R_PD{i}": a(7.62, 134.62), f"R_SW{i}": a(25.4, 134.62),
         f"D_CB{i}": a(60.96, 20.32), f"U_P{i}": a(78.74, 35.56),
+        f"R_SNSF{i}": a(45.72, 64.77), f"R_SNSS{i}": a(45.72, 78.74),
         f"R_PROT{i}": a(60.96, 50.8), f"C_PROT{i}": a(45.72, 50.8),
         f"TH{i}": a(83.82, 60.96), f"R_NTC{i}": a(83.82, 78.74),
     }
@@ -337,7 +350,7 @@ def _blocks():
     # Monitoring: 2x INA3221, the diode-OR into the LDO and the MCU supply LDO.
     out.append({
         "title": "Cell monitoring (INA3221 x2), diode-OR, 3V3 LDO", "at": (228.6, 12.7),
-        "size": (139.7, 165.1),
+        "size": (139.7, 177.8),
         "parts": {
             "U_INA1": (30.48, 40.64, 0, None), "U_INA2": (30.48, 106.68, 0, None),
             "C_INA1": (7.62, 22.86, 0, None), "C_INA2": (7.62, 78.74, 0, None),
@@ -347,8 +360,10 @@ def _blocks():
             "D_OR3": (78.74, 91.44, 0, None), "U_LDO": (105.41, 91.44, 0, None),
             "C_LDO1": (105.41, 68.58, 0, None), "C_LDO2": (105.41, 111.76, 0, None),
         },
-        "tags": _tags(["CELL1_F", "CELL1_S", "CELL2_F", "CELL2_S", "CELL3_F", "CELL3_S",
-                       "CELL4_F", "CELL4_S", "SCL_INT", "SDA_INT", "INA_CRIT", "INA_WARN", "SYS"],
+        "tags": _tags(["CELL1_F", "CELL2_F", "CELL3_F", "CELL4_F",
+                       "INA_F1", "INA_F2", "INA_F3", "INA_F4",
+                       "INA_S1", "INA_S2", "INA_S3", "INA_S4",
+                       "SCL_INT", "SDA_INT", "INA_CRIT", "INA_WARN", "SYS"],
                       12.7, 137.16, per_row=6),
     })
     # MCU, decoupling, reset/boot, test pads and the status LED.
@@ -391,11 +406,10 @@ def _blocks():
         out.append({
             "title": f"Cell {i + 1} branch", "at": (bx, 190.5), "size": (99.06, 180.34),
             "parts": _cell(i + 1, 0, 0),
-            "tags": {f"CELL{i + 1}_F": [(12.7, 152.4, "R")], f"CELL{i + 1}_S": [(33.02, 152.4, "R")],
-                     f"NTC{i + 1}": [(83.82, 120.65, "R")],
-                     f"CELL{i + 1}_RAW": [(12.7, 163.83, "R")],
-                     f"CELL{i + 1}_SRC": [(33.02, 163.83, "R")],
-                     f"PROT{i + 1}_VDD": [(53.34, 163.83, "R")]},
+            "tags": _tags([f"CELL{i + 1}_F", f"CELL{i + 1}_S", f"CELL{i + 1}_RAW", f"CELL{i + 1}_SRC",
+                           f"PROT{i + 1}_VDD", f"INA_F{i + 1}", f"INA_S{i + 1}"], 12.7, 152.4,
+                          per_row=4)
+                     | {f"NTC{i + 1}": [(83.82, 120.65, "R")]},
         })
     # Mounting holes and one PWR_FLAG per rail whose source is passive.
     out.append({
@@ -418,8 +432,8 @@ BLOCKS = _blocks()
 # the branch parts sit under their own cell. The size is provisional until the real holder and the
 # ZP240.190 plate are measured (design doc, "Unverified").
 W, H, CORNER = 140.0, 100.0, 2.0
-NETCLASS_EXPECT = (("VPACK", [0.8, 0.2]), ("GND", [0.25, 0.2]), ("+5V", [0.8, 0.2]),
-                   ("SW", [0.8, 0.2]), ("CELL1_F", [0.8, 0.2]), ("SDA_EXT", [0.25, 0.2]))
+NETCLASS_EXPECT = (("CELL1_F", [0.8, 0.2]), ("GND", [0.25, 0.2]), ("+5V", [0.8, 0.2]),
+                   ("SW", [0.8, 0.2]), ("VPACK", [0.25, 0.2]), ("SDA_EXT", [0.25, 0.2]))
 # The branch parts sit under their holder, whose courtyard wraps the whole cell (the cell rides
 # ~12 mm above the PCB, so there is no collision): ignore KiCad's 2D courtyard rule for this board.
 RULE_SEVERITIES = {"courtyards_overlap": "ignore"}
@@ -443,13 +457,10 @@ _STRIP = {
     # LDO and cell diode-OR
     "U_LDO": (107, 44, 0), "C_LDO1": (107, 50, 0), "C_LDO2": (107, 56, 0),
     "D_OR1": (107, 62, 0), "D_OR2": (107, 68, 0), "D_OR3": (107, 74, 0),
-    # monitoring
-    "U_INA1": (115, 8, 0), "U_INA2": (115, 20, 0),
-    "C_INA1": (115, 28, 0), "C_INA2": (115, 34, 0),
-    "R_SCL_INT": (115, 40, 0), "R_SDA_INT": (115, 46, 0),
-    "R_CRIT": (115, 52, 0), "R_WARN": (115, 58, 0),
-    # boost (same parts as the carrier)
-    "U1": (115, 66, 0), "L1": (115, 74, 0), "D1": (115, 80, 0),
+    # monitoring support (the INA3221s sit in the cell area, next to the shunts)
+    "R_SCL_INT": (118, 40, 0), "R_SDA_INT": (118, 46, 0),
+    "R_CRIT": (118, 52, 0), "R_WARN": (118, 58, 0),    # boost (same parts as the carrier)
+    "U1": (118, 66, 0), "L1": (118, 74, 0), "D1": (118, 80, 0),
     "F_SYS1": (123, 4, 0), "C_IN1": (123, 12, 0), "C_OUT1": (123, 18, 0), "C_OUT2": (123, 24, 0),
     "R_FB1": (123, 30, 0), "R_FB2": (123, 36, 0),
     # MCU support
@@ -466,6 +477,10 @@ _STRIP = {
 
 def _pcb_place():
     place = dict(_STRIP)
+    # The two INA3221s sit in a cell's free middle band, close to the shunts they measure (the 0R
+    # sense split keeps their 0.25 mm sense tracks away from the wide Power trunks).
+    place.update({"U_INA1": (68, _CELL_Y[1], 0), "C_INA1": (60, _CELL_Y[1], 0),
+                  "U_INA2": (68, _CELL_Y[3], 0), "C_INA2": (60, _CELL_Y[3], 0)})
     for i, cy in enumerate(_CELL_Y, start=1):
         # One branch per cell, a copy of the same two rows, in the design-doc branch order.
         row_a = (("D_CB", 20.0), ("F", 28.0), ("R_SH", 36.0), ("Q_A", 44.0), ("Q_B", 52.0),
@@ -477,12 +492,19 @@ def _pcb_place():
         for name, x in row_b:
             place[f"{name}{i}"] = (x, cy + 5.0, 0)
         place[f"TH{i}"] = (_CELL_X, cy, 0)  # NTC under the cell middle
+        # 0R sense split right beside the shunt, so the tap leaves the shunt pad, not the wide track
+        place[f"R_SNSF{i}"] = (36.0, cy, 0)
+        place[f"R_SNSS{i}"] = (44.0, cy, 0)
         place[f"BT{i}"] = (_CELL_X, cy, 0)  # holder, THT, hand-soldered
     return place
 
 
 PLACE = _pcb_place()
-REF_AT = {"D1": (115, 84, 0), "C_MCU2": (99, 86, 90)}  # clear of neighbouring silkscreen
+REF_AT = {"D1": (115, 84, 0), "C_MCU2": (99, 86, 90),  # clear of neighbouring silkscreen
+          "R_LED_MCU": (127, 58, 90)}
+# Test pads are identified by their value text; R_SDA_INT's reference lands on a via (its value
+# "4k7" identifies it), and the other three test pads' references would sit on a neighbour's pads.
+HIDE_REF = ("TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND", "R_SDA_INT")
 LABELS = {}
 TEXTS = [
     ("AirsoftCounter v2 pack", 99, 96, 0, 1.0, True), ("2026-10", 99, 98, 0, 1.0, True),
@@ -495,6 +517,16 @@ HELTEC_PADS = {}
 SIZE_MM = (W, H)
 # Mounting-hole centres checked against the NPTH drill file (check_gerbers.py).
 NPTH_XY = sorted((PLACE[r][0], PLACE[r][1]) for r in ("H1", "H2", "H3", "H4"))
+# The holder footprints add three locating NPTH pins each and the USB-C shell two, so the drill file
+# is checked against every expected hit, not just the mounting holes. Coordinates are the footprint
+# drills (dx, dy, size) added to the placed part; J_USB1 is at (133, 20) rot 90.
+_HOLDER_NPTH = ((-36.13, -8.0, 2.39), (-27.62, 8.0, 3.45), (27.62, -8.0, 3.45))
+NPTH_EXPECT = sorted(
+    [(x, y, 3.2) for x, y in NPTH_XY]
+    + [(_CELL_X + dx, cy + dy, size) for cy in _CELL_Y for dx, dy, size in _HOLDER_NPTH]
+    + [(133.0 - 2.605, 20.0 + s * 2.89, 0.65) for s in (-1, 1)])
+# The USB-C shell pads are 0.6 mm PTH, below the carrier's 0.8 mm component-drill floor.
+PTH_COMPONENT_MIN = 0.6
 
 
 MODULES = {}
@@ -508,14 +540,18 @@ def assembled(variant="standard"):
 
 
 def check_branches():
-    """Every cell: holder+ -> fuse -> shunt -> back-to-back P-FET -> pack rail, in that order (design doc)."""
+    """Every cell: holder+ -> fuse -> shunt -> back-to-back P-FET -> pack rail, in that order, with
+    the INA3221 sensing across the shunt through its own 0R split off the shunt pads."""
     net_of = {p: n for n, m in NETS.items() for p in m}
     for i in range(1, 5):
+        ina, (inn, inp) = f"U_INA{(i - 1) // 3 + 1}", INA_IN[i]
         assert net_of[f"BT{i}.1"] == net_of[f"F{i}.1"], f"cell {i}: holder+ not on fuse"
-        assert net_of[f"F{i}.2"] == net_of[f"R_SH{i}.1"] == net_of[f"U_INA{(i - 1) // 3 + 1}.{INA_IN[i][0]}"], \
-            f"cell {i}: fuse -> shunt / IN+"
-        assert net_of[f"R_SH{i}.2"] == net_of[f"Q_A{i}.3"] == net_of[f"U_INA{(i - 1) // 3 + 1}.{INA_IN[i][1]}"], \
-            f"cell {i}: shunt -> FET / IN-"
+        assert net_of[f"F{i}.2"] == net_of[f"R_SH{i}.1"] == net_of[f"R_SNSF{i}.1"], \
+            f"cell {i}: fuse -> shunt"
+        assert net_of[f"R_SNSF{i}.2"] == net_of[f"{ina}.{inn}"], f"cell {i}: sense not on IN+"
+        assert net_of[f"R_SH{i}.2"] == net_of[f"Q_A{i}.3"] == net_of[f"R_SNSS{i}.1"], \
+            f"cell {i}: shunt -> FET"
+        assert net_of[f"R_SNSS{i}.2"] == net_of[f"{ina}.{inp}"], f"cell {i}: sense not on IN-"
         assert net_of[f"Q_A{i}.2"] == net_of[f"Q_B{i}.2"], f"cell {i}: FET sources not common"
         assert net_of[f"Q_B{i}.3"] == "VPACK", f"cell {i}: FET not on the pack rail"
         assert net_of[f"BT{i}.2"] == net_of[f"U_P{i}.5"], f"cell {i}: holder- not on XB8089D BAT-"

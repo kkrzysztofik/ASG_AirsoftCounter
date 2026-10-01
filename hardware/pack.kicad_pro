@@ -47,15 +47,7 @@
       },
       {
         "netclass": "Power",
-        "pattern": "VPACK"
-      },
-      {
-        "netclass": "Power",
-        "pattern": "SYS"
-      },
-      {
-        "netclass": "Power",
-        "pattern": "VBUS"
+        "pattern": "KEY_OUT"
       },
       {
         "netclass": "Power",
@@ -83,7 +75,11 @@
       },
       {
         "netclass": "Power",
-        "pattern": "SW*"
+        "pattern": "SW"
+      },
+      {
+        "netclass": "Power",
+        "pattern": "SW_CHG"
       }
     ]
   },

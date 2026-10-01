@@ -11,6 +11,7 @@ Run: /usr/bin/python3 gen_sch.py
 """
 import collections
 import heapq
+import itertools
 import json
 import math
 import re
@@ -21,6 +22,9 @@ from board import design  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).parent
 SYMDIR = Path("/usr/share/kicad/symbols")
+# Parts a board module marks as hand-soldered/off-board: they stay out of the JLC BOM, and the
+# footprint must agree or DRC reports a footprint/symbol attribute mismatch.
+_NOT_ASSEMBLED = getattr(design, "NOT_ASSEMBLED", set())
 NS = uuid.UUID("5b0c7d8e-2f4a-4c1e-9a53-0d6e8f1b2c3a")  # fixed: stable uuids across runs
 STEP = 1.27  # connection grid; every pin, wire and label sits on it
 CH = 1.05  # approx glyph advance (mm) of the 1.27 mm font, for text boxes
@@ -193,7 +197,7 @@ def box_cells(box, margin=0.3):
 
 
 def bounds_box(pts):
-    xs, ys = zip(*pts)
+    xs, ys = zip(*pts, strict=True)
     return min(xs), min(ys), max(xs), max(ys)
 
 
@@ -235,6 +239,7 @@ class Sheet:
 
     def __init__(self):
         self.root = str(uuid.uuid5(NS, "root"))
+        self.pins: dict = {}  # "REF.pin" -> (cell, stub dir), filled by place_part
         self.hard = {}  # cell -> owner: bodies, pin lines, texts, ports, labels (no wire may enter)
         self.term = {}  # cell -> (net, stub dir): pin ends and label/port anchors
         self.zone = {}  # cell -> net: first two cells in front of each connected pin
@@ -344,7 +349,8 @@ def place_part(sh, ref, x, y, rot, mirror, fields):
     lib_bom = kids(sym, "in_bom")[0][1] if kids(sym, "in_bom") else "yes"  # "no" for MountingHole
     sh.lib_ids.add(lib_id)
     sh.symbols.append(["symbol", ["lib_id", q(lib_id)], at(x, y, rot), *([["mirror", mirror]] if mirror else []),
-                       ["unit", "1"], ["exclude_from_sim", "no"], ["in_bom", "no" if dnp or lib_bom == "no" else "yes"],
+                       ["unit", "1"], ["exclude_from_sim", "no"],
+                       ["in_bom", "no" if dnp or lib_bom == "no" or ref in _NOT_ASSEMBLED else "yes"],
                        ["on_board", "yes"], ["dnp", "yes" if dnp else "no"],
                        ["uuid", uid(f"sym/{ref}")], *props,
                        *[["pin", q(n), ["uuid", uid(f"pin/{ref}/{n}")]] for n in pins_of(sym)],
@@ -425,7 +431,7 @@ def port_comb(sh, net, cells, s, bound):
         need = {add(c, s, k) for c in cells for k in range(1, n + 1)}
         need |= {(ends[0][0], j) for j in range(min(e[1] for e in ends), max(e[1] for e in ends) + 1)}
         if sh.free(need | port_shape(design.PORT_LIB[net], net, ends[-1], natural(net))[2], net, bound):
-            for c, e in zip(cells, ends):
+            for c, e in zip(cells, ends, strict=True):
                 sh.stub(net, c, e)
             sh.stub(net, ends[0], ends[-1])
             port(sh, net, ends[-1], natural(net))
@@ -442,7 +448,7 @@ def rail_ports(sh, net, pins, bound):
     groups = collections.defaultdict(list)
     for c, (p, s) in by_loc.items():
         groups[(p.split(".")[0], s)].append(c)
-    for (ref, s), cs in sorted(groups.items()):
+    for (_ref, s), cs in sorted(groups.items()):
         if axis(s) == "H":
             cs.sort(key=lambda c: c[1])
             run = [cs[0]]
@@ -548,9 +554,9 @@ def astar(sh, net, start, goals, bound):
                 return NEAR
         return 0
 
-    openq = [(h(start), 0, start, None)]
-    best = {(start, None): 0}
-    came = {}
+    openq: list[tuple] = [(h(start), 0, start, None)]
+    best: dict[tuple, float] = {(start, None): 0}
+    came: dict[tuple, tuple] = {}
     while openq:
         _, g, cur, din = heapq.heappop(openq)
         if g > best.get((cur, din), math.inf):
@@ -609,7 +615,7 @@ def route(sh, net, terms, bound):
         if path is None:
             sh.clashes.append(f"router failed on net {net} from {start[0] * STEP:.2f},{start[1] * STEP:.2f}")
             continue
-        for a, b in zip(path, path[1:]):
+        for a, b in itertools.pairwise(path):
             sh.edges[net].add(tuple(sorted((a, b))))
         for c in path:
             sh.wires[c].setdefault(net, "X")
@@ -644,7 +650,7 @@ def segments(edges, stops):
                 cuts = sorted((c[0] if horiz else c[1]) for c in stops
                               if (c[1] if horiz else c[0]) == fixed and lo < (c[0] if horiz else c[1]) < hi)
                 pts = [lo, *cuts, hi]
-                for a, b in zip(pts, pts[1:]):
+                for a, b in itertools.pairwise(pts):
                     out.append(((a, fixed), (b, fixed)) if horiz else ((fixed, a), (fixed, b)))
     return out
 
@@ -665,7 +671,6 @@ def paper_for(w, h):
 
 def schematic():
     sh = Sheet()
-    sh.pins = {}
     placed = [r for b in design.BLOCKS for r in b["parts"]]
     missing = set(design.PARTS) - set(placed)
     dupes = {r for r in placed if placed.count(r) > 1}
@@ -689,7 +694,7 @@ def schematic():
             sh.pins |= place_part(sh, ref, bx + dx, by + dy, rot, mirror, b.get("fields", {}))
             block_of[ref] = i
     nflags = 0
-    for i, b in enumerate(design.BLOCKS):
+    for _i, b in enumerate(design.BLOCKS):
         for net, dx, dy in b.get("flags", []):
             nflags += 1
             flag(sh, net, gk(b["at"][0] + dx, b["at"][1] + dy), nflags)

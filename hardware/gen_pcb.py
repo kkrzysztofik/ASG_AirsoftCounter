@@ -58,6 +58,8 @@ def footprint(board, ref, nets):
     fp.SetOrientationDegrees(rot)
     if lib == "MountingHole":
         fp.Reference().SetVisible(False)  # would sit off-board
+    if ref in getattr(design, "HIDE_REF", ()):
+        fp.Reference().SetVisible(False)  # named by its value text instead (test pads)
     if rot == 180:  # keep the reference above the part, as at rot 0
         r, o = fp.Reference().GetPosition(), fp.GetPosition()
         fp.Reference().SetPosition(pcbnew.VECTOR2I(2 * o.x - r.x, 2 * o.y - r.y))
@@ -78,7 +80,8 @@ def footprint(board, ref, nets):
     fp.SetSheetfile(f"{design.NAME}.kicad_sch")
     if ref in design.DNP:
         fp.SetDNP(True)
-        fp.SetExcludedFromBOM(True)
+    if ref in design.DNP or ref in getattr(design, "NOT_ASSEMBLED", set()):
+        fp.SetExcludedFromBOM(True)  # must agree with the symbol's in_bom or DRC flags a mismatch
     board.Add(fp)
     pads = {}
     for p in fp.Pads():
