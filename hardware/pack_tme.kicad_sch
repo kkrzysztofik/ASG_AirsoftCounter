@@ -16568,7 +16568,7 @@
 		)
 		(uuid "b3d9c5dd-9cfe-558e-a16e-29d926935d35")
 	)
-	(text "STM32C071 MCU, reset/boot, test pads"
+	(text "STM32L072 MCU, reset/boot, test pads"
 		(exclude_from_sim no)
 		(at 383.54 17.78 0)
 		(effects

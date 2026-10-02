@@ -189,6 +189,7 @@ BLOCKS[1] = {
     "tags": _tags(["SCL_INT", "SDA_INT", "MON_ALERT", "SYS"], 12.7, 101.6, per_row=4),
 }
 # The L072 adds VDD (17) and VDDA (5) decoupling.
+BLOCKS[2]["title"] = "STM32L072 MCU, reset/boot, test pads"
 BLOCKS[2]["size"] = (165.1, 190.5)
 BLOCKS[2]["parts"].update({
     "U_MCU": (58.42, 55.88, 0, None),     # the L072 is 25.4 mm wide; move it clear of the left column
