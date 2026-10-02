@@ -984,7 +984,7 @@ pub mod exp {
 - **`Board` fields use concrete pin types** for pins that are the same on both variants (`GPIO4`, `GPIO3`, `GPIO6`, `GPIO1`, `GPIO47`, `GPIO48`, `GPIO21`). `AnyPin` is only for variant-dependent pins (LED, VEXT, `adc_ctrl: Option<AnyPin>`). esp-hal's ADC needs concrete `GPIOn` types.
 - Add fields one task at a time: `i2c: I2C0, sda: GPIO4, scl: GPIO3` (C2), `exp_int: GPIO6` (C4), `adc1, vbat: GPIO1, adc_ctrl, flash: FLASH` (C5), `i2s: I2S0, dma: DMA_CH0, bclk: GPIO47, lrclk: GPIO48, din: GPIO21` (C7).
 - Keep it one flat struct, and delete each `u8` constant once its typed field exists.
-- **Shared I2C, decided:** one place builds `I2c::new(..).with_sda().with_scl().into_async()` at **100 kHz** (for the PCF8574 and the level shifter). It goes in a `StaticCell<Mutex<NoopRawMutex, _>>`. Each driver (expander, LCD, PN532) gets an `embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice`. Dependencies: embassy-sync, embassy-embedded-hal.
+- **Shared I2C, decided:** one place builds `I2c::new(..).with_sda().with_scl().into_async()` at **50 kHz** (the Newhaven LCD's maximum; the bus traffic is light). It goes in a `StaticCell<Mutex<NoopRawMutex, _>>`. Each driver (expander, LCD, PN532) gets an `embassy_embedded_hal::shared_bus::asynch::i2c::I2cDevice`. Dependencies: embassy-sync, embassy-embedded-hal.
 
 **Step 1: `expander.rs`**, a small TCA9534 driver over the shared async I2C bus (`embassy-embedded-hal` shared bus or a `Mutex`).
 - Registers: 0 input, 1 output, 2 polarity, 3 config (1 = input).
@@ -1001,20 +1001,30 @@ pub mod exp {
 
 **Step 4:** Commit: `git commit -m "device: TCA9534 driver, LED and buzzer tasks"`
 
-### Task C3: LCD driver + address probe
+### Task C3: Newhaven LCD driver, probe and backlight policy
+
+*(Revised for the Newhaven NHD-0420D3Z-FL-GBW-V3: a serial LCD with its own controller, I2C on its header J2 after bridging jumper R1. No HD44780/PCF8574 code.)*
 
 **Files:**
 - Create: `device/src/lcd.rs`
 
-**Step 1:** Check whether `hd44780-driver` 0.4 works with embedded-hal 1.0 `I2c`: add it and compile a minimal init. **If it doesn't:** write a small PCF8574 HD44780 driver in `lcd.rs` covering 4-bit init, `clear`, `set_cursor(col, row)`, `write_str` and `backlight(bool)`, with backpack pin mapping RS=P0, RW=P1, E=P2, BL=P3, D4–D7=P4–P7. The row offsets for a 20x4 are `[0x00, 0x40, 0x14, 0x54]`.
+**Step 1:** `lcd.rs` drives the Newhaven over I2C **0x28** (7-bit). Wait **100 ms after power-up** before the first command. Every command is `0xFE, cmd[, arg]`:
+- display on `0x41` (100 us)
+- clear `0x51` (1.5 ms)
+- set cursor `0x45 pos` (100 us); row starts are `0x00, 0x40, 0x14, 0x54`
+- brightness `0x53 n`, n = 1..8 (100 us; 1 = off, 8 = full)
 
-**Step 2:** Address probe. Try a zero-length write to 0x27, then 0x3F, and use whichever ACKs. Log the result. If neither answers, show nothing and log an error; the device keeps running.
+Text is plain ASCII bytes (100 us each). Wait each command's execution time **after** sending it.
+
+**Step 2:** Probe: a zero-length write to 0x28. If it NAKs, **check jumper R1 first** (without it the module talks RS-232, not I2C), then log an error and keep running; the device works without a display.
 
 **Step 3:** An `lcd_task` receives `[String<20>; 4]` plus the backlight state and redraws **only lines that changed**. Rewriting all 80 characters every 50 ms flickers.
 
-**Step 4:** Hardware test: the 20x4 LCD shows 4 test lines. Expected: readable text, and the log shows the detected address.
+**Step 4: backlight policy.** `lcd_task` holds the brightness at **1 (off)**. Any button, card or game event raises it to the configured level (**default 6**) for **15 s**, then it drops back to 1. When `game.backlight(now)` returns `false` (the core's once-per-second blink while depleted), the task toggles between 1 and the configured level. Send `0x53` only when the level changes.
 
-**Step 5:** Commit: `git commit -m "device: 20x4 LCD with address probe"`
+**Step 5:** Hardware test: the LCD shows 4 test lines. Expected: readable text with the backlight off, the log shows 0x28 found, and after a button press the backlight comes on and times out after 15 s.
+
+**Step 6:** Commit: `git commit -m "device: Newhaven 20x4 LCD with probe and backlight timeout"`
 
 ### Task C4 (Milestone 1): Buttons + game loop, a playable local game
 
@@ -1042,6 +1052,8 @@ Use `Config::default()` for now.
 - A press adds a point and the countdown runs.
 - 5 beeps, then GOTOWY again.
 - After the block is used up, PUNKT WYCZERPANY appears with the backlight blinking.
+
+**Power:** CPU at **80 MHz with automatic light sleep** from the start (esp-hal power management); measure the Heltec current before and after. Light only the ring that carries information (the owning or the active team), **never both steadily**.
 
 **Step 4:** Commit: `git commit -m "device: playable Airsoftcoin game (milestone 1)"`
 
@@ -1092,6 +1104,8 @@ Use `Config::default()` for now.
 - The admin card opens the menu, and Reset works.
 - Measure the read range through the actual lid, and note it in the design doc's open items.
 
+**Power:** PN532: send **PowerDown (0x16)** between polls, poll only while a card is expected (game armed, admin menu open). Target **~5 mA average**.
+
 **Step 6:** Commit: `git commit -m "device: RFID player captures and admin menu (milestone 3)"`
 
 ---
@@ -1121,6 +1135,20 @@ Use `Config::default()` for now.
 **Step 4:** Hardware test with the Visaton 8 Ω speaker: each game event plays its clip, and nothing is heard at boot.
 
 **Step 5:** Commit: `git commit -m "device: I2S speaker audio"`
+
+### Task C8: Power: GNSS and LoRa duty cycle, then measure the weekend
+
+**Step 1:** GNSS: power VGNSS (GPIO34 on R2, GPIO42 on R8; a `board` constant per variant) at boot, wait for a fix (timeout 5 min), store it, power
+off. Re-fix only on admin request.
+**Step 2:** LoRa: SX1262 RX duty-cycle mode (SetRxDutyCycle). The sleep window must be shorter than
+HQ's preamble; set both in one shared constant and note it in the protocol docs.
+**Step 3:** Measure with pack variant A's PAC1934 (per-cell energy accumulators) and a USB meter
+on J_PWR1 as a cross-check: 30 min per `power_budget.py` scenario. Replace every EST figure
+with the measurement and re-run `power_budget.py`.
+**Step 4:** Pass: the weekend check passes with the optimized firmware at >= 30 % margin.
+**Step 5:** Soak: full charge, game-loop firmware until the pack MCU disconnects. Record the hours
+next to the model's prediction in the power-efficiency design doc.
+**Step 6:** Commit: `git commit -m "device: GNSS one-shot fix, LoRa RX duty cycle, power measured"`
 
 ## Milestones 4–7 (separate plans later)
 
