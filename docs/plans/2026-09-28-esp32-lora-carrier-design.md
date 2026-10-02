@@ -12,7 +12,7 @@ per-unit LCD address tweaks, not waterproof) with:
 - LoRa **remote control from HQ** (start/stop/configure + status reports),
 - **GPS** position in status reports,
 - phone configuration over **WiFi AP + web page** (IR remote dropped),
-- a **20x4 I2C LCD**,
+- a **20x4 transflective I2C LCD** (Newhaven NHD-0420D3Z-FL-GBW-V3, see the power-efficiency design),
 - **RFID/NFC cards**: player cards (score + per-player stats) and admin cards,
 - a **loudspeaker** (I2S class-D amp) in addition to the buzzer, with GPIOs freed by an **I2C GPIO expander** (Part 6),
 - a **weatherproof enclosure** (Kradex ZP240.190.105SJp, clear PC lid, IP67),
@@ -125,7 +125,7 @@ Toolchain: `espup` (Xtensa Rust), `espflash`, `esp-generate`.
 |---|---|---|
 | HAL | esp-hal | |
 | Radio | lora-phy 3.0 (SX1262) | TCXO 1.8V via DIO3, DIO2 as RF switch; FEM pins 7/2/5 driven manually |
-| LCD | hd44780-driver 0.4 | verify embedded-hal 1.0 support first; fallback: own PCF8574 driver. Probe 0x27/0x3F |
+| LCD | own driver for the Newhaven command set (0xFE prefix) | I2C 0x28 at 50 kHz, 100 ms power-up delay |
 | GPS | nmea 0.8 | UART1 on 38/39 |
 | Config | sequential-storage + esp-storage | defaults when key missing |
 | Phone config | esp-radio (WiFi AP) + embassy-net + picoserve | esp-radio is beta: implemented last |

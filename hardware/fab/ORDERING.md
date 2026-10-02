@@ -128,7 +128,7 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 
 - Heltec WiFi LoRa 32 V4 (no display, EU868) and an L76K GNSS module
 - PN532 NFC module ("NFC V3", I2C mode)
-- 20x4 I2C LCD with PCF8574 backpack
+- 20x4 serial LCD Newhaven NHD-0420D3Z-FL-GBW-V3 (bridge R1 for I2C)
 - 2x ONPOW LAS1-AGQ-11E/x/6V IP67 pushbuttons (6 V ring LED with a built-in resistor, so R_LLR1/R_LLB1 are 0 Ω jumpers; fit a resistor there to dim an LED)
 - Active 5 V buzzer
 - Weatherproof **8 Ω, 2 W speaker** on J_SPK (see below)
