@@ -86,17 +86,14 @@ def make_tray():
     # lighten the field, leaving a 12 mm border and 1.2 mm under the cells
     tray -= box(x0 + 12, x1 - 12, y0 + 12, y1 - 12, P.FLOOR_T - 1.2, P.FLOOR_T + 1)
 
-    # corner sleeves that drop over the columns and carry the tray
+    # corner sleeves: an L per corner, not a closed tube, at a third of the material
     bore_x = P.COLUMN_SIZE[0] + P.FIT
     bore_y = P.COLUMN_SIZE[1] + P.FIT
-    out_x = bore_x + 2 * P.SLEEVE_WALL
-    out_y = bore_y + 2 * P.SLEEVE_WALL
     sleeve_top = P.panel_z0()
     for cx, cy in P.column_centres():
         tray -= box(cx - bore_x / 2, cx + bore_x / 2, cy - bore_y / 2, cy + bore_y / 2, -1, P.FLOOR_T + 1)
-        sleeve = box(cx - out_x / 2, cx + out_x / 2, cy - out_y / 2, cy + out_y / 2, 0, sleeve_top)
-        sleeve -= box(cx - bore_x / 2, cx + bore_x / 2, cy - bore_y / 2, cy + bore_y / 2, -1, sleeve_top + 1)
-        tray += sleeve
+        for wx0, wx1, wy0, wy1 in P.sleeve_walls(cx, cy):
+            tray += box(wx0, wx1, wy0, wy1, 0, sleeve_top)
 
     # cell saddles: two rails, each scalloped for all four cells
     centres = P.trough_centres_y()
@@ -137,7 +134,7 @@ def make_tray():
 
 def _cable_clips():
     clips = None
-    for cx, cy in ((P.PACK_ORIGIN[0] + P.PACK[0] + 12, 30.0), (P.PACK_ORIGIN[0] + P.PACK[0] + 12, 110.0)):
+    for cx, cy in P.CLIP_XY:
         clip = box(cx - 5, cx + 5, cy - 6, cy + 6, -0.1, P.FLOOR_T + 8)
         clip -= cyl_x(cy, P.FLOOR_T + 5, cx - 6, cx + 6, 2.2)
         clips = clip if clips is None else clips + clip
@@ -145,23 +142,24 @@ def _cable_clips():
 
 
 def _wall_backings():
-    """A block inside each wall device, so the nut can be tightened one-handed.
+    """A nut pocket inside each wall device, so it can be tightened one-handed.
 
-    Each block is tied to the floor by a stem; without one it would print in mid-air.
+    Thin and narrow on purpose: solid blocks here were the single biggest slice of the tray's
+    material, and at 26 x 12 mm they also ran into the corner columns.
     """
+    h = P.BACKING_H
     out = None
     for wp in P.WALL_PARTS.values():
-        w, d = P.BACKING
-        h = P.BACKING_H
-        stem_w = 10.0
+        x0, x1, y0, y1 = P.backing_box(wp)
+        b = box(x0, x1, y0, y1, wp["z"] - h, wp["z"] + h)
+        # the stem is narrow along the wall and keeps the backing's depth, so it never grows
+        # past the wall it hangs from
         if wp["wall"] == "long":
-            wall = P.BOX_IN[1] - P.FIT
-            b = box(wp["u"] - w / 2, wp["u"] + w / 2, wall - d, wall, wp["z"] - h, wp["z"] + h)
-            stem = box(wp["u"] - stem_w / 2, wp["u"] + stem_w / 2, wall - 6, wall, -0.1, wp["z"] - h + 1)
+            mid = (x0 + x1) / 2
+            stem = box(mid - 5, mid + 5, y0, y1, -0.1, wp["z"] - h + 1)
         else:
-            wall = P.BOX_IN[0] - P.FIT
-            b = box(wall - d, wall, wp["u"] - w / 2, wp["u"] + w / 2, wp["z"] - h, wp["z"] + h)
-            stem = box(wall - 6, wall, wp["u"] - stem_w / 2, wp["u"] + stem_w / 2, -0.1, wp["z"] - h + 1)
+            mid = (y0 + y1) / 2
+            stem = box(x0, x1, mid - 5, mid + 5, -0.1, wp["z"] - h + 1)
         out = b + stem if out is None else out + b + stem
     return out
 
@@ -175,6 +173,12 @@ def make_lid():
     z0 = P.panel_z0()
     z1 = z0 + P.LID_T
     panel = box(x0, x1, y0, y1, z0, z1)
+
+    # the columns are solid all the way to the rim, so the panel needs relief at each corner
+    for cx, cy in P.column_centres():
+        rx = P.COLUMN_SIZE[0] / 2 + P.FIT / 2
+        ry = P.COLUMN_SIZE[1] / 2 + P.FIT / 2
+        panel -= box(cx - rx, cx + rx, cy - ry, cy + ry, z0 - 1, z1 + 1)
 
     lx0, lx1, ly0, ly1 = P.lcd_box()
     panel -= box(lx0, lx1, ly0, ly1, z0 - 1, z1 + 1)
@@ -250,10 +254,13 @@ def make_grille():
 
 
 def make_guide():
-    """Clamp-on ring for the 50 mm holesaw; nothing clever, just a bore that cannot wander."""
+    """Clamp-on ring for the 50 mm holesaw; nothing clever, just a bore that cannot wander.
+
+    Only ever used to start a hole, so it is a thin ring and not a 12 mm drum.
+    """
     r_out = P.SPEAKER_D / 2 + P.GRILLE_RIM
-    part = cyl_z(0, 0, 0, 12, r_out)
-    part -= cyl_z(0, 0, -1, 13, P.SPEAKER_D / 2 + 0.1)
+    part = cyl_z(0, 0, 0, 5, r_out)
+    part -= cyl_z(0, 0, -1, 6, P.SPEAKER_D / 2 + 0.1)
     return part
 
 
@@ -345,6 +352,16 @@ PARTS = {
 }
 
 
+def column_solids():
+    """The box's own corner columns as solids, so parts can be tested against them."""
+    out = []
+    for cx, cy in P.column_centres():
+        out.append(box(cx - P.COLUMN_SIZE[0] / 2, cx + P.COLUMN_SIZE[0] / 2,
+                       cy - P.COLUMN_SIZE[1] / 2, cy + P.COLUMN_SIZE[1] / 2,
+                       -1, P.BOX_IN[2] + 1))
+    return out
+
+
 def check_part(name, part):
     bb = part.bounding_box()
     sx, sy, sz = bb.size.X, bb.size.Y, bb.size.Z
@@ -360,6 +377,12 @@ def check_part(name, part):
             raise SystemExit(f"FAIL {name}: {sx:.1f} x {sy:.1f} does not fit")
         if sx > 220 or sy > 220:
             raise SystemExit(f"FAIL {name}: does not fit a 220 x 220 bed")
+        clash = max((part & col).volume for col in column_solids())
+        if clash > 1.0:
+            raise SystemExit(
+                f"FAIL {name}: {clash:.1f} mm3 of it sits inside a solid corner column; "
+                "the part cannot physically go into the box"
+            )
     print(f"ok    {name}: {sx:.1f} x {sy:.1f} x {sz:.1f}, {part.volume / 1000:.1f} cm3, {solids} solid")
 
 

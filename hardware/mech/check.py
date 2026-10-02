@@ -129,13 +129,44 @@ def nfc_clears_the_lcd_frame():
 
 
 def tray_stays_below_the_panel():
-    """Every wall backing block has to fit under the lid panel, which starts at panel_z0."""
+    """Every wall backing has to fit under the lid panel, which starts at panel_z0."""
     top = params.panel_z0()
     for name, wp in params.WALL_PARTS.items():
         hi = wp["z"] + params.BACKING_H
         if hi > top:
             return fail(f"wall part {name} backing reaches z={hi:.1f}, the panel starts at {top:.1f}")
     return ok(f"all {len(params.WALL_PARTS)} wall backings stay under the panel at z={top:.1f}")
+
+
+def backings_clear_the_columns():
+    """A nut pocket inside a solid column is a part that cannot be assembled."""
+    for name, wp in params.WALL_PARTS.items():
+        b = params.backing_box(wp)
+        for cx, cy in params.column_centres():
+            if params._boxes_overlap(b, params.column_box(cx, cy), clear=1.0):
+                return fail(f"wall backing {name} at u={wp['u']} overlaps the column at ({cx}, {cy})")
+    return ok(f"all {len(params.WALL_PARTS)} wall backings clear the corner columns")
+
+
+def clips_clear_the_columns():
+    for cx, cy in params.CLIP_XY:
+        clip = (cx - 5, cx + 5, cy - 6, cy + 6)
+        for kx, ky in params.column_centres():
+            if params._boxes_overlap(clip, params.column_box(kx, ky), clear=1.0):
+                return fail(f"cable clip at ({cx}, {cy}) overlaps the column at ({kx}, {ky})")
+    return ok("both cable clips clear the corner columns")
+
+
+def sleeve_walls_miss_the_column_bore():
+    """The L walls must sit outside the bore, or the sleeve cannot drop over the column."""
+    bx = params.COLUMN_SIZE[0] + params.FIT
+    by = params.COLUMN_SIZE[1] + params.FIT
+    for cx, cy in params.column_centres():
+        pad = (cx - bx / 2, cx + bx / 2, cy - by / 2, cy + by / 2)
+        for w in params.sleeve_walls(cx, cy):
+            if params._boxes_overlap(w, pad):
+                return fail(f"sleeve wall {w} intrudes into the {bx:.1f} x {by:.1f} bore {pad}")
+    return ok("sleeve walls hug the columns without intruding on the bore")
 
 
 def wall_parts_sane():
@@ -158,6 +189,9 @@ CHECKS = [
     margin_posts_clear_the_pack_board,
     mesh_open_enough,
     tray_stays_below_the_panel,
+    backings_clear_the_columns,
+    clips_clear_the_columns,
+    sleeve_walls_miss_the_column_bore,
     wall_parts_sane,
 ]
 

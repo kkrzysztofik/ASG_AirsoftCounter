@@ -12,6 +12,7 @@ import argparse
 import csv
 import datetime
 import pathlib
+import struct
 import sys
 import zipfile
 
@@ -52,6 +53,29 @@ SHOP_NOTES = [
 ]
 
 
+def stl_volume_cm3(path):
+    """Solid volume of a binary STL, by the signed-tetrahedron sum.
+
+    Independent of the CAD: it reports what the mesh the shop receives actually encloses, so a
+    bad export shows up as a wrong number here rather than as a wrong price on the invoice.
+    """
+    data = path.read_bytes()
+    if len(data) < 84:
+        raise ValueError(f"{path.name}: too short to be an STL")
+    count = struct.unpack_from("<I", data, 80)[0]
+    if len(data) != 84 + count * 50:
+        raise ValueError(f"{path.name}: not a binary STL ({count} facets, {len(data)} bytes)")
+    total = 0.0
+    for i in range(count):
+        # facet record: 12-byte normal, then 3 vertices as 9 floats (36 bytes), then 2 bytes
+        v = struct.unpack_from("<9f", data, 84 + i * 50 + 12)
+        (ax, ay, az, bx, by, bz, cx, cy, cz) = v[0:9]
+        total += (ax * (by * cz - bz * cy)
+                  - ay * (bx * cz - bz * cx)
+                  + az * (bx * cy - by * cx)) / 6.0
+    return abs(total) / 1000.0
+
+
 def file_list(fmt):
     """[(item, zip name, source path)] in quote order. The number prefix keeps the sheet and
     the zip in the same order as the model set."""
@@ -64,6 +88,8 @@ def file_list(fmt):
 def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("--material", default=MATERIAL)
+    ap.add_argument("--rate", type=float, default=0.55,
+                    help="estimated price per cm3, for the estimate column only")
     ap.add_argument("--format", default="stl", choices=("stl", "step"))
     args = ap.parse_args(argv)
 
@@ -83,21 +109,32 @@ def main(argv):
             z.write(path, name)
 
     csv_path = FAB / f"jlc3dp_quote_{today}_{args.format}.csv"
+    total_cm3 = 0.0
     with csv_path.open("w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["Item", "Part", "File", "Qty", "Material", "Colour", "Surface finish",
-                    "Tolerance", "Notes"])
-        for item, (stem, qty, note), (_i, name, _p) in zip(range(1, len(PARTS) + 1), PARTS, files,
-                                                          strict=True):
-            w.writerow([item, stem, name, qty, args.material, "black",
-                        "as-printed / standard", "standard", note])
+        w.writerow(["Item", "Part", "File", "Qty", "Volume cm3", f"Est cost @{args.rate}/cm3",
+                    "Material", "Colour", "Surface finish", "Tolerance", "Notes"])
+        for item, (stem, qty, note), (_i, name, path) in zip(range(1, len(PARTS) + 1), PARTS, files,
+                                                            strict=True):
+            vol = stl_volume_cm3(path) if args.format == "stl" else float("nan")
+            known = vol == vol  # NaN-safe: a STEP zip has no mesh to measure
+            total_cm3 += vol if known else 0.0
+            w.writerow([item, stem, name, qty, f"{vol:.1f}" if known else "",
+                        f"{vol * args.rate * qty:.2f}" if known else "",
+                        args.material, "black", "as-printed / standard", "standard", note])
+        w.writerow(["", "TOTAL", "", sum(q for _s, q, _n in PARTS), f"{total_cm3:.1f}",
+                    f"{total_cm3 * args.rate:.2f}", args.material, "", "", "",
+                    "Estimate from solid volume only; the shop prices its own build."])
         for n in SHOP_NOTES:
-            w.writerow(["", "NOTE", "", "", "", "", "", "", n])
+            w.writerow(["", "NOTE", "", "", "", "", "", "", "", "", n])
 
     print(f"wrote {zip_path.relative_to(HERE.parent)}  ({len(files)} files, {raw / 1024:.0f} KB)")
     for _i, name, _p in files:
         print(f"  {name}")
     print(f"wrote {csv_path.relative_to(HERE.parent)}")
+    if total_cm3:
+        print(f"solid volume {total_cm3:.1f} cm3, roughly {total_cm3 * args.rate:.0f}"
+              f" at {args.rate}/cm3")
     return 0
 
 

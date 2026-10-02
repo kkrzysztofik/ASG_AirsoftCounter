@@ -218,6 +218,34 @@ build123d without a venv or a requirements file. Verified 2026-10-02: build123d 
 5. Heltec V4 board-to-header-top height when seated in the carrier.
 6. Button body depth and thread length; USB-C barrel thread; SMA thread length.
 
+## Print cost
+
+MJF and SLA are priced per cm3 of solid material, and the first quote came back at about $100 for one
+unit. `quote.py` measures the exported mesh (`stl_volume_cm3`, a signed-tetrahedron sum, so it is
+independent of the CAD) and puts a number on where that goes:
+
+| Part | cm3 | Share |
+|---|---|---|
+| Tray | 111.5 | 62 % |
+| Lid panel | 46.4 | 26 % |
+| Grille | 7.9 | 4 % |
+| Guide ring | 7.2 | 4 % |
+| 4 bushings | 7.3 | 4 % |
+| **Total** | **180.4** | |
+
+A first pass took this from 262 cm3 to 180 cm3 by cutting the two features that were pure bulk: the
+wall backings were 26 x 12 mm solid blocks (now a 20 x 6 mm nut pocket, which also stopped them
+colliding with the corner columns) and the corner sleeves were closed square tubes (now L-shaped,
+same location, a third of the material).
+
+**Two big flat plates are the wrong shape for a volume-priced process.** The tray and lid are 88 % of
+the cost and both are things an FDM printer does well: at 15-20 % infill they are roughly 40 g of
+filament. Options, cheapest first: print them locally in PETG; buy them from an FDM service; or keep
+MJF for the small parts, where the four bushings and the grille are about 15 cm3 together.
+
+Do not skeletonise the tray further to chase cost. Its floor carries the posts, the saddles and the
+wall backings, and the remaining bulk is structure, not slack.
+
 ## Verification
 
 1. **Self-check** (`python3 -c` importable without build123d): bounding box fits `BOX_IN` minus

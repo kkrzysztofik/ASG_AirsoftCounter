@@ -10,7 +10,7 @@ Sources are named per line; anything marked MEASURE is a placeholder until the b
 # dimensions, so the 70 is the base interior and the lid recess sits on top of it.
 BOX_IN = (190.0, 140.0, 70.0)  # MEASURE (firm per drawing, confirm with a rule)
 WALL = 3.0                    # (196 - 190) / 2, confirmed by (146 - 140) / 2
-LID_T = 3.0                   # MEASURE transparent lid plate
+LID_T = 2.5                   # printed lid panel thickness (the transparent lid is what faces weather)
 LID_RECESS = 8.0              # MEASURE depth available above the base rim
 FIT = 0.4                     # drop-in clearance, whole part; tune on the coupon
 FLOOR_T = 2.4                 # tray floor thickness
@@ -37,7 +37,10 @@ EXPECTED_HOLES = {"pack": PACK_HOLES, "carrier": CARRIER_HOLES}
 POST_R = 4.0                  # printed post radius under an M3 self-tapper
 POST_PILOT = 2.7              # M3 self-tapping pilot
 ARM_W = 8.0                   # width of the carrier bracket arms
-BACKING = (26.0, 12.0)        # (width along the wall, depth into the box) per wall device
+# A wall backing is a nut pocket, not a block. Thin and narrow also keeps it clear of the corner
+# columns, which reach 31 mm in from the wall and will silently swallow anything wider.
+BACKING = (20.0, 6.0)         # (width along the wall, depth into the box) per wall device
+BACKING_H = 15.0              # half-height of a wall backing
 
 PACK_ORIGIN = ((BOX_IN[0] - PACK[0]) / 2, (BOX_IN[1] - PACK[1]) / 2)          # (47, 25)
 CARRIER_ORIGIN = ((BOX_IN[0] - CARRIER[0]) / 2, (BOX_IN[1] - CARRIER[1]) / 2)  # (50, 40)
@@ -70,13 +73,17 @@ BUTTON_XY = [(78.0, 20.0), (118.0, 20.0)]   # below the carrier's footprint, so 
 NFC_CENTRE = (160.0, 25.0)    # bottom right: clear of the LCD frame and of the carrier
 NFC_SIZE = 45.0
 NFC_MIN_FROM_LCD = 20.0       # or the PN532 range dies
-# hole_d = hole drilled in the wall, device_d = the device's own mounting thread/body
+# hole_d = hole drilled in the wall, device_d = the device's own mounting thread/body.
+# u is measured along the wall from the corner: every one of these has to clear the corner
+# columns, whose footprints reach 31 mm in from each wall (asserted in check.py).
 WALL_PARTS = {
-    "key":   {"hole_d": 22.3, "device_d": 22.0, "wall": "long",  "u": 40.0, "z": 35.0},
-    "usbc":  {"hole_d": 12.2, "device_d": 12.0, "wall": "short", "u": 30.0, "z": 45.0},
-    "sma":   {"hole_d": 6.5,  "device_d": 6.4,  "wall": "long",  "u": 150.0, "z": 46.0},
+    "key":   {"hole_d": 22.3, "device_d": 22.0, "wall": "long",  "u": 45.0, "z": 35.0},
+    "usbc":  {"hole_d": 12.2, "device_d": 12.0, "wall": "short", "u": 55.0, "z": 45.0},
+    "sma":   {"hole_d": 6.5,  "device_d": 6.4,  "wall": "long",  "u": 145.0, "z": 46.0},
     "buzzer": {"hole_d": 30.0, "device_d": 29.6, "wall": "long", "u": 95.0, "z": 46.0},
 }
+# Cable tie points, inboard of the corner columns so a clip cannot end up inside one.
+CLIP_XY = [(148.0, 30.0), (148.0, 110.0)]
 BACKING_H = 18.0               # half-height of a wall backing block
 SPEAKER_WALL = {"wall": "long", "u": 40.0, "z": 30.0}  # Ø50, own grille plate
 BUSHING_FLANGE = 4.0          # bushing flange thickness
@@ -92,6 +99,50 @@ GRILLE_RIM = 8.0              # grille plate radius over the speaker radius
 GRILLE_T = 4.0                # total plate thickness
 GRILLE_RECESS = 2.5           # inner counterbore, so each hole is only ~1.5 mm deep
 GRILLE_BOLT_R = 32.0          # bolt circle for the grille screws
+
+
+def _span(a, b):
+    return (a, b) if a < b else (b, a)
+
+
+def backing_box(wp):
+    """(x0, x1, y0, y1) of a wall backing, so the model and the checks cannot disagree."""
+    w, d = BACKING
+    if wp["wall"] == "long":
+        wall = BOX_IN[1] - FIT
+        return (wp["u"] - w / 2, wp["u"] + w / 2, wall - d, wall)
+    wall = BOX_IN[0] - FIT
+    return (wall - d, wall, wp["u"] - w / 2, wp["u"] + w / 2)
+
+
+def _boxes_overlap(a, b, clear=0.0):
+    return (a[0] - clear < b[1] and b[0] - clear < a[1]
+            and a[2] - clear < b[3] and b[2] - clear < a[3])
+
+
+def column_box(cx, cy):
+    return (cx - COLUMN_SIZE[0] / 2, cx + COLUMN_SIZE[0] / 2,
+            cy - COLUMN_SIZE[1] / 2, cy + COLUMN_SIZE[1] / 2)
+
+
+def sleeve_walls(cx, cy):
+    """(x0, x1, y0, y1) of the two walls of a corner sleeve.
+
+    An L rather than a closed tube: it still locates the tray in X and Y against the column,
+    at a third of the material. The L faces away from the tray centre, so the four corners
+    between them block motion in every direction.
+    """
+    bx = COLUMN_SIZE[0] + FIT
+    by = COLUMN_SIZE[1] + FIT
+    sx = -1.0 if cx < BOX_IN[0] / 2 else 1.0
+    sy = -1.0 if cy < BOX_IN[1] / 2 else 1.0
+    ix, ox = cx + sx * bx / 2, cx + sx * (bx / 2 + SLEEVE_WALL)
+    iy, oy = cy + sy * by / 2, cy + sy * (by / 2 + SLEEVE_WALL)
+    xa = _span(ox, ix)
+    ya = _span(oy, cy)
+    xb = _span(ox, cx)
+    yb = _span(oy, iy)
+    return (xa[0], xa[1], ya[0], ya[1]), (xb[0], xb[1], yb[0], yb[1])
 
 
 def pack_z():
