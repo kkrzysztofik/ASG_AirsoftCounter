@@ -10,7 +10,7 @@ placed parts under the holder floor). Re-check the holder against its drawing an
 against the ZP240.190 plate before ordering.
 
 This is **variant A** (pack MCU). Variant B, the same pack with no MCU and the Heltec as I2C master,
-is `2026-10-02-pack-board-variant-b-design.md` (design only); both are kept.
+is `2026-10-02-pack-board-variant-b-design.md` (hardware generated from `hardware/pack_b.py`; not fabbed); both are kept.
 
 ## Simplification delta (2026-10-02)
 

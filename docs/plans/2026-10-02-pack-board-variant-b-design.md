@@ -29,7 +29,7 @@ was most of it).
 | Charger /CE, /INT, PAC ALERT | MCU pins | expander pins, polled by the Heltec |
 | Internal I2C bus + 4k7 pull-ups | yes | no: the pack chips sit on the carrier bus (pull-ups on the carrier) |
 | USB-C | data to the MCU (DFU) | CC resistors only; D+/D- unconnected |
-| Removed | | STM32C071, C_MCU1/2, C_NRST, R_BOOT, SW_BOOT, SW_RST, LED_MCU + R, 4 test pads, R_SCL_INT, R_SDA_INT |
+| Removed | | STM32C071, C_MCU1/2, C_NRST, R_BOOT, SW_BOOT, SW_RST, LED_MCU + R, 4 test pads, R_SCL_INT, R_SDA_INT, R_PWRDN (its +3V3 pull-up; the VBAT_SW divider replaces it) |
 
 Unchanged: the cell branches (fuse, 10 mOhm shunt, back-to-back AO3401A, crowbar, 10R sense taps),
 the B5819W diode-OR into the XC6206 LDO, the BQ25601 with its own board NTC on TS, the boost, the key
@@ -48,7 +48,10 @@ reach three pack chips instead of the pack MCU.
 
 TCA9534 standby 0.9 uA typ at 3.6 V (verified). It runs from the always-on +3V3 (diode-OR -> LDO), so
 it keeps the chosen cell set while the Heltec is off, through key-off and Heltec reboots; it only
-returns to "all on" after the pack loses power completely.
+returns to "all on" after the pack loses power completely. One hazard follows: if the policy
+opens every cell, the Heltec - fed from the rail the expander controls - dies mid-command and the
+pack stays dead until **all four** cells are removed to drop +3V3, so the firmware must never open
+the last closed cell while a usable cell remains.
 
 ### I2C map on the carrier bus
 
@@ -97,7 +100,7 @@ configures it on every boot (bidirectional channels, sample rate, ALERT).
 | Connect-check before a cell joins | yes (default off) | **no**: a cell joins as soon as it is inserted (power-bank behaviour; buy matched cells) |
 | Reaction to a short / alert | MCU interrupt, ms | Heltec polling (about 1 s); the fuses handle hard shorts |
 | Pack firmware, DFU | needed | none |
-| Key-off drain (est.) | 112 uA | about 30 uA: TCA9534 1, ADS1115 0.5, PAC1934 0.1, BQ25601 4.5, LDO 1, 4 x 1M gate pull-ups 4.2 each |
+| Key-off drain (est.) | 112 uA | about 8 uA with every cell closed (TCA9534 1, ADS1115 0.5, PAC1934 0.1, BQ25601 4.5, LDO 1); each open cell adds 3.3 uA through its 1M gate pull-up at 3V3, so all four open is about 20 uA |
 
 Option, not in the baseline: supervise key-off charging by letting USB power wake the Heltec. The
 BQ25601 /PG (open-drain, low = good input) could drive an AO3401A that bridges SYS to `VBAT_SW`
@@ -124,8 +127,13 @@ The `asg-core` `pack` module (connection policy, disable rules, coulomb counting
 substance but runs on the Heltec in `asg-device` instead of a pack MCU, and the register-map
 section of variant A becomes a set of drivers: PAC1934 (configure on boot, REFRESH, read
 accumulators), TCA9534 (switches, /CE, polling P6/P7), ADS1115 (single-shot per NTC with P4 on),
-BQ25601 (status, watchdog kick or disable). The policy must open a cell when the Heltec sees it fail,
-since nothing else will while the key is on.
+BQ25601 (status, watchdog kick or disable). Two rules the hardware forces on that policy: it must
+never open the last currently-closed cell while any usable cell remains - opening every cell removes
+the Heltec's own supply through the rail the expander controls, and the pack cannot recover without
+pulling all four cells to drop +3V3 - and the TCA9534 output register must be loaded before P0-P3
+become outputs, with P4 raised before each NTC conversion. Unlike the carrier expander, writing 0 to
+the output register here opens all four cells. The policy must open a cell when the Heltec sees it
+fail, since nothing else will while the key is on.
 
 ## Repo effort
 

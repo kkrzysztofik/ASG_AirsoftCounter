@@ -1,6 +1,6 @@
 # shellcheck disable=SC1009,SC1050,SC1064,SC1065,SC1072,SC1073  # GNU make, not shell: shellcheck misparses conditional directives
 # Full rebuild of one board: design check -> schematic -> netlist parity -> placed board ->
-# autoroute -> ERC/DRC -> fab package. BOARD=carrier (default) or BOARD=pack selects the board
+# autoroute -> ERC/DRC -> fab package. BOARD=carrier (default), pack or pack_b selects the board
 # module (board.py) and every output name; all of it regenerates from that module. route.py needs
 # the unrouted board, so pcb always runs first. Intermediates and ERC/DRC reports go to build/.
 BOARD ?= carrier
@@ -65,7 +65,8 @@ fab: check
 	kicad-cli pcb export pdf --layers F.Fab,F.Silkscreen,Edge.Cuts --sketch-pads-on-fab-layers --mode-single \
 		--black-and-white --drill-shape-opt 2 -o $(FAB)/print_1to1.pdf $(BOARD).kicad_pcb
 
-# Both boards in one command (run before ordering).
+# Every board in one command (run before ordering).
 boards:
 	$(MAKE) BOARD=carrier all
 	$(MAKE) BOARD=pack all
+	$(MAKE) BOARD=pack_b all
