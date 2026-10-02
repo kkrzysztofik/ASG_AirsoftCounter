@@ -1,8 +1,10 @@
 # Pawbol S-BOX 416-P insert: base tray and lid panel
 
 Date: 2026-10-02
-Status: design approved in review 2026-10-02. Model not written yet. Every number below is either
-read from a source named beside it, or listed under "Must be measured" / "Unverified".
+Status: model written 2026-10-02, `make mech` green (13 checks, 9 parts, all single solids). The
+retention scheme and the cell cradle both changed while the geometry was being built; see "Changes
+during implementation" below. Every number is either read from a source named beside it, or listed
+under "Must be measured" / "Unverified".
 
 The budget tier's Pawbol enclosure ships as an empty tub: **no mounting plate, no brass inserts, no
 knockouts**. This spec adds two printed PETG parts so a unit can be assembled by dropping parts in
@@ -54,26 +56,48 @@ floor features as unverified: do not design anything that depends on the rib or 
 | Decision | Choice | Basis |
 |---|---|---|
 | Part split | **base tray + lid panel**, two prints | keeps the transparent lid face intact, so the LCD needs no window and no gasket |
-| Retention | tray legs slide **inside the 4 corner columns**, flange rests on the column top. Screw stack: lid -> panel ear -> tray flange -> column thread | reuses the column's existing thread; each added layer costs ~3 mm of screw |
+| Retention | tray sleeves drop **over** the 4 corner columns and locate the tray in X/Y; the lid panel rests on the sleeve tops and the closed lid presses the whole stack down. **No screw stack change** | the column top and the lid plate share the rim plane, so a flange between them lifts the lid off its gasket — see "Changes during implementation" |
 | LCD | 20x4 pressed against the inside of the clear lid by a printed frame | same call as the Kradex design (`2026-09-28-esp32-lora-carrier-design.md`): "LCD behind clear lid (no window)" |
 | NFC | PN532 in a panel pocket, tapped through the clear lid | carrier design: 3–5 cm expected through 3 mm PC; keep >=20 mm off the LCD frame |
 | Buttons | 2 x Ø16 in the **lid**, drilled with a printed 1:1 template | user 2026-10-02; matches the panel's button bosses |
 | Speaker | 50 mm in a **wall**, printed **mesh grille** plate outside, foam gasket | user 2026-10-02 |
 | Wall sealing | one printed bushing + O-ring per penetration, plus an internal backing block | user 2026-10-02; 3 mm PS/ABS cannot carry a tightened nut |
-| Cells | printed cradle with 4 troughs and a **snap hold-down bar** | pack design's shock-dropout risk |
+| Cells | printed **saddle rails** the cells rest in; the board's own holders capture them from above | pack design's shock-dropout risk. A separate hold-down bar was dropped: the holders already clamp the top, so a bar would add nothing |
 | Panel vent | **none** | YAGNI. If the speaker sounds boxy in the sealed tub, add the small second mesh panel then |
+
+## Changes during implementation
+
+Three things the approved design assumed turned out not to survive contact with the geometry:
+
+1. **The tray no longer takes the lid screws (was: option B).** The corner columns are solid to the
+   rim and the lid seals on the rim, so a flange between the column top and the lid would lift the
+   lid off its gasket. The sleeves now only locate the tray; the lid panel presses it down.
+2. **The cell hold-down bar is gone.** The pack board's holders already clamp the cells from above,
+   so the printed part only has to take the recoil load off the contacts. Two saddle rails do that
+   with less plastic and no snap fit to get wrong.
+3. **The carrier's posts are margin brackets.** All four of the carrier's M3 holes land inside the
+   pack board's footprint, so posts cannot rise from the floor to the carrier. They stand in the Y
+   margin either side of the pack board and reach in on 45-degree gusseted arms.
+
+A fourth change is a finding rather than a decision: the LCD and the Heltec only clear each other by
+5.5 mm on the assumed `LCD_DEPTH` of 13 mm. `check.py` fails if that narrows to under 2 mm.
 
 ## Interfaces
 
-### A. Corner screw stack
+### A. Corner columns
 
-The lid screws are plastic and thread into the corner columns. The tray leg is a sleeve that rides
-down inside each column, with a flange resting on the column's top face. The screw passes through
-the lid, the panel ear and the tray flange before it reaches the original thread.
+The columns are solid from the floor to the rim, and the lid plate seals on the rim, so there is no
+room between the column top and the lid for any printed flange: 3 mm of flange is 3 mm of lid lift
+off its gasket. The tray therefore does not touch the screw stack at all.
 
-Screw length must grow by roughly (panel + flange) = **6 mm**, or the original screw is reused if its
-thread engagement still satisfies the PS/ABS column. **Screw thread (M4?) and the column's inner
-size are unmeasured** — the coupon in Verification settles both.
+Each corner gets a **sleeve** that drops over its column, 2 mm wall, stopping at the panel's
+underside. The sleeves give the tray positive X/Y location, the box floor stops it going down, and
+the lid panel — resting on the sleeve tops and pressed by the shut lid — stops it coming up.
+`LEG_FLANGE_T` exists as a parameter in case the box proves to have room after all; it defaults to
+0 and nothing else depends on it.
+
+`SCREW_RASTER` is still needed, because it sets where the columns are. **Column size and raster are
+unmeasured** — the fit coupon settles both.
 
 ### B. Board patterns
 
