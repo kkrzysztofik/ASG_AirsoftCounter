@@ -289,6 +289,9 @@ NPTH_XY = sorted((PLACE[r][0], PLACE[r][1]) for r in ("H1", "H2", "H3", "H4"))
 MODULES = {}
 VARIANTS = {"standard": set()}
 
+LDO_VIN = "U_LDO.2"                      # HT75xx-1 SOT-89: 1 GND, 2 VIN, 3 VOUT
+TAP_ADC_PIN = {1: "U_MCU.7", 2: "U_MCU.8", 3: "U_MCU.9"}
+
 
 def assembled(variant="standard"):
     """Refs JLCPCB places: everything except DNP parts, hand-soldered/off-board parts and holes."""
@@ -296,16 +299,18 @@ def assembled(variant="standard"):
             if r not in DNP | NOT_ASSEMBLED and sym != "Mechanical:MountingHole"]
 
 
-def check_power_path():
+def check_power_path(m=None):
     """Input order and the EN wiring the latched cutoff depends on."""
-    net_of = {p: n for n, m in NETS.items() for p in m}
+    import sys
+    m = m or sys.modules[__name__]
+    net_of = {p: n for n, mem in m.NETS.items() for p in mem}
     assert net_of["J_IN1.1"] == net_of["F_IN1.1"], "input + not on the fuse"
     assert net_of["J_IN1.2"] == "GND", "input - not on GND"
     assert net_of["F_IN1.2"] == net_of["Q_REV1.3"], "fuse not on the reverse FET drain"
     assert net_of["Q_REV1.1"] == net_of["D_GZ1.2"] == net_of["R_REV1.1"], "FET gate clamp"
     vin = net_of["Q_REV1.2"]
     assert vin == "VIN", "reverse FET source is not VIN"
-    for p in ("D_TVS1.1", "D_GZ1.1", "U_BA.3", "U_BB.3", "U_LDO.2", "R_EN1.1"):
+    for p in ("D_TVS1.1", "D_GZ1.1", "U_BA.3", "U_BB.3", m.LDO_VIN, "R_EN1.1"):
         assert net_of[p] == vin, f"{p} not on VIN"
     assert net_of["U_BA.5"] == net_of["U_BB.5"] == net_of["R_EN2.1"] == net_of["Q_KILL.3"], \
         "buck ENs not on one node with the pull-down and the kill FET"
@@ -315,7 +320,7 @@ def check_power_path():
     assert net_of["R_GK.1"] == "GND", "kill gate pull-down missing (bucks must default on)"
     for i in (1, 2, 3):
         assert net_of[f"J_BAL1.{i + 1}"] == net_of[f"R_TT{i}.1"], f"tap {i} divider not on the plug"
-        assert net_of[f"U_MCU.{6 + i}"] == f"TAP{i}_ADC", f"tap {i} not on its ADC pin"
+        assert net_of[m.TAP_ADC_PIN[i]] == f"TAP{i}_ADC", f"tap {i} not on its ADC pin"
 
 
 def check():
