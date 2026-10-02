@@ -48,7 +48,9 @@ for i in (1, 2, 3):
 NC_PINS = {f"U_MCU.{p}" for p in (2, 3, 6, 10, 11, 12, 13, 15, 18, 19, 20, 21, 22, 25, 26, 27, 28)}
 
 DNP, NC_PARTS = set(lipo.DNP), set()
-NOT_ASSEMBLED = set()
+# Test pads and the input pigtail are copper only (not bought, not in the BOM export), same as the
+# JLC board: gen_sch marks them in_bom=no and gen_pcb must agree or DRC flags a parity mismatch.
+NOT_ASSEMBLED = set(lipo.NOT_ASSEMBLED) | {"TP_BOOT0"}
 # Not bought at TME: test pads and the input pigtail's pads are copper only.
 NOT_TME = {"J_IN1", "TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_3V3", "TP_GND", "TP_BOOT0"}
 LCSC = {}
@@ -83,7 +85,13 @@ SIZE_MM = lipo.SIZE_MM
 NPTH_XY = lipo.NPTH_XY
 HIDE_REF = lipo.HIDE_REF + ("TP_BOOT0",)
 PLACE = dict(lipo.PLACE)
+PLACE |= {
+    # L072 VDD/VDDA decoupling in the free strip right of the MCU; TP_BOOT0 joins the test-pad row.
+    "C_MCU3": (19.5, 33, 0), "C_VDDA": (24.5, 33, 0),
+    "TP_BOOT0": (14.8, 47, 0),
+}
 REF_AT = dict(lipo.REF_AT)
+REF_AT |= {"C_MCU3": (19.5, 31.3, 0), "C_VDDA": (24.5, 34.5, 0)}
 _tags = lipo._tags
 
 
@@ -105,6 +113,16 @@ def _copy_blocks():
 
 
 BLOCKS = _copy_blocks()
+# MCU block: the L072 adds two supply caps and a dedicated BOOT0 test pad.
+_mcu = next(b for b in BLOCKS if b["title"].startswith("Always-on"))
+_mcu["title"] = "Always-on 3V3, STM32L072, SWD pads"
+_mcu["parts"] |= {
+    "C_MCU3": (30.48, 58.42, 0, None),     # pin 17 VDD
+    "C_VDDA": (30.48, 76.2, 0, None),      # pin 5 VDDA
+    "TP_BOOT0": (106.68, 101.6, 0, None),
+}
+_mcu["fields"]["TP_BOOT0"] = {"Reference": (5.08, -2.54, "left"),
+                               "Value": (5.08, 2.54, "left")}
 
 
 def check_mcu():
