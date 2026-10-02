@@ -80,3 +80,12 @@ boards:
 mech:
 	/usr/bin/python3 mech/check.py
 	uv run mech/insert.py --part all --check
+
+# Quote package for JLCPCB 3D printing: one model per part in a zip, plus the quote sheet.
+# MAT defaults to SLA because that is the process the quote is usually priced against; pass
+# MAT="FDM PETG" or MAT="MJF PA12" for a different line.
+MAT ?= SLA 9000R resin
+.PHONY: mech-fab
+mech-fab: mech
+	/usr/bin/python3 mech/quote.py --format stl --material "$(MAT)"
+	/usr/bin/python3 mech/quote.py --format step --material "$(MAT)"

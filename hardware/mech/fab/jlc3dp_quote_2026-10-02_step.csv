@@ -1,0 +1,14 @@
+Item,Part,File,Qty,Material,Colour,Surface finish,Tolerance,Notes
+1,tray,01_tray.step,1,SLA 9000R resin,black,as-printed / standard,standard,"base tray: corner sleeves, cell saddles, board posts, cable clips, wall backings"
+2,lid,02_lid.step,1,SLA 9000R resin,black,as-printed / standard,standard,"lid panel: LCD frame, button bosses, NFC opening, corner ears"
+3,grille,03_grille.step,1,SLA 9000R resin,black,as-printed / standard,standard,"speaker mesh, 40% open area, 50 mm"
+4,guide,04_guide.step,1,SLA 9000R resin,black,as-printed / standard,standard,drill guide ring for the 50 mm holesaw
+5,bushing_key,05_bushing_key.step,1,SLA 9000R resin,black,as-printed / standard,standard,"wall bushing, 22.3 mm hole to 22.0 mm device"
+6,bushing_usbc,06_bushing_usbc.step,1,SLA 9000R resin,black,as-printed / standard,standard,"wall bushing, 12.2 mm hole to 12.0 mm device"
+7,bushing_sma,07_bushing_sma.step,1,SLA 9000R resin,black,as-printed / standard,standard,"wall bushing, 6.5 mm hole to 6.4 mm device"
+8,bushing_buzzer,08_bushing_buzzer.step,1,SLA 9000R resin,black,as-printed / standard,standard,"wall bushing, 30.0 mm hole to 29.6 mm device"
+,NOTE,,,,,,,All dimensions millimetres. Tray and lid are 190 x 140 mm envelopes; they must stay under 189.2 x 139.2 mm to drop into the box.
+,NOTE,,,,,,,Critical fit: the 4 corner sleeves are 20.4 x 20.4 mm bores; a few tenths either way decides whether the part goes in.
+,NOTE,,,,,,,"Wall thickness is 2.0 mm minimum, 2.4 mm floor; the speaker mesh land is 1.0 mm."
+,NOTE,,,,,,,"No supports modelled. Overhangs are 45 degrees or shallower; please confirm the process does not need any, or quote support removal if it does."
+,NOTE,,,,,,,"The quote is for fit and feel, not a production run: it is not yet measured against a physical box."
