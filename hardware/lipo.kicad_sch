@@ -7422,7 +7422,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "AO3407A"
+		(property "Value" "AO3401A"
 			(at 76.2 43.18 0)
 			(effects
 				(font
@@ -7563,7 +7563,7 @@
 				)
 			)
 		)
-		(property "Value" "BZT52C12"
+		(property "Value" "MMSZ5240B"
 			(at 88.9 60.96 0)
 			(effects
 				(font

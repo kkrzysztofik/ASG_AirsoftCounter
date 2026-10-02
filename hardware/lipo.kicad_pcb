@@ -4572,7 +4572,7 @@
 				)
 			)
 		)
-		(property "Value" "BZT52C12"
+		(property "Value" "MMSZ5240B"
 			(at 0 2.1 0)
 			(layer "F.Fab")
 			(uuid "c2fdd5c2-9c92-4794-a091-8105760d5aff")
@@ -4988,7 +4988,7 @@
 				)
 			)
 		)
-		(property "Value" "AO3407A"
+		(property "Value" "AO3401A"
 			(at 0 2.4 0)
 			(layer "F.Fab")
 			(uuid "1e7649cb-bc66-436d-9919-0114424d4d4c")

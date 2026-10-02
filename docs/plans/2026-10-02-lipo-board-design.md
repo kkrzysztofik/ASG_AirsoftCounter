@@ -128,9 +128,9 @@ Sources: vendor datasheets and the live JLCPCB parts API (type: B Basic / P Pref
 | Inductor (x2) | Bourns SRN6045TA-100M, C2046332 (E): 10 uH +-20%, DCR 52 mOhm, Irms 3.20 A (40 C rise), Isat 4.60 A (30% L drop) >= 3.5 A, so one part for both bucks | Bourns SRN6045TA datasheet | 2026-10-02 |
 | Always-on LDO | Holtek HT7533-1, SOT-89-3, C14289 (B): supply abs max -0.3..33 V, VIN max 30 V, Iq 2.5 uA typ / 4.0 uA max, 100 mA; pins 1 GND, 2 VIN, 3 VOUT; C_in = C_out = 10 uF | Holtek HT75xx-1 Rev 2.40 | 2026-10-02 |
 | LDO series R | none: the 33 V abs max is above the SMBJ15A 24.4 V clamp | Holtek + Littelfuse | 2026-10-02 |
-| Reverse FET | AO3407A, SOT-23, C15155 (E): VDS -30 V, VGS +-20 V, RDS(on) < 78 mOhm at VGS -4.5 V, ID -4.3 A; G-S-D pinout same as the AO3401A symbol (1 G, 2 S, 3 D) | AOS AO3407A datasheet | 2026-10-02 |
-| Input TVS | SMBJ15A, DO-214AA, C113988 (E): VRWM 15 V (above 12.6 V 3S full), VBR 16.7-18.5 V, VC 24.4 V at 24.6 A, 600 W; below the buck 30 V and LDO 33 V abs max | Littelfuse / Diodes SMBJ15A | 2026-10-02 |
-| Gate clamp | BZT52C12, SOD-123, C43491 (E): 11.4-12.7 V at 5 mA, 500 mW. No Basic/Preferred 12 V SOD-123 zener exists (live check: every candidate is Extended, preferred flag false), so the Extended part stays | Diodes BZT52C12; JLCPCB API | 2026-10-02 |
+| Reverse FET | AO3401A, SOT-23, C15127 (B): VDS -30 V, VGS +-12 V, RDS(on) 60 mOhm at VGS -4.5 V, ID -4 A; pinout 1 G, 2 S, 3 D. Was AO3407A (E, VGS +-20 V); the 10 V gate clamp keeps VGS inside +-12 V | AOS AO3401A datasheet; JLCPCB API | 2026-10-02 |
+| Input TVS | SMBJ15A, DO-214AA, C19077569 (P, hongjiacheng; was C113988 E): VRWM 15 V (above 12.6 V 3S full), VBR 16.7-18.5 V, VC 24.4 V at 24.6 A, 600 W; below the buck 30 V and LDO 33 V abs max | Littelfuse / Diodes SMBJ15A | 2026-10-02 |
+| Gate clamp | MMSZ5240B, SOD-123, C19077425 (P): 9.5-10.5 V, 500 mW. Below the AO3401A's 12 V VGS limit, also with VIN at the 24.4 V TVS clamp (0.14 mA through R_REV1). Replaces BZT52C12 (E); the earlier "no Preferred 12 V zener" note was wrong (MMSZ5242B C19077426 is Preferred) | JLCPCB API | 2026-10-02 |
 | Input leads | Connector_Wire:SolderWire-1.5sqmm_1x02_P6mm_D1.7mm_OD3mm, 14 AWG / 1.5 mm2: the ~3 A worst case at 2S empty is marginal on 1 mm2 (17 AWG); 1.5 mm2 matches common XT60 pigtails and the 1.7 mm hole takes 14 AWG | design-doc current; KiCad footprint | 2026-10-02 |
 | Balance header | one B4B-XH-A (C144395): JST XH is a 2.5 mm friction-lock box-shrouded header; a 3-circuit XHP housing seats on pins 1-3 and locks on the full-length shroud wall. Tap 3 then reads 0 V on a 2S pack | JST XH series drawing | 2026-10-02 |
 | Dividers | Basic 1M (C17514) / 470k (C17709): tap1 470k/1M -> x0.680, tap2 1M/470k -> x0.320, tap3 2M/470k -> x0.190; at 4.35 V/cell (13.05 V pack) the taps read 2.96 / 2.78 / 2.48 V, all under the 3.3 V ADC ref | design values | 2026-10-02 |
@@ -151,9 +151,9 @@ Sources: vendor datasheets and the live JLCPCB parts API (type: B Basic / P Pref
 `hardware/lipo.py` -> `make BOARD=lipo all` writes `lipo.kicad_sch`, `lipo.kicad_pcb` and the JLCPCB
 package into `fab/lipo/` (gerber zip, BOM/CPL, schematic and renders). Freerouting: 462 tracks/vias,
 0 unrouted; ERC 0, DRC 0 violations, 0 schematic-parity issues; gerbers 11 files, 70 x 50 mm,
-4 x 3.2 mm NPTH. The 49 placed parts are 37 Basic, 2 Preferred (75k C17819, BSS138 C7420339) and
-10 Extended LCSC numbers (12 placements): 7 SMD types (5 A fuse C48332, AO3407A C15155, BZT52C12
-C43491, SMBJ15A C113988, TPS54302 x2 C311983, SRN6045TA x2 C2046332, STM32C071 C42116633) and the
+4 x 3.2 mm NPTH. The 49 placed parts are 38 Basic, 4 Preferred (75k C17819, BSS138 C7420339, MMSZ5240B C19077425, SMBJ15A C19077569) and
+7 Extended LCSC numbers (9 placements): 4 SMD types (5 A fuse C48332, TPS54302 x2 C311983,
+SRN6045TA x2 C2046332, STM32C071 C42116633) and the
 3 through-hole XH headers (KEY C158012, BAL C144395, PWR C144397). Economic PCBA charges one
 feeder-setup fee per SMD Extended type; the XH headers are per-joint.
 

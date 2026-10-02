@@ -28,9 +28,9 @@ PARTS = {
     # --- input: XT60 pigtail on solder pads, fuse, reverse P-FET, TVS ---
     "J_IN1": ("LIPO", "Connector_Generic:Conn_01x02", PADS),     # hand-soldered pigtail
     "F_IN1": ("5A fuse", "Device:Fuse", FUSE1206),
-    "Q_REV1": ("AO3407A", "Transistor_FET:AO3401A", SOT23),      # same G-S-D pinout (L0.1)
+    "Q_REV1": ("AO3401A", "Transistor_FET:AO3401A", SOT23),      # VGS +-12 V: D_GZ1 is 10 V
     "R_REV1": ("100k", *R0805),
-    "D_GZ1": ("BZT52C12", "Device:D_Zener", SOD123),             # VGS clamp
+    "D_GZ1": ("MMSZ5240B", "Device:D_Zener", SOD123),            # 10 V VGS clamp
     "D_TVS1": ("SMBJ15A", "Device:D_Zener", SMB),                # unidirectional TVS
     "C_VIN1": ("10uF", *C0805),
     "C_VIN2": ("10uF", *C0805),
@@ -107,9 +107,9 @@ LCSC = {
     ("5k1", R0805[1]): "C27834",        # B
     ("1k", R0805[1]): "C17513",         # B
     ("5A fuse", FUSE1206): "C48332",    # E Bourns SF-1206F500-2
-    ("AO3407A", SOT23): "C15155",       # E AOS AO3407A, 128k in stock (2026-10-02)
-    ("BZT52C12", SOD123): "C43491",     # E BZT52C12 SOD-123 (2026-10-02; no Basic/Preferred 12 V)
-    ("SMBJ15A", SMB): "C113988",        # E SMBJ15A DO-214AA, 135k in stock (2026-10-02)
+    ("AO3401A", SOT23): "C15127",       # B AOS AO3401A, VGS +-12 V (2026-10-02)
+    ("MMSZ5240B", SOD123): "C19077425",  # P hongjiacheng MMSZ5240B 9.5-10.5 V (2026-10-02)
+    ("SMBJ15A", SMB): "C19077569",      # P hongjiacheng SMBJ15A DO-214AA, 20k in stock (2026-10-02)
     ("TPS54302DDCR", TSOT23_6): "C311983",  # E TI TPS54302DDCR, 65k in stock (2026-10-02)
     ("10uH 2A", LRN6045): "C2046332",   # E Bourns SRN6045TA-100M, Isat 4.6 A (2026-10-02)
     ("BSS138", SOT23): "C7420339",      # P
