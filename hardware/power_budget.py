@@ -49,7 +49,7 @@ GNSS_OPT = 1.0  # one fix at boot, then VGNSS off (backup domain only)
 NFC_POLL_OPT = 5.0  # PN532 PowerDown between polls, polls only when a card is expected
 # Carrier and off-board loads
 GNSS = 29.0  # Quectel L76K hardware design: 29 mA acquisition and tracking, on the Heltec's
-             # switched GNSS 3V3 (VGNSS_Ctrl/GPIO34). 41 mA with an active antenna (Seeed's L76K).
+             # switched GNSS 3V3 (VGNSS_Ctrl: GPIO34 on R2, GPIO42 on R8). 41 mA with an active antenna (Seeed's L76K).
 NFC_POLL = 20.0  # design doc: PN532 RF bursts ~50 ms on / 300 ms, average. Datasheet is ~91 mA
                  # field-on and ~20-30 mA idle, so one of the two is under-counted.
 NFC_IDLE = 3.0  # EST: module power LED + PN532 PowerDown command (45 uA). A chip left running

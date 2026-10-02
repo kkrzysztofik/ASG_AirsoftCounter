@@ -1,7 +1,7 @@
 # AirsoftCounter power efficiency: a weekend on the 18650 pack
 
 Date: 2026-10-02
-Status: design approved, no board changes.
+Status: docs and model done (E1-E3); firmware C2-C8 and validation wait for the hardware. No board changes.
 
 ## Goal
 
