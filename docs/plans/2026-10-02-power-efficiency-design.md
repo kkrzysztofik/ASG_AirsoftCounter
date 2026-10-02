@@ -24,6 +24,10 @@ Weekend budget: 13400 mAh x 0.84 usable x 0.8 (0 °C) x 0.8 (aged), minus 12 h p
 over 20 h of game = **~350 mA**. Today's estimate passes with no margin, and the backlight figure
 is still a guess.
 
+Modelled after the display change (E1, `power_budget.py` weekend block, budget 353 mA): today's
+firmware with the backlight always on 236 mA (+50 % margin), backlight on a timeout 196 mA (+80 %),
+optimized firmware 74 mA (+377 %). The Newhaven alone meets the goal; the firmware work is margin.
+
 ## Decisions
 
 ### 1. Display: Newhaven NHD-0420D3Z-FL-GBW-V3 replaces the blue 2004A + HW-61
