@@ -165,6 +165,69 @@ for i in (1, 2, 3):
     top = "R_TT3B.2" if i == 3 else f"R_TT{i}.2"
     NETS[f"TAP{i}_ADC"] = [top, f"R_TB{i}.1", f"C_TAP{i}.1", f"U_MCU.{6 + i}"]
 
+# --- schematic layout (read by gen_sch.py) -----------------------------------------------------
+# Input and the two switch nodes carry the wider Power class; LIPO_* covers LIPO_RAW and LIPO_F.
+NETCLASS_POWER = ("LIPO_*", "VIN", "VBAT_SW", "+5V", "SW_A", "SW_B")
+# Rails drawn as power ports: +3V3 has the LDO's power_out, the rest take a PWR_FLAG.
+RAILS = ("GND", "+3V3", "VIN", "VBAT_SW", "+5V")
+PORT_LIB = {"GND": "power:GND", "+3V3": "power:+3V3", "VIN": "power:VDC",
+            "VBAT_SW": "power:+BATT", "+5V": "power:+5V"}
+_tags = pack._tags
+
+BLOCKS = [
+    {"title": "LiPo input: fuse, reverse FET, TVS", "at": (12.7, 12.7), "size": (127.0, 88.9),
+     "parts": {"J_IN1": (12.7, 30.48, 0, None), "F_IN1": (35.56, 25.4, 0, None),
+               "Q_REV1": (58.42, 30.48, 0, None), "R_REV1": (58.42, 55.88, 0, None),
+               "D_GZ1": (76.2, 45.72, 0, None), "D_TVS1": (93.98, 45.72, 0, None),
+               "C_VIN1": (106.68, 45.72, 0, None), "C_VIN2": (114.3, 45.72, 0, None),
+               "C_VIN3": (106.68, 66.04, 0, None), "C_VIN4": (114.3, 66.04, 0, None)}},
+    {"title": "Buck A 4.10 V (VBAT_SW), buck B 5.07 V (+5V)", "at": (152.4, 12.7),
+     "size": (152.4, 139.7),
+     "parts": {"U_BA": (30.48, 30.48, 0, None), "C_BTA": (55.88, 20.32, 0, None),
+               "L_A": (76.2, 27.94, 0, None), "R_FBA1": (96.52, 38.1, 0, None),
+               "R_FBA2": (96.52, 53.34, 0, None), "C_OA1": (114.3, 38.1, 0, None),
+               "C_OA2": (127.0, 38.1, 0, None),
+               "U_BB": (30.48, 91.44, 0, None), "C_BTB": (55.88, 81.28, 0, None),
+               "L_B": (76.2, 88.9, 0, None), "R_FBB1": (96.52, 99.06, 0, None),
+               "R_FBB2": (96.52, 114.3, 0, None), "C_OB1": (114.3, 99.06, 0, None),
+               "C_OB2": (127.0, 99.06, 0, None)},
+     "tags": _tags(["BUCK_EN"], 12.7, 127.0)},
+    {"title": "Key enable, MCU kill, J_PWR1", "at": (12.7, 114.3), "size": (127.0, 88.9),
+     "parts": {"J_KEY1": (12.7, 20.32, 0, None), "R_EN1": (35.56, 20.32, 0, None),
+               "R_EN2": (55.88, 35.56, 0, None), "Q_KILL": (76.2, 40.64, 0, None),
+               "R_GK": (66.04, 60.96, 0, None), "R_KILL": (50.8, 50.8, 0, None),
+               "J_PWR1": (96.52, 35.56, 180, None)},
+     "tags": _tags(["BUCK_EN", "KILL_DRV", "SDA_EXT", "SCL_EXT", "KILL_G", "GND"], 12.7, 76.2),
+     "wired": {"GND"}},
+    {"title": "Always-on 3V3, STM32C071, SWD pads", "at": (317.5, 12.7), "size": (139.7, 152.4),
+     "parts": {"U_LDO": (30.48, 20.32, 0, None), "C_LDO1": (12.7, 30.48, 0, None),
+               "C_LDO2": (50.8, 30.48, 0, None),
+               "U_MCU": (60.96, 88.9, 0, None),
+               "C_MCU1": (17.78, 58.42, 0, None), "C_MCU2": (17.78, 76.2, 0, None),
+               "C_NRST": (17.78, 93.98, 0, None), "R_BOOT": (17.78, 111.76, 0, None),
+               "TP_NRST": (106.68, 50.8, 0, None), "TP_SWCLK": (106.68, 60.96, 0, None),
+               "TP_SWDIO": (106.68, 71.12, 0, None), "TP_3V3": (106.68, 81.28, 0, None),
+               "TP_GND": (106.68, 91.44, 0, None)},
+     "fields": {r: {"Reference": (5.08, -2.54, "left"), "Value": (5.08, 2.54, "left")}
+                for r in ("TP_NRST", "TP_SWCLK", "TP_SWDIO", "TP_3V3", "TP_GND")},
+     "tags": _tags(["TAP1_ADC", "TAP2_ADC", "TAP3_ADC", "KILL_DRV", "SDA_EXT", "SCL_EXT",
+                    "NRST", "BOOT0", "SWDIO"], 12.7, 127.0, per_row=5)},
+    {"title": "Balance lead dividers", "at": (152.4, 165.1), "size": (152.4, 76.2),
+     "parts": {"J_BAL1": (22.86, 20.32, 180, None),
+               "R_TT1": (40.64, 20.32, 0, None), "R_TB1": (40.64, 40.64, 0, None),
+               "C_TAP1": (55.88, 40.64, 0, None),
+               "R_TT2": (76.2, 20.32, 0, None), "R_TB2": (76.2, 40.64, 0, None),
+               "C_TAP2": (91.44, 40.64, 0, None),
+               "R_TT3": (111.76, 12.7, 0, None), "R_TT3B": (111.76, 27.94, 0, None),
+               "R_TB3": (111.76, 45.72, 0, None), "C_TAP3": (127.0, 45.72, 0, None)},
+     "tags": _tags(["TAP1_ADC", "TAP2_ADC", "TAP3_ADC", "TAP3_MID", "BAL1"], 12.7, 63.5)},
+    {"title": "Mounting holes and power flags", "at": (317.5, 177.8), "size": (139.7, 50.8),
+     "parts": {"H1": (7.62, 16.51, 0, None), "H2": (22.86, 16.51, 0, None),
+               "H3": (38.1, 16.51, 0, None), "H4": (53.34, 16.51, 0, None)},
+     "flags": [("GND", 10.16, 36.83), ("VIN", 33.02, 36.83), ("VBAT_SW", 55.88, 36.83),
+               ("+5V", 78.74, 36.83)]},
+]
+
 MODULES = {}
 VARIANTS = {"standard": set()}
 
