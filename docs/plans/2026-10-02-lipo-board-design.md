@@ -157,6 +157,14 @@ C43491, SMBJ15A C113988, TPS54302 x2 C311983, SRN6045TA x2 C2046332, STM32C071 C
 3 through-hole XH headers (KEY C158012, BAL C144395, PWR C144397). Economic PCBA charges one
 feeder-setup fee per SMD Extended type; the XH headers are per-joint.
 
+**SW node width (whole-branch review, 2026-10-02).** The two switch nodes route at the Default
+0.25 mm, not the Power 0.8 mm the plan listed: the TSOT-23-6 SW pad at 0.95 mm pitch only admits a
+necked exit, so no class width widens the run (Freerouting left it unrouted at 0.8 mm). `SW_A`'s
+~8 mm run carries buck A's inductor current, ~1.5-2 A RMS (Heltec TX peaks plus brief amp peaks);
+0.25 mm / 1 oz is about 0.9-1.4 A at a 10-30 C rise, i.e. at the edge of its rating. It is accepted
+for the bursty airsoft duty on a short run with GND pours on both layers; a manual neck-and-widen
+(the autorouter cannot express it) is the upgrade path if a wider margin is wanted.
+
 ## Bring-up
 
 Bench supply on `J_IN1` at 7.4 V with a 100 mA limit:

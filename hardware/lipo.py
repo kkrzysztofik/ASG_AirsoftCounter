@@ -236,7 +236,8 @@ BLOCKS = [
 # dividers in the lower-left, away from the switch nodes.
 W, H, CORNER = 70.0, 50.0, 2.0
 NETCLASS_EXPECT = (("VIN", [0.8, 0.2]), ("VBAT_SW", [0.8, 0.2]), ("+5V", [0.8, 0.2]),
-                   ("SW_A", [0.25, 0.2]), ("GND", [0.25, 0.2]), ("SDA_EXT", [0.25, 0.2]))
+                   ("SW_A", [0.25, 0.2]), ("SW_B", [0.25, 0.2]),
+                   ("GND", [0.25, 0.2]), ("SDA_EXT", [0.25, 0.2]))
 DRC_RULES = {}
 BOTTOM = set()
 PLACE = {

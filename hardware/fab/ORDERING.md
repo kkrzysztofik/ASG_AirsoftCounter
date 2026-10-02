@@ -242,7 +242,8 @@ loading fee, per-joint charge): `J_KEY1` (C158012), `J_BAL1` (C144395), `J_PWR1`
 | `J_IN1` (solder pads) | Not in the CPL: hand-soldered. |
 
 **Board facts.** 70 x 50 mm, 1 oz; 462 tracks/vias; signal 0.25 mm, power 0.8 mm (the two SW nodes
-stay 0.25 mm: the TSOT-23-6 SW pad at 0.95 mm pitch cannot take 0.8 mm); vias 0.6/0.3 mm (tented);
+stay 0.25 mm: the TSOT-23-6 SW pad at 0.95 mm pitch cannot take 0.8 mm; accepted, the runs are
+~8 mm with GND pours on both layers); vias 0.6/0.3 mm (tented);
 PTH 0.95/1.0 mm (the XH headers) and the 1.7 mm `J_IN1` solder pads; NPTH 4 x 3.2 mm M3. GND pours
 on both layers.
 
