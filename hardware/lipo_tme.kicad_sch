@@ -2462,7 +2462,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Regulator_Switching:TPS54302"
+		(symbol "Regulator_Switching:TPS563200"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -2475,8 +2475,8 @@
 					(justify left)
 				)
 			)
-			(property "Value" "TPS54302"
-				(at 0 6.35 0)
+			(property "Value" "TPS563200"
+				(at -2.54 6.35 0)
 				(effects
 					(font
 						(size 1.27 1.27)
@@ -2485,7 +2485,7 @@
 				)
 			)
 			(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
-				(at 1.27 -8.89 0)
+				(at 1.27 -6.35 0)
 				(effects
 					(font
 						(size 1.27 1.27)
@@ -2494,16 +2494,7 @@
 					(hide yes)
 				)
 			)
-			(property "Datasheet" "http://www.ti.com/lit/ds/symlink/tps54302.pdf"
-				(at -7.62 8.89 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" "3A, 4.5 to 28V Input, EMI Friendly integrated switch synchronous step-down regulator, pulse-skipping, SOT-23-6"
+			(property "Datasheet" "http://www.ti.com/lit/ds/symlink/tps563200.pdf"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2512,7 +2503,16 @@
 					(hide yes)
 				)
 			)
-			(property "ki_keywords" "switching buck converter power-supply voltage regulator emi spread spectrum"
+			(property "Description" "3A Synchronous Step-Down Voltage Regulator, Adjustable Output Voltage, 4.5-17V Input Voltage, SOT-23-6"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "step-down dcdc voltage regulator"
 				(at 0 0 0)
 				(effects
 					(font
@@ -2530,7 +2530,7 @@
 					(hide yes)
 				)
 			)
-			(symbol "TPS54302_0_1"
+			(symbol "TPS563200_0_1"
 				(rectangle
 					(start -7.62 5.08)
 					(end 7.62 -5.08)
@@ -2543,7 +2543,7 @@
 					)
 				)
 			)
-			(symbol "TPS54302_1_1"
+			(symbol "TPS563200_1_1"
 				(pin power_in line
 					(at -10.16 2.54 0)
 					(length 2.54)
@@ -2598,26 +2598,8 @@
 						)
 					)
 				)
-				(pin passive line
+				(pin output line
 					(at 10.16 2.54 180)
-					(length 2.54)
-					(name "BOOT"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "6"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin power_out line
-					(at 10.16 0 180)
 					(length 2.54)
 					(name "SW"
 						(effects
@@ -2634,10 +2616,28 @@
 						)
 					)
 				)
+				(pin passive line
+					(at 10.16 0 180)
+					(length 2.54)
+					(name "VBST"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
 				(pin input line
 					(at 10.16 -2.54 180)
 					(length 2.54)
-					(name "FB"
+					(name "VFB"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -4420,8 +4420,8 @@
 	)
 	(wire
 		(pts
-			(xy 193.04 40.64)
-			(xy 198.12 40.64)
+			(xy 193.04 43.18)
+			(xy 198.12 43.18)
 		)
 		(stroke
 			(width 0)
@@ -4432,7 +4432,7 @@
 	(wire
 		(pts
 			(xy 198.12 29.21)
-			(xy 198.12 40.64)
+			(xy 198.12 43.18)
 		)
 		(stroke
 			(width 0)
@@ -4453,8 +4453,8 @@
 	)
 	(wire
 		(pts
-			(xy 193.04 101.6)
-			(xy 198.12 101.6)
+			(xy 193.04 104.14)
+			(xy 198.12 104.14)
 		)
 		(stroke
 			(width 0)
@@ -4465,7 +4465,7 @@
 	(wire
 		(pts
 			(xy 198.12 90.17)
-			(xy 198.12 101.6)
+			(xy 198.12 104.14)
 		)
 		(stroke
 			(width 0)
@@ -5830,8 +5830,8 @@
 	)
 	(wire
 		(pts
-			(xy 193.04 43.18)
-			(xy 208.28 43.18)
+			(xy 193.04 40.64)
+			(xy 208.28 40.64)
 		)
 		(stroke
 			(width 0)
@@ -5842,7 +5842,7 @@
 	(wire
 		(pts
 			(xy 208.28 36.83)
-			(xy 208.28 43.18)
+			(xy 208.28 40.64)
 		)
 		(stroke
 			(width 0)
@@ -5869,8 +5869,8 @@
 	)
 	(wire
 		(pts
-			(xy 193.04 104.14)
-			(xy 208.28 104.14)
+			(xy 193.04 101.6)
+			(xy 208.28 101.6)
 		)
 		(stroke
 			(width 0)
@@ -5881,7 +5881,7 @@
 	(wire
 		(pts
 			(xy 208.28 97.79)
-			(xy 208.28 104.14)
+			(xy 208.28 101.6)
 		)
 		(stroke
 			(width 0)
@@ -7892,7 +7892,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Regulator_Switching:TPS54302")
+		(lib_id "Regulator_Switching:TPS563200")
 		(at 182.88 43.18 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -7909,8 +7909,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TPS54302DDCR"
-			(at 182.88 36.83 0)
+		(property "Value" "TPS563200DDCR"
+			(at 180.34 36.83 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7919,7 +7919,7 @@
 			)
 		)
 		(property "Footprint" "Package_TO_SOT_SMD:TSOT-23-6"
-			(at 184.15 52.07 0)
+			(at 184.15 49.53 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7928,8 +7928,8 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/tps54302.pdf"
-			(at 175.26 34.29 0)
+		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/tps563200.pdf"
+			(at 182.88 43.18 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7937,7 +7937,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "3A, 4.5 to 28V Input, EMI Friendly integrated switch synchronous step-down regulator, pulse-skipping, SOT-23-6"
+		(property "Description" "3A Synchronous Step-Down Voltage Regulator, Adjustable Output Voltage, 4.5-17V Input Voltage, SOT-23-6"
 			(at 182.88 43.18 0)
 			(effects
 				(font
@@ -7955,11 +7955,11 @@
 		(pin "1"
 			(uuid "3d70afab-31e1-578c-80ae-b285fedc54dc")
 		)
-		(pin "6"
-			(uuid "38d53a87-7025-5bd5-9eb8-563872819fb4")
-		)
 		(pin "2"
 			(uuid "8bb7dc7f-d358-5f6e-8b58-4e383ae6878d")
+		)
+		(pin "6"
+			(uuid "38d53a87-7025-5bd5-9eb8-563872819fb4")
 		)
 		(pin "4"
 			(uuid "79f44ef7-a99c-500b-850a-4445249ffdd0")
@@ -8059,7 +8059,7 @@
 				)
 			)
 		)
-		(property "Value" "10uH 2A"
+		(property "Value" "3u3"
 			(at 230.505 40.64 90)
 			(effects
 				(font
@@ -8126,7 +8126,7 @@
 				)
 			)
 		)
-		(property "Value" "30k"
+		(property "Value" "22k"
 			(at 248.92 50.8 90)
 			(effects
 				(font
@@ -8382,7 +8382,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Regulator_Switching:TPS54302")
+		(lib_id "Regulator_Switching:TPS563200")
 		(at 182.88 104.14 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -8399,8 +8399,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TPS54302DDCR"
-			(at 182.88 97.79 0)
+		(property "Value" "TPS563200DDCR"
+			(at 180.34 97.79 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8409,7 +8409,7 @@
 			)
 		)
 		(property "Footprint" "Package_TO_SOT_SMD:TSOT-23-6"
-			(at 184.15 113.03 0)
+			(at 184.15 110.49 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8418,8 +8418,8 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/tps54302.pdf"
-			(at 175.26 95.25 0)
+		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/tps563200.pdf"
+			(at 182.88 104.14 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8427,7 +8427,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "3A, 4.5 to 28V Input, EMI Friendly integrated switch synchronous step-down regulator, pulse-skipping, SOT-23-6"
+		(property "Description" "3A Synchronous Step-Down Voltage Regulator, Adjustable Output Voltage, 4.5-17V Input Voltage, SOT-23-6"
 			(at 182.88 104.14 0)
 			(effects
 				(font
@@ -8445,11 +8445,11 @@
 		(pin "1"
 			(uuid "ab77403c-ec91-52d5-9cfd-6548a6ca3f8f")
 		)
-		(pin "6"
-			(uuid "18f70e22-602f-51df-b3f0-a1bdbb0a33be")
-		)
 		(pin "2"
 			(uuid "df06d5af-155d-50ae-b684-4ad11e9700f3")
+		)
+		(pin "6"
+			(uuid "18f70e22-602f-51df-b3f0-a1bdbb0a33be")
 		)
 		(pin "4"
 			(uuid "e862d9cd-c206-5f4f-b5ce-4b5bca9629ae")
@@ -8549,7 +8549,7 @@
 				)
 			)
 		)
-		(property "Value" "10uH 2A"
+		(property "Value" "3u3"
 			(at 230.505 101.6 90)
 			(effects
 				(font
@@ -8616,7 +8616,7 @@
 				)
 			)
 		)
-		(property "Value" "75k"
+		(property "Value" "56k"
 			(at 248.92 111.76 90)
 			(effects
 				(font

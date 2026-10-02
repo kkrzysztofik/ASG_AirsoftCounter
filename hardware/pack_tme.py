@@ -1,11 +1,13 @@
 """AirsoftCounter pack board, hand-build TME variant: iron-only, everything from TME.
 
-Derived from pack.py by import and edit. The PAC1934 is replaced by four INA228s (one per cell,
+Derived from pack.py by import and edit. The PAC1934 is replaced by four INA226s (one per cell,
 their own 10R Kelvin split and ALERTs wired together), the C071 by an STM32L072KZT6 (the internal
 bus moves to I2C3 on PA8/PB4, the carrier link to I2C1 on PB6/PB7), the BQ25601 onto the
 hand-solder QFN footprint, the MT3608 boost by an MCP1640 (no catch diode), the SMD USB-C by a
 through-hole USB4085 and the SMD tact switches by THT 6x6 ones. gen_sch.py / gen_pcb.py read it
 through board.py (`make BOARD=pack_tme ...`). Run this file to self-check.
+
+INA226, not the INA228 of the design doc: same pins and addresses, and TME had no INA228 (2026-10-02).
 
 Source of truth: docs/plans/2026-10-02-tme-hand-build-design.md.
 """
@@ -33,11 +35,11 @@ PARTS["J_USB1"] = ("USB4085-GF-A", pack.PARTS["J_USB1"][1], USB_THT)
 PARTS["SW_BOOT"] = ("TACT 6x6", "Switch:SW_Push", TACT_THT)
 PARTS["SW_RST"] = ("TACT 6x6", "Switch:SW_Push", TACT_THT)
 PARTS["U1"] = ("MCP1640T-I/CHY", "Regulator_Switching:MCP1640x-xCHY", SOT23_6)
-PARTS["L1"] = ("4u7 2A", "Device:L", pack.LRN6045)   # MCP1640 wants 4.7 uH (no catch diode)
+PARTS["L1"] = ("3u3", "Device:L", pack.LRN6045)      # MCP1640 takes 2.2-10 uH (no catch diode)
 PARTS["R_FB2"] = ("24k", *R0805)                     # 1.21 V x (1 + 75/24) = 4.99 V
 PARTS["TH_CHG"] = ("10k NTC 0603", *PARTS["TH_CHG"][1:])
 for i in range(1, 5):
-    PARTS[f"U_MON{i}"] = ("INA228AIDGSR", "Sensor_Energy:INA228", VSSOP10)
+    PARTS[f"U_MON{i}"] = ("INA226AIDGSR", "Sensor_Energy:INA226", VSSOP10)
     PARTS[f"C_MON{i}"] = ("100nF", *C0805)
 
 DNP = set(pack.DNP)   # R_BYP1..4 bring-up bypasses stay DNP
@@ -56,11 +58,11 @@ TME = tme.from_lcsc(pack.LCSC, _KEYS)
 TME |= {
     ("BQ25601RTWT", QFN24_HAND): "BQ25601RTWT",
     ("STM32L072KZT6", LQFP32): "STM32L072KZT6",
-    ("INA228AIDGSR", VSSOP10): "INA228AIDGSR",
+    ("INA226AIDGSR", VSSOP10): "INA226AIDGSR",
     ("USB4085-GF-A", USB_THT): "USB4085-GF-A",
     ("TACT 6x6", TACT_THT): "B3F-1000",
     ("MCP1640T-I/CHY", SOT23_6): "MCP1640T-I/CHY",
-    ("4u7 2A", pack.LRN6045): "SRN60454R7Y-BOU-0",
+    ("3u3", pack.LRN6045): "SRN6045-3R3Y",          # plain SRN6045, Isat 5 A; fits the TA pads
     ("24k", R0805[1]): "SMD0805-24K-1%",
     ("10k NTC 0603", R0805[1]): "NTCS0603E3103FLT",
 }
@@ -142,7 +144,7 @@ PLACE.update({
     "C_MCU3": (59.0, 70.0, 0), "C_VDDA": (74.0, 66.5, 0),
 })
 for _i, _cy in enumerate(pack._CELL_Y, start=1):
-    # One INA228 per cell band, its IN+/IN- facing that cell's 10R Kelvin split.
+    # One INA226 per cell band, its IN+/IN- facing that cell's 10R Kelvin split.
     PLACE[f"U_MON{_i}"] = (54.0, _cy, 0)
     PLACE[f"C_MON{_i}"] = (54.0, _cy + 6.5, 0)
 REF_AT = dict(pack.REF_AT)
@@ -172,7 +174,7 @@ def _copy_blocks():
 BLOCKS = _copy_blocks()
 
 # --- T5.2 layout -------------------------------------------------------------------------------
-# The PAC1934's single monitor block becomes support only; each INA228 moves into the cell block
+# The PAC1934's single monitor block becomes support only; each INA226 moves into the cell block
 # it senses, beside that cell's 10R Kelvin split. One fewer long sense route per cell, and the
 # four monitors spread over four blocks instead of crowding one.
 BLOCKS[1] = {
@@ -211,8 +213,8 @@ del BLOCKS[3]["parts"]["D1"]
 
 for _i in range(1, 5):
     _b = BLOCKS[3 + _i]
-    _b["title"] = f"Cell {_i} branch + INA228"
-    # The NTC bead and its divider resistor move down, clearing the INA228's right-hand pins.
+    _b["title"] = f"Cell {_i} branch + INA226"
+    # The NTC bead and its divider resistor move down, clearing the INA226's right-hand pins.
     _b["parts"].update({
         f"U_MON{_i}": (63.5, 71.12, 0, None),
         f"C_MON{_i}": (63.5, 44.45, 0, None),
@@ -227,7 +229,7 @@ for _i in range(1, 5):
 
 
 def check_branches():
-    """Every cell in branch order, with its own INA228 across the 10R Kelvin split: IN+ and VBUS on
+    """Every cell in branch order, with its own INA226 across the 10R Kelvin split: IN+ and VBUS on
     the cell side of the shunt, IN- after it, addresses 0x40-0x43 by A1/A0, ALERTs wired together."""
     net_of = {p: n for n, m in NETS.items() for p in m}
     addr = {1: ("GND", "GND"), 2: ("GND", "+3V3"), 3: ("GND", "SDA_INT"), 4: ("GND", "SCL_INT")}
@@ -241,7 +243,7 @@ def check_branches():
             f"cell {i}: shunt -> FET"
         assert net_of[f"R_SNSS{i}.2"] == net_of[f"U_MON{i}.9"], f"cell {i}: IN-"
         assert net_of[f"Q_B{i}.3"] == "VPACK" and net_of[f"BT{i}.2"] == "GND", f"cell {i}: rail"
-        assert (net_of[f"U_MON{i}.1"], net_of[f"U_MON{i}.2"]) == addr[i], f"INA228 {i} address"
+        assert (net_of[f"U_MON{i}.1"], net_of[f"U_MON{i}.2"]) == addr[i], f"INA226 {i} address"
         assert net_of[f"U_MON{i}.3"] == "MON_ALERT" and net_of[f"U_MON{i}.6"] == "+3V3"
         assert (net_of[f"U_MON{i}.4"], net_of[f"U_MON{i}.5"]) == ("SDA_INT", "SCL_INT")
 

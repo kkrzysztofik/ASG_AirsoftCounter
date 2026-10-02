@@ -65,7 +65,8 @@ NETS |= {
     "AMP_INP": ["R_INP.2", "U_AMP.3"], "AMP_INN": ["R_INN.2", "U_AMP.4"],
 }
 NC_PINS = set(design.NC_PINS) | {"U_AMP.2"}   # amp pin 2 is NC
-NOT_TME = set()                                # every carrier part is bought at TME (J2/J3: ZL262-18SG)
+# U_DAC: TME has no PCM5100A in stock below a 70 pcs tube (2026-10-02); buy it at LCSC or Mouser.
+NOT_TME = {"U_DAC"}                            # the rest is bought at TME (J2/J3: ZL262-18SG)
 NC_PARTS = set(design.NC_PARTS)
 DNP = set(design.DNP)
 LCSC = {}
@@ -73,13 +74,12 @@ _KEYS = {(v, fp) for r, (v, sym, fp) in PARTS.items()
          if sym != "Mechanical:MountingHole" and r not in DNP | NOT_TME}
 TME = tme.from_lcsc(design.LCSC, _KEYS)
 TME |= {
-    ("PCM5100APWR", TSSOP20): "PCM5100APWR",
     ("PAM8302AADCR", SOIC8): "PAM8302AADCR",
     ("470R", R0805[1]): "SMD0805-470R-1%",
     ("240k", R0805[1]): "SMD0805-240K-1%",
     ("2.2nF", C0805[1]): "CC0805KRX7R9BB222",
     ("2.2uF", C0805[1]): "CL21A225KAFNNNE",
-    ("1uF", C0805[1]): "CL21B105KBFNNNE",
+    ("1uF", C0805[1]): "CL21B105KAFNNNE",
     ("10uF", C0805[1]): "CL21A106KAYNNNE",
 }
 MODULES, VARIANTS = {}, {"standard": set()}

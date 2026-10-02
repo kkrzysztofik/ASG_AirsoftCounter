@@ -4,7 +4,7 @@ fab/<board>/tme_bom.csv -> fab/tme_bom_all.csv  "TME symbol;qty" per line, no he
                                            TME's Quick Buy > "Upload from file" takes, with the
                                            quantities of a symbol used by several boards added up,
                                            plus spares for small passives (lost to the tweezers),
-                                           rounded up to TME's order multiple.
+                                           rounded up to TME's minimum and order multiple.
 
 carrier/carrier_tme, pack/pack_b/pack_tme and lipo/lipo_tme are alternative builds of the same
 board, so name one build per board; the default is the TME hand-build set. Budget variants
@@ -19,10 +19,9 @@ from pathlib import Path
 FAB = Path(__file__).parent / "fab"
 OUT = FAB / "tme_bom_all.csv"
 DEFAULT = ["carrier_tme", "pack_tme", "lipo_tme"]
-# Symbol prefix -> TME order multiple (= minimum). SMD0805-10K-1% checked 2026-10-02 (100/100); the
-# rest of the Royalohm cut-tape family is assumed the same. Anything not listed is ordered as-is
-# (MOQ 1 for the parts checked: BSS138LT1G, CL21A106KAYNNNE, INA228AIDGSR).
-MULTIPLE = {"SMD0805-": 100, "SMD1206-": 100}
+# Symbol prefix -> TME (minimum, multiple), checked 2026-10-02: SMD0805-10K-1% (the rest of the Royalohm
+# cut-tape family is assumed the same), C1F-5, CL21B105KAFNNNE. Anything not listed is ordered as-is.
+ORDER = {"SMD0805-": (100, 100), "SMD1206-": (100, 100), "C1F-": (5, 1)}
 # Small passives get +10 %, at least +5: easy to lose, cheap to over-buy.
 SPARE = ("SMD0805-", "SMD1206-", "CL21", "CL31", "CC0805", "NTCS")
 
@@ -44,8 +43,8 @@ def order(symbol, n):
     """Quantity to order for n fitted parts: spares for small passives, rounded up to TME's multiple."""
     if symbol.startswith(SPARE):
         n += max(5, math.ceil(n / 10))
-    m = next((m for p, m in MULTIPLE.items() if symbol.startswith(p)), 1)
-    return math.ceil(n / m) * m
+    lo, m = next((v for p, v in ORDER.items() if symbol.startswith(p)), (1, 1))
+    return math.ceil(max(n, lo) / m) * m
 
 
 def main():
@@ -68,7 +67,8 @@ if __name__ == "__main__":
     assert order("SMD0805-10K-1%", 17) == 100                                 # spares, then the 100 multiple
     assert order("SMD0805-10K-1%", 95) == 200                                 # 95 + 10 spares -> 2 packs
     assert order("CL21A106KAYNNNE", 14) == 19 and order("CL21A106KAYNNNE", 80) == 88
-    assert order("INA228AIDGSR", 4) == 4                                      # ICs exact
+    assert order("INA226AIDGSR", 4) == 4                                      # ICs exact
+    assert order("C1F-5", 4) == 5 and order("C1F-5", 6) == 6                 # minimum 5, multiple 1
     try:
         merge(["A;x\n"])
         raise AssertionError("bad qty accepted")

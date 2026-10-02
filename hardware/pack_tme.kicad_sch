@@ -4637,7 +4637,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Sensor_Energy:INA228"
+		(symbol "Sensor_Energy:INA226"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -4649,7 +4649,7 @@
 					)
 				)
 			)
-			(property "Value" "INA228"
+			(property "Value" "INA226"
 				(at 3.81 11.43 0)
 				(effects
 					(font
@@ -4666,7 +4666,7 @@
 					(hide yes)
 				)
 			)
-			(property "Datasheet" "https://www.ti.com/lit/ds/symlink/ina228.pdf"
+			(property "Datasheet" "http://www.ti.com/lit/ds/symlink/ina226.pdf"
 				(at 8.89 -2.54 0)
 				(effects
 					(font
@@ -4675,7 +4675,7 @@
 					(hide yes)
 				)
 			)
-			(property "Description" "High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor (0-85V) with I2C, SMBus-, and PMBus-Compatible Interface, VSSOP-10"
+			(property "Description" "High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor (0-36V) with I2C Compatible Interface, VSSOP-10"
 				(at 0 0 0)
 				(effects
 					(font
@@ -4684,7 +4684,7 @@
 					(hide yes)
 				)
 			)
-			(property "ki_keywords" "ADC I2C 20-Bit Oversampling Current Shunt"
+			(property "ki_keywords" "ADC I2C 16-Bit Oversampling Current Shunt"
 				(at 0 0 0)
 				(effects
 					(font
@@ -4702,7 +4702,7 @@
 					(hide yes)
 				)
 			)
-			(symbol "INA228_0_1"
+			(symbol "INA226_0_1"
 				(rectangle
 					(start 7.62 10.16)
 					(end -7.62 -10.16)
@@ -4715,7 +4715,7 @@
 					)
 				)
 			)
-			(symbol "INA228_1_1"
+			(symbol "INA226_1_1"
 				(pin input line
 					(at -10.16 7.62 0)
 					(length 2.54)
@@ -16632,7 +16632,7 @@
 		)
 		(uuid "51e2e8aa-62c7-56fc-ad47-f19df6f528e9")
 	)
-	(text "Cell 1 branch + INA228"
+	(text "Cell 1 branch + INA226"
 		(exclude_from_sim no)
 		(at 15.24 195.58 0)
 		(effects
@@ -16656,7 +16656,7 @@
 		)
 		(uuid "334b28b0-dc68-5db5-8ad5-861369d9d93a")
 	)
-	(text "Cell 2 branch + INA228"
+	(text "Cell 2 branch + INA226"
 		(exclude_from_sim no)
 		(at 116.84 195.58 0)
 		(effects
@@ -16680,7 +16680,7 @@
 		)
 		(uuid "389094a3-83fa-578f-9fd5-1d2bd41054f6")
 	)
-	(text "Cell 3 branch + INA228"
+	(text "Cell 3 branch + INA226"
 		(exclude_from_sim no)
 		(at 218.44 195.58 0)
 		(effects
@@ -16704,7 +16704,7 @@
 		)
 		(uuid "cafb2cd6-d1cb-5987-97ae-830e1efff981")
 	)
-	(text "Cell 4 branch + INA228"
+	(text "Cell 4 branch + INA226"
 		(exclude_from_sim no)
 		(at 320.04 195.58 0)
 		(effects
@@ -21400,7 +21400,7 @@
 				)
 			)
 		)
-		(property "Value" "4u7 2A"
+		(property "Value" "3u3"
 			(at 619.125 43.18 90)
 			(effects
 				(font
@@ -22996,7 +22996,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Sensor_Energy:INA228")
+		(lib_id "Sensor_Energy:INA226")
 		(at 76.2 261.62 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -23012,7 +23012,7 @@
 				)
 			)
 		)
-		(property "Value" "INA228AIDGSR"
+		(property "Value" "INA226AIDGSR"
 			(at 80.01 250.19 0)
 			(effects
 				(font
@@ -23029,7 +23029,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/ina228.pdf"
+		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/ina226.pdf"
 			(at 85.09 264.16 0)
 			(effects
 				(font
@@ -23038,7 +23038,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor (0-85V) with I2C, SMBus-, and PMBus-Compatible Interface, VSSOP-10"
+		(property "Description" "High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor (0-36V) with I2C Compatible Interface, VSSOP-10"
 			(at 76.2 261.62 0)
 			(effects
 				(font
@@ -24281,7 +24281,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Sensor_Energy:INA228")
+		(lib_id "Sensor_Energy:INA226")
 		(at 177.8 261.62 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -24297,7 +24297,7 @@
 				)
 			)
 		)
-		(property "Value" "INA228AIDGSR"
+		(property "Value" "INA226AIDGSR"
 			(at 181.61 250.19 0)
 			(effects
 				(font
@@ -24314,7 +24314,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/ina228.pdf"
+		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/ina226.pdf"
 			(at 186.69 264.16 0)
 			(effects
 				(font
@@ -24323,7 +24323,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor (0-85V) with I2C, SMBus-, and PMBus-Compatible Interface, VSSOP-10"
+		(property "Description" "High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor (0-36V) with I2C Compatible Interface, VSSOP-10"
 			(at 177.8 261.62 0)
 			(effects
 				(font
@@ -25566,7 +25566,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Sensor_Energy:INA228")
+		(lib_id "Sensor_Energy:INA226")
 		(at 279.4 261.62 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -25582,7 +25582,7 @@
 				)
 			)
 		)
-		(property "Value" "INA228AIDGSR"
+		(property "Value" "INA226AIDGSR"
 			(at 283.21 250.19 0)
 			(effects
 				(font
@@ -25599,7 +25599,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/ina228.pdf"
+		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/ina226.pdf"
 			(at 288.29 264.16 0)
 			(effects
 				(font
@@ -25608,7 +25608,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor (0-85V) with I2C, SMBus-, and PMBus-Compatible Interface, VSSOP-10"
+		(property "Description" "High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor (0-36V) with I2C Compatible Interface, VSSOP-10"
 			(at 279.4 261.62 0)
 			(effects
 				(font
@@ -26851,7 +26851,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Sensor_Energy:INA228")
+		(lib_id "Sensor_Energy:INA226")
 		(at 381 261.62 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -26867,7 +26867,7 @@
 				)
 			)
 		)
-		(property "Value" "INA228AIDGSR"
+		(property "Value" "INA226AIDGSR"
 			(at 384.81 250.19 0)
 			(effects
 				(font
@@ -26884,7 +26884,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/ina228.pdf"
+		(property "Datasheet" "http://www.ti.com/lit/ds/symlink/ina226.pdf"
 			(at 389.89 264.16 0)
 			(effects
 				(font
@@ -26893,7 +26893,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor (0-85V) with I2C, SMBus-, and PMBus-Compatible Interface, VSSOP-10"
+		(property "Description" "High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor (0-36V) with I2C Compatible Interface, VSSOP-10"
 			(at 381 261.62 0)
 			(effects
 				(font

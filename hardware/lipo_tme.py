@@ -25,6 +25,13 @@ PARTS["C_MCU3"] = ("100nF", *lipo.C0805)      # second VDD pin (17)
 PARTS["C_VDDA"] = ("1uF", *lipo.C0805)        # VDDA (5); value per the design doc's Parts section
 PARTS["TP_BOOT0"] = ("BOOT0", "Connector:TestPoint", lipo.TP)
 PARTS["TP_SWCLK"] = ("SWCLK", *lipo.PARTS["TP_SWCLK"][1:])
+# TPS563200 for the TPS54302 (TME had none, 2026-10-02): same SOT-23-6 pins, but VFB 0.765 V, 2.2-4.7 uH
+# and VIN 17 V max (19 V abs): 3S tops out at 12.6 V. 0.765 x (1 + 22/5.1) = 4.07 V, x (1 + 56/10) = 5.05 V.
+for _u, _l in (("U_BA", "L_A"), ("U_BB", "L_B")):
+    PARTS[_u] = ("TPS563200DDCR", "Regulator_Switching:TPS563200", lipo.TSOT23_6)
+    PARTS[_l] = ("3u3", "Device:L", lipo.LRN6045)
+PARTS["R_FBA1"] = ("22k", *lipo.R0805)
+PARTS["R_FBB1"] = ("56k", *lipo.R0805)
 
 # AP7381-33SA-7 SOT-23: 1 VI, 2 VO, 3 GND (the HT7533-1 was 1 GND, 2 VIN, 3 VOUT).
 LDO_VIN = "U_LDO.1"
@@ -59,7 +66,11 @@ TME = tme.from_lcsc(lipo.LCSC, _KEYS)
 TME |= {
     ("STM32L072KZT6", LQFP32): "STM32L072KZT6",
     ("AP7381-33SA-7", SOT23): "AP7381-33SA-7",
-    ("1uF", lipo.C0805[1]): "CL21B105KBFNNNE",
+    ("1uF", lipo.C0805[1]): "CL21B105KAFNNNE",
+    ("TPS563200DDCR", lipo.TSOT23_6): "TPS563200DDCR",
+    ("3u3", lipo.LRN6045): "SRN6045-3R3Y",            # plain SRN6045, Isat 5 A; fits the TA pads
+    ("22k", lipo.R0805[1]): "SMD0805-22K-1%",
+    ("56k", lipo.R0805[1]): "SMD0805-56K-1%",
 }
 MODULES, VARIANTS = {}, {"standard": set()}
 

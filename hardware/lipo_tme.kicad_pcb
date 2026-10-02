@@ -1605,7 +1605,7 @@
 				)
 			)
 		)
-		(property "Value" "30k"
+		(property "Value" "22k"
 			(at 0 1.65 0)
 			(layer "F.Fab")
 			(uuid "8e55520d-1070-4ec5-a3bd-10031b2abc57")
@@ -2907,7 +2907,7 @@
 				)
 			)
 		)
-		(property "Value" "75k"
+		(property "Value" "56k"
 			(at 0 1.65 0)
 			(layer "F.Fab")
 			(uuid "6ec48aab-8170-4b09-834a-6505fe74ec1d")
@@ -6373,7 +6373,7 @@
 				)
 			)
 		)
-		(property "Value" "TPS54302DDCR"
+		(property "Value" "TPS563200DDCR"
 			(at 0 2.4 0)
 			(layer "F.Fab")
 			(uuid "3e37d240-a01d-4f71-af84-ebf0880c191b")
@@ -6843,7 +6843,7 @@
 				)
 			)
 		)
-		(property "Value" "10uH 2A"
+		(property "Value" "3u3"
 			(at 0 4.2 0)
 			(layer "F.Fab")
 			(uuid "70abea37-4d48-4250-99c9-4c8ce0de4ac2")
@@ -9026,7 +9026,7 @@
 				)
 			)
 		)
-		(property "Value" "TPS54302DDCR"
+		(property "Value" "TPS563200DDCR"
 			(at 0 2.4 0)
 			(layer "F.Fab")
 			(uuid "e127f98b-8cfb-4eef-9509-d4742e340e3e")
@@ -9358,7 +9358,7 @@
 				)
 			)
 		)
-		(property "Value" "10uH 2A"
+		(property "Value" "3u3"
 			(at 0 4.2 0)
 			(layer "F.Fab")
 			(uuid "870fbe2a-d42b-45df-8aff-9c868c4cff2f")

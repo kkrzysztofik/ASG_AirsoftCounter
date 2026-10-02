@@ -12,7 +12,7 @@ the J_PWR1 lead). Measure LCD_IDLE_5V and HELTEC_RX first.
 import sys
 from math import ceil
 
-TME = "--tme" in sys.argv[1:]   # hand-build boards: L072 + 4x INA228 + PCM5100A/PAM8302A
+TME = "--tme" in sys.argv[1:]   # hand-build boards: L072 + 4x INA226 + PCM5100A/PAM8302A
 
 CELLS_MAH = 4 * 3350  # 4x Samsung INR18650-35E in parallel (the pack board). 3350 mAh is the
                       # datasheet minimum (rated 3250 at 0.2 C to 2.65 V); 3400 is only the typical
@@ -78,9 +78,9 @@ BOOST_IDLE = 1.0  # EST: MT3608/MCP1640 switching at near-zero load
 # 0.1 uA but loses the configuration and accumulators), BQ25601 battery-only
 # ~4.5 uA, XC6206 Iq ~1 uA, plus the 4 x 1M gate resistors (4.2 V / 1M = 4.2 uA each) while the
 # switches are on. Cell self-discharge (~1-3 %/month) dominates this after about a year.
-# TME: the L072's Stop IDD is 0.43 uA typ (DS10690 Table 37) and each INA228 2.8 uA in shutdown.
+# TME: the L072's Stop IDD is 0.43 uA typ (DS10690 Table 37) and each INA226 0.5 uA in shutdown.
 MCU_STOP_MA = 0.00043 if TME else 0.085
-MON_IQ_MA = 4 * 0.0028 if TME else 0.005
+MON_IQ_MA = 4 * 0.0005 if TME else 0.005
 PACK_IQ_MA = MCU_STOP_MA + MON_IQ_MA + 0.0045 + 0.001 + 4 * 0.0042
 # Cell branch series resistance (5 A fuse + 20 mOhm shunt + back-to-back AO3401A + track) ~150 mOhm
 # EST. Deliberately not modelled: it drops < 0.3 V at these currents, well inside the 0.84 USABLE
@@ -144,7 +144,7 @@ def show(name, ma):
 def main():
     t = lora_airtime_s(40, 9)
     _, duty = lora_avg(30)
-    print(f"model: {'TME hand-build (L072 + INA228 + PCM5100A/PAM8302A)' if TME else 'JLC (C071 + PAC1934 + NS4168)'}")
+    print(f"model: {'TME hand-build (L072 + INA226 + PCM5100A/PAM8302A)' if TME else 'JLC (C071 + PAC1934 + NS4168)'}")
     print(f"STATUS 40 B at SF9/125 kHz: {t * 1000:.0f} ms on air, {100 * duty:.1f} % duty at 30 s "
           f"(sub-band limit 10 %)")
     show("Deluxe, game running, backlight on", scenario(True, True, 1.0))

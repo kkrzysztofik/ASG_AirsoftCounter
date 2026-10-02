@@ -265,8 +265,11 @@ assembly**: `fab/carrier_tme/carrier_tme_gerbers_jlcpcb.zip` (90 x 60 mm, settin
 **Parts.** Upload `fab/tme_bom_all.csv` (`symbol;qty`, all three boards, written by
 `/usr/bin/python3 tme_all.py`) to TME Quick Buy: small passives carry spares (+10 %, at least 5) and
 resistors are rounded up to TME's 100 pcs cut tape. `fab/<board>_tme/tme_bom.csv` is one board's exact
-count. Check the Quick Buy result for stock: INA228AIDGSR (pack_tme, 4 pcs) showed none at TME on
-2026-10-02; INA228AIDGST is the same chip on a small reel. The LCSC-only parts are not in it: the pack's 18650 holders (MYOUNG
+count. Substitutes for parts TME lacked (2026-10-02): INA226AIDGSR for the INA228 (same pins and
+addresses; the firmware needs INA226 registers), TPS563200DDCR for the LiPo TPS54302 (3.3 uH, 22k/56k
+dividers; **17 V max input**, so 3S only), SRN6045-3R3Y, SSA34 (SMA), Bel C1F-5 fuses. **PCM5100APWR
+(carrier_tme U_DAC) is not in the list**: TME only had it as 70 pcs tubes or 2000 pcs reels, so buy
+one at LCSC or Mouser. The other LCSC-only parts are not in it: the pack's 18650 holders (MYOUNG
 BH-18650-A6AJ012) and bead NTCs, plus the off-board parts in `fab/offboard/`.
 
 **Hand-solder notes.**
@@ -276,7 +279,7 @@ BH-18650-A6AJ012) and bead NTCs, plus the off-board parts in `fab/offboard/`.
 - The **USB4085** USB-C and the **6x6 tact switches** are through-hole and must clear the bottom-side
   holders; the pack places them in the holder-free strips. Check `fab/<board>_tme/print_1to1.pdf`
   (F.Fab + silk, with the QFN pin-1 marker) before soldering.
-- The LQFP-32 L072 and the VSSOP-10 INA228s are leaded and drag-solderable.
+- The LQFP-32 L072 and the VSSOP-10 INA226s are leaded and drag-solderable.
 
 **Board facts.** Same outline, holes and 2-layer stack as the JLC originals; the pack keeps 0.8 mm
 power traces except `+5V`, which is 0.25 mm (82 mA peak) so the MCP1640's fine VOUT pad takes it.

@@ -48,7 +48,7 @@ TME = {
     "C17888": "SMD1206-0R",             # 1206S4J0000T5E: Royalohm 1206 jumper, 2 A <50 mOhm like W4F
     "C19077425": "MMSZ5240BT1G",        # onsemi, SOD-123
     "C19077569": "SMBJ15A-TSC",         # Taiwan Semi, unidirectional SMB
-    "C2046332": "SRN6045TA-100M",
+    "C2046332": "SRN6045100M-BOU-0",    # plain SRN6045-100M (TA not at TME); 1000 pcs minimum
     "C22374899": "1206L200PR",          # sub: Littelfuse 2 A hold 1206 PTC; check its Vmax covers SYS (~4.6 V)
     "C2297": "KP-2012SGC",              # sub: Kingbright green 0805
     "C2894897": "USB4105-GF-A",         # sub: GCT 16P; KiCad's USB4105 land pattern has the HCTL pad centres,
@@ -57,12 +57,12 @@ TME = {
                                         # the 10 uF caps; but 16 V operating / 18 V abs max vs HT7533's 30 V,
                                         # so less margin above the SMBJ15A clamp
     "C27834": "SMD0805-5K1-1%",
-    "C28323": "CL21B105KBFNNNE",
+    "C28323": "CL21B105KAFNNNE",        # sub: 25 V (50 V not at TME); every 1uF sits on <= 5 V
     "C2905422": "ZL262-18SG",           # sub: Connfly 1x18 2.54 mm socket, 8.5 mm like the Kinghelm H8.5
     "C311983": "TPS54302DDCR",
     "C37593": "ADS1115IDGSR",
     "C468236": "BQ25601RTWT",           # same die as RTWR, small reel
-    "C48332": "SF-1206F500-2",
+    "C48332": "C1F-5",                  # sub: Bel 0685F5000-01 5 A fast, I2t 0.83 A2s (Bourns: 5000 reel)
     "C49678": "CC0805KRX7R9BB104",
     "C53134": "CL21B473KBCNNNC",
     "C5446": "XC6206P332MR-G",
@@ -73,7 +73,7 @@ TME = {
     "C81598": "1N4148W-DIO",            # Diotec SOD-123
     "C84256": "KP-2012EC",              # sub: Kingbright red 0805
     "C8598": "1N5819HW-7-F",            # sub: Diodes 1 A 40 V Schottky SOD-123 (B5819W not at TME)
-    "C8678": "SS34-YAN",                # Yangjie SMA
+    "C8678": "SSA34-E3/61T",            # sub: Vishay SMA 40 V 3 A (TME's SS34s are SMC or out)
     "C96123": "CL31A476MPHNNNE",
 }
 # Not at TME (searched 2026-10-02): buy at LCSC. Maker part for the tme_other list.

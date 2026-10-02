@@ -5956,7 +5956,7 @@
 				)
 			)
 		)
-		(property "Value" "4u7 2A"
+		(property "Value" "3u3"
 			(at 0 4.2 0)
 			(layer "F.Fab")
 			(uuid "3303f71a-d72b-4c56-85d4-c0f3694fb04b")
@@ -14005,7 +14005,7 @@
 				)
 			)
 		)
-		(property "Value" "INA228AIDGSR"
+		(property "Value" "INA226AIDGSR"
 			(at 0 2.45 0)
 			(layer "F.Fab")
 			(uuid "2fc54351-19bc-4392-8deb-6e29fd2ea2ee")
@@ -17156,7 +17156,7 @@
 				)
 			)
 		)
-		(property "Value" "INA228AIDGSR"
+		(property "Value" "INA226AIDGSR"
 			(at 0 2.45 0)
 			(layer "F.Fab")
 			(uuid "efc0c168-018c-4ef2-8e82-4795b5ed66f8")
@@ -22015,7 +22015,7 @@
 				)
 			)
 		)
-		(property "Value" "INA228AIDGSR"
+		(property "Value" "INA226AIDGSR"
 			(at 0 2.45 0)
 			(layer "F.Fab")
 			(uuid "cb8b5d44-8ff9-4756-bf4b-20668bb29282")
@@ -22754,7 +22754,7 @@
 				)
 			)
 		)
-		(property "Value" "INA228AIDGSR"
+		(property "Value" "INA226AIDGSR"
 			(at 0 2.45 0)
 			(layer "F.Fab")
 			(uuid "ad7ef34c-d57e-4c19-a6f4-a8276140a27b")
