@@ -16,7 +16,7 @@ import os
 import sys
 from pathlib import Path
 
-from board import design  # pyright: ignore[reportMissingImports]
+import board  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).parent
 FAB = HERE / os.environ.get("FAB", "fab")
@@ -100,9 +100,9 @@ def main():
     board_name = os.environ.get("BOARD", "")
     if board_name.endswith("_tme"):
         qty = {}
-        for r, (v, sym, fp) in design.PARTS.items():
-            if sym != "Mechanical:MountingHole" and r not in design.DNP | design.NOT_TME:
-                qty[design.TME[(v, fp)]] = qty.get(design.TME[(v, fp)], 0) + boards
+        for r, (v, sym, fp) in board.design.PARTS.items():
+            if sym != "Mechanical:MountingHole" and r not in board.design.DNP | board.design.NOT_TME:
+                qty[board.design.TME[(v, fp)]] = qty.get(board.design.TME[(v, fp)], 0) + boards
         (FAB / "tme_bom.csv").write_text("".join(f"{s};{n}\n" for s, n in sorted(qty.items())))
         print(f"tme ok ({board_name}): {len(qty)} TME lines")
         return
