@@ -33,18 +33,17 @@ latch would cost more parts than one STM32C071, and that chip is already used in
 
 ```
 XT60 pigtail ─ fuse 5 A ─ rev-pol P-FET ─ TVS ─┬─ HV LDO 3.3 V (Iq <= 5 uA) ── STM32C071 [always on]
-                                               ├─ buck A -> 4.0 V -> VBAT_SW ─┐
-                                               └─ buck B -> 5.1 V -> +5V ─────┤ J_PWR1 6-pin XH
+                                               ├─ buck A -> 4.10 V -> VBAT_SW ─┐
+                                               └─ buck B -> 5.07 V -> +5V ────┤ J_PWR1 6-pin XH
 both buck EN = key (pull-up) AND MCU_OK (open-drain)                          │ to the carrier
-balance 4-pin XH ─ dividers (MCU-gated) ─ MCU ADC; MCU = I2C slave 0x30 ──────┘
+balance 4-pin XH ─ dividers (always on) ─ MCU ADC; MCU = I2C slave 0x30 ──────┘
 ```
 
 ## Blocks
 
 ### Input
-- **XT60 pigtail**: a short 14 AWG lead soldered to the board (or into a 2-pin XH; settle with
-  the holes and current rating), with a female XT60 panel or inline connector. T-plug users use an
-  adapter lead.
+- **XT60 pigtail**: a short 14 AWG (1.5 mm2) lead soldered to the 1.5 mm2 2-pad solder-jumper
+  footprint, with a female XT60 panel or inline connector. T-plug users use an adapter lead.
 - **Fuse 5 A** SMD, first part after the input. A LiPo short is hundreds of amps.
 - **Reverse polarity**: P-FET in the positive lead, gate to GND through a resistor, zener gate clamp.
 - **TVS** across the input, standoff above 12.6 V (3S full), clamp below the bucks' absolute max.
@@ -54,11 +53,11 @@ balance 4-pin XH ─ dividers (MCU-gated) ─ MCU ADC; MCU = I2C slave 0x30 ─�
 ### Bucks
 - **One IC type used twice**, >= 20 V input, >= 3 A, with an EN pin that has a defined threshold.
   Pick the part with datasheet facts and live stock, like P0 of the pack plan.
-- **Buck A -> 4.0 V on `VBAT_SW`**: Heltec battery socket and amp (1.5 A peaks). 4.0 V is below
+- **Buck A -> 4.10 V on `VBAT_SW`**: Heltec battery socket and amp (1.5 A peaks). 4.10 V is below
   4.2 V, so a plugged-in Heltec USB charges into the buck output harmlessly (the buck cannot
   sink; its output rises and it stops switching). Keep `VBAT_SW` bulk capacitance at the amp as on
   the carrier.
-- **Buck B -> 5.1 V on `+5V`**: LCD, LEDs, buzzer. Two bucks convert more efficiently than a buck
+- **Buck B -> 5.07 V on `+5V`**: LCD, LEDs, buzzer. Two bucks convert more efficiently than a buck
   to 4 V plus the MT3608 boost back up, for the same part count.
 
 ### Always-on supply
@@ -73,15 +72,16 @@ balance 4-pin XH ─ dividers (MCU-gated) ─ MCU ADC; MCU = I2C slave 0x30 ─�
 | Function | Use |
 |---|---|
 | ADC | 3 balance taps + pack total, through dividers |
-| GPIO out | divider enable (a FET that disconnects the dividers between samples), buck EN override |
+| GPIO out | buck EN override (open-drain kill FET) |
 | I2C slave 0x30 | on the carrier bus over `J_PWR1`; pull-ups on the carrier (no back-powering) |
 | Flashing | SWD pads + BOOT0; no USB on this board |
 
 ### Balance input
 - **One 4-pin XH header**: a 2S balance plug (3-pin XH) fits its pins 1-3. Pin 4 (3S tap) gets a
   pull-down, so a 2S pack reads about 0 V there.
-- Dividers sized for 4.2 V x 3 at the top tap, switched off between samples so a LiPo left
-  plugged in sees only the LDO and the MCU's Stop current.
+- Dividers sized for 4.2 V x 3 at the top tap, always on: with Basic megohm values they draw
+  about 10 uA, next to the MCU's 85 uA Stop current. Each ADC pin gets a 100 nF cap for a low
+  source impedance. The top tap is also the pack total, so no separate total divider.
 
 ### Carrier connector
 `J_PWR1`, unchanged from the pack boards: 1-2 GND, 3 `VBAT_SW`, 4 `+5V`, 5-6 SDA/SCL.
@@ -103,8 +103,8 @@ cutoff reason), so the Heltec driver and the `asg-core` `pack` register definiti
 ## Key-off drain
 
 STM32C071 Stop about 85 uA (variant A figure) + LDO <= 5 uA + bucks in shutdown (a few uA) +
-dividers off: **about 100 uA**, so more than a year to drain a 1300 mAh pack. A LiPo left plugged
-in is not drained in practice.
+dividers always on (about 10 uA): **about 110 uA**, so more than a year to drain a 1300 mAh pack.
+A LiPo left plugged in is not drained in practice.
 
 ## Left out
 Charging, balancing, coulomb counting (no current sense), 4S (the input rating leaves room).
@@ -115,10 +115,38 @@ Charging, balancing, coulomb counting (no current sense), 4S (the input rating l
 - Firmware: a `firmware/lipo` sibling of the deferred pack firmware (ADC, thresholds, one GPIO,
   I2C slave). Deferred together with the pack firmware.
 
+## Parts (verified 2026-10-02)
+
+Sources: vendor datasheets and the live JLCPCB parts API (type: B Basic / P Preferred / E Extended).
+
+| Item | Decision | Source | Date |
+|---|---|---|---|
+| Buck (x2) | TPS54302DDCR, TSOT-23-6, C311983 (E): VIN 4.5-28 V rec / 30 V abs; VREF 0.596 V typ; EN rising 1.23-1.28 V, EN abs max 7 V (rec max 5.5 V); shutdown 2 uA; HS current limit 4/5/6 A; 100% duty at 6 V in / 4.1 V out; fSW 400 kHz | TI SLVSDG6C (rev. 2026-03) | 2026-10-02 |
+| EN node | R_EN1 100k / R_EN2 47k: EN = 0.32 x VIN -> 4.17 V at 13.05 V and 5.37 V at 4S 16.8 V, under the 5.5 V recommended max and 7 V abs max | TI SLVSDG6C | 2026-10-02 |
+| Feedback | Vout = 0.596 x (1 + Rtop/Rbot). Buck A 30k/5k1 -> 4.10 V; buck B 75k/10k -> 5.07 V. Datasheet recommends Rtop ~ 100k (Table 7-2); the Basic 30k/75k tops give exact E24 ratios at ~100 uA divider current while the key is on (bucks are off when the key is open) | TI SLVSDG6C Table 7-2 | 2026-10-02 |
+| Output filter | 10 uH + 2 x 22 uF 25V per buck (Table 7-2: 10 uH, 44 uF at 5 V) | TI SLVSDG6C | 2026-10-02 |
+| Inductor (x2) | Bourns SRN6045TA-100M, C2046332 (E): 10 uH +-20%, DCR 52 mOhm, Irms 3.20 A (40 C rise), Isat 4.60 A (30% L drop) >= 3.5 A, so one part for both bucks | Bourns SRN6045TA datasheet | 2026-10-02 |
+| Always-on LDO | Holtek HT7533-1, SOT-89-3, C14289 (B): supply abs max -0.3..33 V, VIN max 30 V, Iq 2.5 uA typ / 4.0 uA max, 100 mA; pins 1 GND, 2 VIN, 3 VOUT; C_in = C_out = 10 uF | Holtek HT75xx-1 Rev 2.40 | 2026-10-02 |
+| LDO series R | none: the 33 V abs max is above the SMBJ15A 24.4 V clamp | Holtek + Littelfuse | 2026-10-02 |
+| Reverse FET | AO3407A, SOT-23, C15155 (E): VDS -30 V, VGS +-20 V, RDS(on) < 78 mOhm at VGS -4.5 V, ID -4.3 A; G-S-D pinout same as the AO3401A symbol (1 G, 2 S, 3 D) | AOS AO3407A datasheet | 2026-10-02 |
+| Input TVS | SMBJ15A, DO-214AA, C113988 (E): VRWM 15 V (above 12.6 V 3S full), VBR 16.7-18.5 V, VC 24.4 V at 24.6 A, 600 W; below the buck 30 V and LDO 33 V abs max | Littelfuse / Diodes SMBJ15A | 2026-10-02 |
+| Gate clamp | BZT52C12, SOD-123, C43491 (E): 11.4-12.7 V at 5 mA, 500 mW. No Basic/Preferred 12 V SOD-123 zener exists (live check: every candidate is Extended, preferred flag false), so the Extended part stays | Diodes BZT52C12; JLCPCB API | 2026-10-02 |
+| Input leads | Connector_Wire:SolderWire-1.5sqmm_1x02_P6mm_D1.7mm_OD3mm, 14 AWG / 1.5 mm2: the ~3 A worst case at 2S empty is marginal on 1 mm2 (17 AWG); 1.5 mm2 matches common XT60 pigtails and the 1.7 mm hole takes 14 AWG | design-doc current; KiCad footprint | 2026-10-02 |
+| Balance header | one B4B-XH-A (C144395): JST XH is a 2.5 mm friction-lock box-shrouded header; a 3-circuit XHP housing seats on pins 1-3 and locks on the full-length shroud wall. Tap 3 then reads 0 V on a 2S pack | JST XH series drawing | 2026-10-02 |
+| Dividers | Basic 1M (C17514) / 470k (C17709): tap1 470k/1M -> x0.680, tap2 1M/470k -> x0.320, tap3 2M/470k -> x0.190; at 4.35 V/cell (13.05 V pack) the taps read 2.96 / 2.78 / 2.48 V, all under the 3.3 V ADC ref | design values | 2026-10-02 |
+
+### Plan-time changes
+
+- Balance dividers are always on: no divider switch and no separate pack-total divider (the top tap
+  is the pack total). With Basic megohm values they draw about 10 uA, next to the MCU's 85 uA Stop
+  current; each ADC pin gets a 100 nF cap for a low source impedance.
+- No reset/boot buttons and no status LED: SWD pads only (a blank STM32C0 boots its ROM bootloader
+  by itself). Saves the TACT and LED and their drain.
+- The bucks default ON when the key is on: the kill FET's gate has a pull-down (R_GK), so the bucks
+  run with the MCU unflashed (bring-up) and the firmware latches them off.
+- One 10 uH inductor (`L_A` = `L_B`, C2046332) for both bucks: its 4.6 A Isat covers buck A's peaks.
+
 ## Unverified
-- Buck and HV LDO part choice (input rating, EN threshold, stock).
-- XT60 pigtail termination: solder pads vs 2-pin XH, rated for the 3 A at 4 V draw (about 1.5 A
-  from the LiPo at 8 V).
 - STM32C071 system bootloader over I2C (AN2606): if it is supported, the Heltec could flash the
   board over `J_PWR1` and the SWD pads would be for recovery only.
 - Debounce time and thresholds with a real amp load on a worn pack.
