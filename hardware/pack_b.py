@@ -61,7 +61,7 @@ for i in range(1, 5):
     PARTS[f"R_PU{i}"] = ("1M", *R0805)   # BSS138 gate pull-up: cell ON until the expander writes 0
 
 DNP = set(pack.DNP)                       # R_BYP1..4 bring-up bypasses stay DNP
-NOT_ASSEMBLED = {f"BT{i}" for i in range(1, 5)} | {f"TH{i}" for i in range(1, 5)}
+NOT_ASSEMBLED = {f"BT{i}" for i in range(1, 5)} | {f"TH{i}" for i in range(1, 5)} | {"TH_CHG"}
 NC_PINS = ((pack.NC_PINS
             - {"U_MCU.1", "U_MCU.2", "U_MCU.3", "U_MCU.19", "U_MCU.20", "U_MCU.21", "U_MCU.32"})
            | {"U_EXP.13", "U_ADC.2",                       # spare /INT, ADC ALERT/RDY unused

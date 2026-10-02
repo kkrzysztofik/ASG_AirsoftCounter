@@ -154,8 +154,8 @@ assembly only (the cell holders go on the bottom, by hand). Upload it as its own
 size and layer count; if it shows something else, stop). Schematic `fab/pack/schematic.pdf`, renders
 `fab/pack/top.png` / `bottom.png`.
 
-**Assembly.** Same Economic PCBA flow. BOM `fab/pack/jlc_bom.csv` (37 lines), CPL
-`fab/pack/jlc_cpl.csv` (104 placements, all top side). The DNP 0R bring-up bypasses R_BYP1-R_BYP4 are
+**Assembly.** Same Economic PCBA flow. BOM `fab/pack/jlc_bom.csv` (36 lines), CPL
+`fab/pack/jlc_cpl.csv` (103 placements, all top side). The DNP 0R bring-up bypasses R_BYP1-R_BYP4 are
 left off on purpose. **By hand, after the board arrives:**
 1. **Bead NTCs TH1-TH4** (MF52A103F3435, LCSC C84036) on the **bottom** side, bead in the middle of each
    holder outline (it sits in the holder's floor window and touches the cell), leads soldered on top.
@@ -163,14 +163,18 @@ left off on purpose. **By hand, after the board arrives:**
 2. **Holders BT1-BT4** (MYOUNG BH-18650-A6AJ012, LCSC C19184084) on the **bottom** side: the snap pegs
    locate them, the two tabs are soldered on top. The bottom silkscreen `+` marks the positive end; all
    four face the same way.
-The holders and NTCs are not in the BOM/CPL (JLC's Economic PCBA is top side only).
+3. **Charger NTC TH_CHG** (0805 10k B3435, CMFB 103F3435, LCSC C2889056) on the **top** side, between
+   RT2 and R_CE. Left off, the charger reads "cold" and does not charge.
+The holders and NTCs are not in the BOM/CPL (JLC's Economic PCBA is top side only; TH_CHG is left off
+to save its Extended setup fee).
 
-**Setup fees (SMD Extended types, about $3 each).** 11 types, about $33 per order:
+**Setup fees (SMD Extended types, about $3 each).** 10 types, about $30 per order:
 BQ25601RTWR (C468236), STM32C071KBTx (C42116633), PAC1934T-I/JQ (C623960),
 MT3608 (C84817), the 1.5 uH charger inductor (C703084), the 10 uH boost inductor (C2046332),
-the USB-C receptacle (C2894897), the 10 mOhm shunt (C105362), the 10k NTC (C2889056),
+the USB-C receptacle (C2894897), the 10 mOhm shunt (C105362),
 the 5 A fuse (C48332) and the 2 A PTC (C22374899). None has a Basic replacement at JLC (parts API,
-2026-10-02). The 2026-10-02 simplification removed the XB8089D, BAT54C and the 5.23k/30.9k TS pair
+2026-10-02; the MT3608 -> TPS61040 (Preferred) swap was rejected: about 89 mA out at 3.0 V in, worst
+case, against an 82 mA peak +5V load). The 2026-10-02 simplification removed the XB8089D, BAT54C and the 5.23k/30.9k TS pair
 and replaced the two INA3221s with one PAC1934
 (design doc, "Simplification delta"). To cut the per-board chip cost, assemble 2 of the 5 boards. **2 through-hole Extended types** (no loading fee, per-joint charge):
 J_KEY1 (XH 2-pin, C158012) and J_PWR1 (XH 6-pin, C144397). **Preferred (no fee):** 75k (C17819) and
@@ -186,7 +190,7 @@ BSS138 (C7420339). Everything else is Basic.
 | Q_A*/Q_B*/Q_N* (SOT-23) | The single pin (drain, pin 3) is on the single-pad side. Most likely to be off by 90/180 deg. |
 | D_CB*, D_OR*, D1 (SMA / SOD-123) | The cathode band is on the silkscreen band side. |
 | J_USB1 (USB-C) | The opening faces the right board edge (the "USB" silk); the shield pads straddle their holes. |
-| BT1-BT4, TH1-TH4 (bottom side) | Not in the CPL: hand-soldered (see Assembly above). |
+| BT1-BT4, TH1-TH4 (bottom side), TH_CHG | Not in the CPL: hand-soldered (see Assembly above). |
 | LED_STAT, LED_MCU | The cathode (bar) is on the silkscreen band side. |
 
 **Board facts.** 96 x 90 mm, 1 oz; 142 vias of 0.6/0.3 mm (tented); signal tracks 0.25 mm, power
@@ -223,12 +227,12 @@ Order an XT60 female pigtail (or a bare female XT60 + 14 AWG wire) and JST-XH ho
 key open -> only 3.3 V on `TP_3V3`, a few hundred uA in; key closed -> 4.10 V on `VBAT_SW` and
 5.07 V on `+5V`; reversed supply -> no current; then a real 2S and a real 3S pack.
 
-**Setup fees (SMD Extended types, about $3 each).** 7 types, about $21 per order: the 5 A fuse
-(C48332), AO3407A (C15155), BZT52C12 (C43491), SMBJ15A (C113988), TPS54302DDCR (C311983),
-SRN6045TA-100M (C2046332) and STM32C071KBTx (C42116633). None has a Basic/Preferred replacement
-(parts API, 2026-10-02: the 12 V zener was searched too). **3 through-hole Extended types** (no
+**Setup fees (SMD Extended types, about $3 each).** 4 types, about $12 per order: the 5 A fuse
+(C48332), TPS54302DDCR (C311983), SRN6045TA-100M (C2046332) and STM32C071KBTx (C42116633). None has
+a Basic/Preferred replacement (parts API, 2026-10-02). **3 through-hole Extended types** (no
 loading fee, per-joint charge): `J_KEY1` (C158012), `J_BAL1` (C144395), `J_PWR1` (C144397).
-**Preferred (no fee):** 75k (C17819) and BSS138 (C7420339). Everything else is Basic.
+**Preferred (no fee):** 75k (C17819), BSS138 (C7420339), MMSZ5240B (C19077425) and SMBJ15A
+(C19077569). Everything else is Basic.
 
 **Placement preview checks** (the CPL carries KiCad rotations, no JLC corrections):
 

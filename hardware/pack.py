@@ -64,6 +64,8 @@ PARTS = {
     # rounded to Basic 5.1k/30k; the window moves by under 1 C (design doc, simplification delta).
     "RT1": ("5k1", *R0805),
     "RT2": ("30k", *R0805),
+    # Hand-soldered 0805 (CMFB 103F3435, LCSC C2889056): no Basic/Preferred NTC exists, so JLCPCB
+    # leaves it off and saves the Extended fee. Left off, TS reads 85 % of REGN = cold: no charging.
     "TH_CHG": ("10k NTC", "Device:Thermistor_NTC", R0805[1]),
     "R_CE": ("10k", *R0805),        # /CE low: charging runs with the MCU unpowered
     "R_INT_CHG": ("10k", *R0805),   # /INT pull-up
@@ -153,7 +155,7 @@ for i in range(1, 5):
 # populated by hand, so they are not in the JLCPCB BOM/CPL (NOT_ASSEMBLED) and need no LCSC number.
 DNP = {f"R_BYP{i}" for i in range(1, 5)}
 NOT_ASSEMBLED = ({f"BT{i}" for i in range(1, 5)} | {f"TH{i}" for i in range(1, 5)}
-                 | {"TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND"})
+                 | {"TH_CHG", "TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND"})
 # Pins with no connection: charger NC pins and unused control outputs, unused MCU pins, boost NC.
 NC_PINS = {"U_CHG.3", "U_CHG.8", "U_CHG.10", "U_CHG.12",
            "U_MCU.1", "U_MCU.2", "U_MCU.3", "U_MCU.19", "U_MCU.20", "U_MCU.21", "U_MCU.32",
@@ -179,7 +181,6 @@ LCSC = {
     ("75k", R0805[1]): "C17819",     # P
     ("30k", R0805[1]): "C17621",     # B UNI-ROYAL 0805W8F3002T5E (TS bias, 2026-10-02)
     ("10R", R0805[1]): "C17415",     # B UNI-ROYAL 0805W8F100JT5E (sense taps, 2026-10-02)
-    ("10k NTC", R0805[1]): "C2889056",  # E CMFB 103F3435, 0805 B3435
     ("0R", R1206): "C17888",         # B UNI-ROYAL 1206W4F0000T5E, jumper 2 A rated (BAT/SYS split)
     ("5A fuse", FUSE1206): "C48332",    # E Bourns SF-1206F500-2, I2t 0.966 A2s
     ("2A PTC", FUSE1206): "C22374899",  # E LUTE 1206L200/16NR

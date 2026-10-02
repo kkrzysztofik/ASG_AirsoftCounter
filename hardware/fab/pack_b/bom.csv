@@ -27,7 +27,6 @@
 "R_SH1-R_SH4","10mOhm","Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder","4"
 "R_SNSF1-R_SNSF4,R_SNSS1-R_SNSS4","10R","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","8"
 "R_STAT?,R_SW1-R_SW4","1k","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","5"
-"TH_CHG?","10k NTC","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","1"
 "U1","MT3608","Package_TO_SOT_SMD:SOT-23-6","1"
 "U_ADC?","ADS1115IDGSR","Package_SO:VSSOP-10_3x3mm_P0.5mm","1"
 "U_CHG?","BQ25601RTWR","Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm","1"

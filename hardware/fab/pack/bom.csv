@@ -30,7 +30,6 @@
 "R_SH1-R_SH4","10mOhm","Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder","4"
 "R_SNSF1-R_SNSF4,R_SNSS1-R_SNSS4","10R","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","8"
 "SW_BOOT?,SW_RST?","TS-1088-AR02016","Button_Switch_SMD:SW_SPST_TS-1088-xR020","2"
-"TH_CHG?","10k NTC","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","1"
 "U1","MT3608","Package_TO_SOT_SMD:SOT-23-6","1"
 "U_CHG?","BQ25601RTWR","Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm","1"
 "U_LDO?","XC6206P332MR","Package_TO_SOT_SMD:SOT-23-3","1"
