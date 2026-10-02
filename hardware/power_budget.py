@@ -5,7 +5,7 @@ table 3.4 (RX, TX, WiFi, sleep; measured on USB, and the V4's 3V3 is a CE6260B33
 battery current is about the same); game.rs (beep timing); design.py (two button LED rings, gate
 divider); fab/PARTS_REVIEW.md (5.1 V rail); design doc (PN532 polling ~20 mA). Everything
 marked EST is a guess: replace it with a measurement once the board exists (USB meter or INA219 in
-the J_PWR1 lead). The one worth measuring first is LCD_BACKLIGHT_5V.
+the J_PWR1 lead). Measure LCD_IDLE_5V and HELTEC_RX first.
 
     /usr/bin/python3 power_budget.py
 """
@@ -43,6 +43,10 @@ HELTEC_TX_27DBM = 750.0  # datasheet 27 dBm row; an upper bound on the TX setpoi
                          # has no 26 dBm row; Heltec's own V4 test measured ~1 A peaks at 27 dBm).
 HELTEC_WIFI_AP = 170.0  # datasheet
 HELTEC_SLEEP = 0.020  # datasheet: 20 uA, battery powered
+# Optimized firmware targets (power-efficiency design, table 2). EST until measured.
+HELTEC_RX_OPT = 20.0  # 80 MHz + automatic light sleep, SX1262 RX duty cycle
+GNSS_OPT = 1.0  # one fix at boot, then VGNSS off (backup domain only)
+NFC_POLL_OPT = 5.0  # PN532 PowerDown between polls, polls only when a card is expected
 # Carrier and off-board loads
 GNSS = 29.0  # Quectel L76K hardware design: 29 mA acquisition and tracking, on the Heltec's
              # switched GNSS 3V3 (VGNSS_Ctrl/GPIO34). 41 mA with an active antenna (Seeed's L76K).
@@ -50,16 +54,14 @@ NFC_POLL = 20.0  # design doc: PN532 RF bursts ~50 ms on / 300 ms, average. Data
                  # field-on and ~20-30 mA idle, so one of the two is under-counted.
 NFC_IDLE = 3.0  # EST: module power LED + PN532 PowerDown command (45 uA). A chip left running
                 # idles ~20 mA, which makes the parked figure 12 days instead of 44.
-LCD_LOGIC_5V = 2.0  # 1.2 mA typ HD44780 logic (Crystalfontz 20x4) + contrast pot + PCF8574
-LCD_BACKLIGHT_5V = 100.0  # PLANNING value until it is measured: the largest single load in the
-                          # game scenarios, and the one figure that still decides the answer.
-                          # The module is a generic 2004A panel on an HW-61 backpack, and the HW-61
-                          # only switches it with a transistor from P3, so the panel's own resistor
-                          # sets the current: 48-60 mA typ for a white LED array (Raystar
-                          # RC2004A-GHW), 120 mA for the blue 4.2 V flavour, 200+ if unprotected.
-                          # Measure it (fab/OFFBOARD_PARTS.md item 5) and put the real number here.
+LCD_ON_5V = 32.0  # Newhaven NHD-0420D3Z-FL-GBW-V3, LCD + backlight at level 8: 21/32/44 mA
+                  # min/typ/max (datasheet). Its PIC PWMs the backlight (0xFE 0x53, levels 1-8).
+LCD_IDLE_5V = 5.0  # EST: PIC16F690 + ST7066U with the backlight at level 1 (off). Measure it
+                   # (fab/OFFBOARD_PARTS.md item 5).
+BACKLIGHT_DUTY = 0.05  # EST: firmware lights it for a button, card or game event, then times out.
+                       # Transflective panel, so it reads in daylight with the backlight off.
 LED_RING_5V = 15.0  # one ONPOW 6 V ring run at 5 V; design.py's figure, ONPOW publishes none.
-                    # Two rings are fitted (LR + LB), so scenario() counts this twice.
+                    # Two rings are fitted (LR + LB), so scenario() counts this twice (once with opt).
 BUZZER_5V = 8.0  # BZ-38: TME's spec page, piezo with generator, 3-28 V, 8 mA
 GATE_PD = 3.0 / 11e3 * 1e3  # 10k gate pull-down + 1k: 0.27 mA per driver that is on
 AMP_ON = 13.0  # NS4168 quiescent with CTRL high; firmware holds CTRL low between clips (1 uA off)
@@ -86,19 +88,34 @@ def lora_avg(period_s, payload=40, sf=9):
     return (HELTEC_TX_27DBM - HELTEC_RX) * t / period_s, t / period_s
 
 
-def scenario(deluxe, game, backlight, status_s=30, clip_duty=0.05):
-    ma = {"Heltec awake, LoRa RX": HELTEC_RX}
+def scenario(deluxe, game, backlight, status_s=30, clip_duty=0.05, opt=False):
+    """backlight: share of time the LCD backlight is on (0..1). opt: optimized firmware targets."""
+    ma = {"Heltec awake, LoRa RX": HELTEC_RX_OPT if opt else HELTEC_RX}
     ma["LoRa STATUS TX"], _ = lora_avg(status_s)
     if deluxe:
-        ma["GNSS"] = GNSS
-        ma["PN532"] = NFC_POLL if game else NFC_IDLE
+        ma["GNSS"] = GNSS_OPT if opt else GNSS
+        ma["PN532"] = (NFC_POLL_OPT if opt else NFC_POLL) if game else NFC_IDLE
         ma["Amp (on only for clips)"] = (AMP_ON + AMP_PLAYING) * clip_duty if game else 0.0
-    five = LCD_LOGIC_5V + (LCD_BACKLIGHT_5V if backlight else 0)
+    five = LCD_IDLE_5V + (LCD_ON_5V - LCD_IDLE_5V) * backlight
     if game:
-        five += 2 * LED_RING_5V + BUZZER_5V * READY_BUZZ_DUTY  # both panel rings are lit
+        five += (1 if opt else 2) * LED_RING_5V + BUZZER_5V * READY_BUZZ_DUTY  # opt: one ring lit
         ma["Gate pull-downs"] = GATE_PD
     ma["5 V rail via boost"] = from_5v(five) + BOOST_IDLE
     return ma
+
+
+# Key left on, firmware asleep: what still draws from the cells
+PARKED = {"Heltec deep sleep": HELTEC_SLEEP, "PN532 module idle": NFC_IDLE,
+          "LCD idle via boost": from_5v(LCD_IDLE_5V) + BOOST_IDLE}
+GAME_H, DAYS = 10, 2  # a weekend: two 10 h game days and the night between them parked
+NIGHT_H = 12
+AGED = 0.8  # cells at 80 % of rated capacity (end of the 35E's rated cycle life)
+
+
+def weekend_ma():
+    """Highest mean game-time current that lasts the weekend at 0 C (-20 %) on aged cells."""
+    night = sum(PARKED.values()) * NIGHT_H * (DAYS - 1)
+    return (CELLS_MAH * USABLE * 0.8 * AGED - night) / (DAYS * GAME_H)
 
 
 def hours(total_ma, derate=1.0):
@@ -117,23 +134,15 @@ def main():
     _, duty = lora_avg(30)
     print(f"STATUS 40 B at SF9/125 kHz: {t * 1000:.0f} ms on air, {100 * duty:.1f} % duty at 30 s "
           f"(sub-band limit 10 %)")
-    show("Deluxe, game running, backlight on", scenario(True, True, True))
-    show("Deluxe, game running, backlight off", scenario(True, True, False))
-    show("Budget, game running, backlight on", scenario(False, True, True))
-    show("Deluxe, key on, waiting for HQ (no game, backlight off)", scenario(True, False, False, status_s=60))
+    show("Deluxe, game running, backlight on", scenario(True, True, 1.0))
+    show("Deluxe, game running, backlight off", scenario(True, True, 0.0))
+    show("Budget, game running, backlight on", scenario(False, True, 1.0))
+    show("Deluxe, key on, waiting for HQ (no game, backlight off)", scenario(True, False, 0.0, status_s=60))
+    show("Deluxe, game, optimized firmware, backlight on a timeout",
+         scenario(True, True, BACKLIGHT_DUTY, opt=True))
     show("WiFi setup (AP on, backlight on)", {"Heltec WiFi AP": HELTEC_WIFI_AP,
-                                             "5 V rail": from_5v(LCD_LOGIC_5V + LCD_BACKLIGHT_5V) + BOOST_IDLE})
-    # The backlight is the one unknown that can still move the answer by 20 %. from_5v() is linear,
-    # so add the difference rather than rebuilding the scenario.
-    base = sum(scenario(True, True, True).values())
-    print(f"  backlight unknown ({LCD_BACKLIGHT_5V:.0f} mA assumed): 32 mA -> "
-          f"{hours(base + from_5v(32 - LCD_BACKLIGHT_5V)):.0f} h, {LCD_BACKLIGHT_5V:.0f} mA -> "
-          f"{hours(base):.0f} h, 120 mA -> {hours(base + from_5v(120 - LCD_BACKLIGHT_5V)):.0f} h"
-          " (Deluxe, game, backlight on)")
-    # Key left on after the game, firmware in deep sleep: what still draws from the cells
-    parked = {"Heltec deep sleep": HELTEC_SLEEP, "PN532 module idle": NFC_IDLE,
-              "LCD logic via boost": from_5v(LCD_LOGIC_5V) + BOOST_IDLE}
-    total = sum(parked.values())
+                                             "5 V rail": from_5v(LCD_ON_5V) + BOOST_IDLE})
+    total = sum(PARKED.values())
     days = CELLS_MAH / total / 24  # full pack down to the pack MCU's undervoltage disconnect
     print(f"\nKey left on, firmware asleep: {total:.1f} mA -> about {days:.0f} days until the pack "
           "MCU disconnects the cells")
@@ -145,6 +154,15 @@ def main():
     print(f"\nPack quiescent, key off (carrier unpowered): {PACK_IQ_MA * 1000:.0f} uA -> "
           f"{years:.0f} years of pack electronics ({BRANCH_MOHM} mOhm branch drop not modelled)")
     print("  Cell self-discharge (~1-3 %/month) is the larger term over a season.")
+    budget = weekend_ma()
+    print(f"\nWeekend ({DAYS} x {GAME_H} h game + {NIGHT_H} h parked, 0 C, cells at {AGED:.0%}): "
+          f"game current must stay under {budget:.0f} mA")
+    for name, kw in (("today's firmware, backlight on", dict(backlight=1.0)),
+                     ("today's firmware, backlight on a timeout", dict(backlight=BACKLIGHT_DUTY)),
+                     ("optimized firmware, backlight on a timeout", dict(backlight=BACKLIGHT_DUTY, opt=True))):
+        total = sum(scenario(True, True, **kw).values())
+        print(f"  {name:44} {total:4.0f} mA  {'PASS' if total < budget else 'FAIL'}"
+              f"  ({100 * (budget / total - 1):+.0f} % margin)")
 
 
 if __name__ == "__main__":
@@ -156,4 +174,10 @@ if __name__ == "__main__":
     assert hours(100) > hours(200)
     assert hours(100, 0.8) < hours(100)  # the cold derate must not raise the runtime
     assert from_5v(60) > 60  # a 5 V load always costs more than its own current from the pack
+    # Weekend budget: 2 x 10 h games + 1 night parked, 0 C, cells aged to 80 %. ~350 mA.
+    assert 300 < weekend_ma() < 400, weekend_ma()
+    # The optimized firmware (design doc table 2) must pass with 30 % margin, backlight duty included.
+    assert sum(scenario(True, True, BACKLIGHT_DUTY, opt=True).values()) * 1.3 < weekend_ma()
+    # A backlight left on must cost more than one on a timeout.
+    assert sum(scenario(True, True, 1.0).values()) > sum(scenario(True, True, BACKLIGHT_DUTY).values())
     main()
