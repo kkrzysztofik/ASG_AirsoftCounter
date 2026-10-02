@@ -1,0 +1,15 @@
+#,Part,Qty,Build,Shop,Code,URL
+1,"Heltec WiFi LoRa 32 V4, 863-870 MHz, no display (S3R2 or S3R8)",1,all,Heltec,,https://heltec.org/project/wifi-lora-32-v4/
+2,Heltec L76K GNSS module,1,all,Heltec,,https://heltec.org/project/l76-gnss-module/
+3,"PN532 NFC module, red V3 board",1,all,kamami.pl,,https://kamami.pl/szukaj?controller=search&s=PN532
+5,Newhaven NHD-0420D3Z-FL-GBW-V3 20x4 LCD,1,all,Mouser,763-0420D3ZFLGBW-V3,https://www.mouser.com/c/?q=NHD-0420D3Z-FL-GBW-V3
+11,"18650 holder MYOUNG BH-18650-A6AJ012, THT",4,pack,LCSC,C19184084,https://www.lcsc.com/product-detail/C19184084.html
+11a,"Bead NTC MF52A103F3435 (TH1-TH4)",4,pack,LCSC,C84036,https://www.lcsc.com/product-detail/C84036.html
+12,"18650 cell Samsung INR18650-35E, one batch",4,pack,Botland,BAL-15216,https://botland.com.pl/akumulatory-li-ion/15216-ogniwo-18650-li-ion-samsung-inr18650-35e-3400mah-5904422343071.html
+13,"USB-C panel extension IP67 with cap, M-F, ~30 cm",1,pack,Allegro/AliExpress,,
+21,"Brass standoffs: 4x M3 (carrier), 4x M2.5 (LCD)",8,all,Botland/any,KAB-09700 (M3 kit),https://botland.com.pl/tuleje-dystansowe/9700-tuleja-dystansowa-mosiezna-rozne-rozmiary-m3-zestaw-120szt-5904422308179.html
+24,"Harness wire 24 AWG stranded",1,all,any,,
+25a,"JST-XH 6-pin pigtail 20 cm (power link, join 1:1)",2,all,msalamon,,https://sklep.msalamon.pl/produkt/przewod-gniazdo-jst-xh-254mm-20cm-6-pin/
+25b,"JST-XH 4-pin pigtail 20 cm (LCD, NFC, BTN_R, BTN_B)",4,all,msalamon,,https://sklep.msalamon.pl/produkt/przewod-gniazdo-jst-xh-254mm-20cm-4-pin/
+25c,"JST-XH 2-pin pigtail 20 cm (BUZ, SPK, KEY, HBAT)",4,all,Gotronik (6-pack),,https://www.gotronik.pl/wtyczka-jst-xh254-z-przewodem-20cm-gniazdo-x-6szt-p-5042.html
+26,"XT60 female with 14 AWG lead, 10 cm (LiPo J_IN1)",1,lipo,Botland,7517,https://botland.store/wires-and-power-connectors/7517-xt60-socket-with-cable-10cm-5904422335854.html

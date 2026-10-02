@@ -5,6 +5,12 @@ These are the parts the carrier and pack PCBs do not carry. Codes and URLs were 
 Botland (botland.com.pl) where possible; anything else is marked **other**. Prices and
 cheaper alternatives per row are in the section below the table.
 
+Order lists (per device, TME codes re-checked 2026-10-02) are in `offboard/`: `tme_offboard.csv` and
+`tme_offboard_crimp.csv` (only for crimping your own leads instead of the pigtails of #25) go
+straight into TME Quick Buy > "Upload from file"; `offboard_other.csv` is everything else, with a
+Build column (all / pack / lipo). The board parts themselves have the same lists next to each JLC BOM
+(`tme_bom.csv`, `tme_other.csv`, written by `tme.py`).
+
 | # | Part | Qty | Shop | Code | URL | Notes |
 |---|---|---|---|---|---|---|
 | 1 | Heltec WiFi LoRa 32 V4 (863–870 MHz, no display, S3R2 or S3R8) | 1 | **other: Heltec** (DE warehouse) | variant selector | https://heltec.org/project/wifi-lora-32-v4/ | Not sold at Botland or TME. Confirm the no-display build is selectable; the page says "custom orders without OLED" go through sales. Pick R2 or R8 deliberately (different firmware build). The 28 dBm version needs EU TX-power capping in firmware. |
@@ -29,7 +35,7 @@ cheaper alternatives per row are in the section below the table.
 | 18b | JST XHP-6 housing and cable, carrier <-> pack | 2 housings, 1 cable | TME | XHP-6 | https://www.tme.eu/pl/details/xhp-6/zlacza-sygnalowe-raster-2-50mm/jst/ | The power link: **straight 1:1, pin 1 to pin 1** on both boards (GND GND BAT 5V SDA SCL). Both boards' J_PWR1 are pin-1-left on the top edge, so a straight cable keeps the polarity. Make it short and use 24 AWG; it carries the pack current. Check pin 1 with a meter before plugging in. |
 | 20 | JST SXH-001T-P0.6 crimp contacts | ~30 | TME | SXH-001T-P0.6 | https://www.tme.eu/pl/details/sxh-001t-p0.6/zlacza-sygnalowe-raster-2-50mm/jst/ | 28–22 AWG. No crimper? Botland kit JUS-19558 (clone parts, contacts still need crimping). |
 | 21 | M3 brass standoffs | 8 | Botland | KAB-09700 (120-pc kit) | https://botland.com.pl/tuleje-dystansowe/9700-tuleja-dystansowa-mosiezna-rozne-rozmiary-m3-zestaw-120szt-5904422308179.html | Carrier (4 holes) and LCD (4 holes), so 8 standoffs. **The Newhaven LCD holes are Ø2.5 mm: M3 does not fit, so its 4 standoffs must be M2.5** (or drill the LCD holes out to 3.2 mm, clear of traces). The kit is 52.90 zł for 120 pcs: buy loose standoffs, or the kit only when building several units. |
-| 22 | Enclosure Kradex ZP240.190.105SJp, clear lid, IP67 | 1 | Botland (in stock) / TME | KDX-16650 / ZP240190105SJP-PC | https://botland.com.pl/obudowy/16650-kradex-hermetyczna-obudowa-zp240190105sjp-ip67-tm-abs-240x190x105mm-z-mosieznymi-tulejami-jasnoszara-przezroczysta-5905275016433.html | Botland's has an ABS base. TME's all-PC version was out of stock. |
+| 22 | Enclosure Kradex ZP240.190.105SJp, clear lid, IP67 | 1 | Botland (in stock) / TME | KDX-16650 / ZP240.190.105SJP TM ABSPC | https://botland.com.pl/obudowy/16650-kradex-hermetyczna-obudowa-zp240190105sjp-ip67-tm-abs-240x190x105mm-z-mosieznymi-tulejami-jasnoszara-przezroczysta-5905275016433.html | Botland's has an ABS base; TME's `ZP240.190.105SJP TM ABSPC` is the same box (all-PC: `ZP240.190.105SJP TM PC`, out of stock 2026-09-29). |
 | 23 | Kradex ZP240.190-PCB mounting plate | 1 | TME | ZP240.190-PCB | https://www.tme.eu/pl/details/zp240.190-pcb/obudowy-akcesoria-pozostale/kradex/ | "While stocks last" (38 in stock). |
 | 24 | Harness wire, 24 AWG stranded | – | any | – | – | XH contacts take up to 0.34 mm² and PicoBlade up to 0.13 mm². |
 | 25 | Pre-crimped pigtails, JST-XH | 1 set | **other: msalamon / Allegro** | – | see "Ready-made cables" below | Alternative to #16–20. Arrives already terminated, so **no crimper is needed**. Per-lead list and links below. |
