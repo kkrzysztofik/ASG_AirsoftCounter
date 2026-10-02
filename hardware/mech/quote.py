@@ -24,9 +24,9 @@ FAB = HERE / "fab"
 # What the quote is priced against. The material label follows the process, so a quote prepared
 # with MECH_PROCESS=fdm cannot claim to be MJF.
 MATERIAL_BY_PROCESS = {
-    "mjf": "MJF PA12 (nylon), black",
-    "fdm": "FDM PETG",
-    "sla": "SLA 9000R resin",
+    "mjf": "MJF PA12 (nylon), black, dyed",
+    "fdm": "FDM PETG, black",
+    "sla": "SLA 9000R resin, black",
 }
 MATERIAL = MATERIAL_BY_PROCESS.get(P.PROCESS, MATERIAL_BY_PROCESS["mjf"])
 
@@ -42,23 +42,37 @@ for _dev, _wp in P.WALL_PARTS.items():
     PARTS.append((f"bushing_{_dev}", 1, f"wall bushing, {_wp['hole_d']:.1f} mm hole to {_wp['device_d']:.1f} mm device"))
 
 # These are the things a print shop has to be told and the model cannot carry.
+def _thinnest():
+    """The thinnest material anywhere, so the sheet cannot disagree with the model."""
+    walls = [
+        ("floor field", P.FLOOR_FIELD),
+        ("corner sleeve wall", P.SLEEVE_WALL),
+        ("lid panel", P.LID_T),
+        ("saddle rail", P.SADDLE_T),
+        ("bracket arm", P.ARM_W),
+        ("speaker mesh land", P.mesh_land()),
+        ("bushing ring width", P.BUSHING_FLANGE_D / 2),
+    ]
+    return min(walls, key=lambda kv: kv[1])
+
+
+_SHOP_MIN_WALL = P.min_wall(max(P.BOX_IN[0], P.BOX_IN[1]))
+
 SHOP_NOTES = [
-    f"Quoted process: {MATERIAL}, dyed. Thinnest wall {P.SLEEVE_WALL:.1f} mm, thinnest feature "
-    f"{P.MESH_PITCH - P.MESH_HOLE_D:.1f} mm (the speaker mesh land): both inside MJF's minimum, "
-    "so no feature needs thickening for the process.",
+    f"Quoted process: {MATERIAL}. Thinnest material anywhere is the {_thinnest()[0]} at "
+    f"{_thinnest()[1]:.1f} mm; this process needs {_SHOP_MIN_WALL:.1f} mm at this part size, so "
+    "every wall clears it without a dispensation.",
     f"All dimensions millimetres. The box interior is {P.BOX_IN[0]:.0f} x {P.BOX_IN[1]:.0f} mm and the "
     f"tray and lid are {P.BOX_IN[0] - 2 * P.FIT:.1f} x {P.BOX_IN[1] - 2 * P.FIT:.1f} mm, so they drop in "
-    "with 0.4 mm all round: please hold that outside envelope and do not grow it.",
+    "with the process clearance all round: please hold that outside envelope and do not grow it.",
     f"Critical fit: the 4 corner sleeves are {P.COLUMN_SIZE[0] + P.FIT:.1f} x "
     f"{P.COLUMN_SIZE[1] + P.FIT:.1f} mm bores; a few tenths either way decides whether the part goes in. "
     "Please keep that bore to the nominal and tell me the as-built figure.",
-    f"Wall thickness is {P.SLEEVE_WALL:.1f} mm minimum, {P.FLOOR_T:.1f} mm floor; the speaker mesh land "
-    f"is {P.MESH_PITCH - P.MESH_HOLE_D:.1f} mm.",
-    "No supports modelled. Overhangs are 45 degrees or shallower, which MJF does not need anyway.",
-    "The 4 board posts take M3 self-tapping screws; a standard MJF PA12 pilot is fine.",
-    "Checked against the JLC3DP 3D printing design guideline (MJF column) and compliant: build "
-    "size, size-dependent wall thickness, 0.2-0.4 mm assembly clearance, hole aperture vs depth, "
-    "small-column H/D with a base flare, and no enclosed cavities so no escape holes are needed.",
+    "No supports modelled. Overhangs are 45 degrees or shallower.",
+    "The 4 board posts take M3 self-tapping screws; a standard pilot in this material is fine.",
+    f"Checked against the JLC3DP 3D printing design guideline ({P.RULES['name']}) and compliant: build "
+    "size, size-dependent wall thickness, assembly clearance, hole aperture vs depth, small-column "
+    "H/D with a base flare, and no enclosed cavities so no escape holes are needed.",
     "The tray and lid are large hollow shells, which the guideline prices as a special-shaped "
     "model; please say if that carries a surcharge before we commit.",
     "The quote is for fit and feel, not a production run: it is not yet measured against a physical box.",

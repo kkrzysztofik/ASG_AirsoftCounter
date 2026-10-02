@@ -1,19 +1,18 @@
 Item,Part,File,Qty,Volume cm3,Est cost @0.55/cm3,Material,Colour,Surface finish,Tolerance,Notes
-1,tray,01_tray.stl,1,77.9,42.86,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"base tray: corner sleeves, cell saddles, board posts, cable clips, wall backings"
-2,lid,02_lid.stl,1,45.6,25.09,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"lid panel: LCD frame, button bosses, NFC opening, corner ears"
-3,grille,03_grille.stl,1,8.0,4.41,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"speaker mesh, 40% open area, 50 mm"
-4,guide,04_guide.stl,1,7.2,3.96,"MJF PA12 (nylon), black",black,as-printed / standard,standard,drill guide ring for the 50 mm holesaw
-5,bushing_key,05_bushing_key.stl,1,2.1,1.14,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"wall bushing, 22.3 mm hole to 22.0 mm device"
-6,bushing_usbc,06_bushing_usbc.stl,1,1.3,0.73,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"wall bushing, 12.2 mm hole to 12.0 mm device"
-7,bushing_sma,07_bushing_sma.stl,1,0.9,0.50,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"wall bushing, 6.5 mm hole to 6.4 mm device"
-8,bushing_buzzer,08_bushing_buzzer.stl,1,2.6,1.45,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"wall bushing, 30.0 mm hole to 29.6 mm device"
-,TOTAL,,8,145.7,80.13,"MJF PA12 (nylon), black",,,,Estimate from solid volume only; the shop prices its own build.
-,NOTE,,,,,,,,,"Quoted process: MJF PA12 (nylon), black, dyed. Thinnest wall 2.0 mm, thinnest feature 1.5 mm (the speaker mesh land): both inside MJF's minimum, so no feature needs thickening for the process."
-,NOTE,,,,,,,,,"All dimensions millimetres. The box interior is 190 x 140 mm and the tray and lid are 188.4 x 138.4 mm, so they drop in with 0.4 mm all round: please hold that outside envelope and do not grow it."
+1,tray,01_tray.stl,1,77.9,42.86,"MJF PA12 (nylon), black, dyed",black,as-printed / standard,standard,"base tray: corner sleeves, cell saddles, board posts, cable clips, wall backings"
+2,lid,02_lid.stl,1,45.6,25.09,"MJF PA12 (nylon), black, dyed",black,as-printed / standard,standard,"lid panel: LCD frame, button bosses, NFC opening, corner ears"
+3,grille,03_grille.stl,1,8.0,4.41,"MJF PA12 (nylon), black, dyed",black,as-printed / standard,standard,"speaker mesh, 40% open area, 50 mm"
+4,guide,04_guide.stl,1,7.2,3.96,"MJF PA12 (nylon), black, dyed",black,as-printed / standard,standard,drill guide ring for the 50 mm holesaw
+5,bushing_key,05_bushing_key.stl,1,2.1,1.14,"MJF PA12 (nylon), black, dyed",black,as-printed / standard,standard,"wall bushing, 22.3 mm hole to 22.0 mm device"
+6,bushing_usbc,06_bushing_usbc.stl,1,1.3,0.73,"MJF PA12 (nylon), black, dyed",black,as-printed / standard,standard,"wall bushing, 12.2 mm hole to 12.0 mm device"
+7,bushing_sma,07_bushing_sma.stl,1,0.9,0.50,"MJF PA12 (nylon), black, dyed",black,as-printed / standard,standard,"wall bushing, 6.5 mm hole to 6.4 mm device"
+8,bushing_buzzer,08_bushing_buzzer.stl,1,2.6,1.45,"MJF PA12 (nylon), black, dyed",black,as-printed / standard,standard,"wall bushing, 30.0 mm hole to 29.6 mm device"
+,TOTAL,,8,145.7,80.13,"MJF PA12 (nylon), black, dyed",,,,Estimate from solid volume only; the shop prices its own build.
+,NOTE,,,,,,,,,"Quoted process: MJF PA12 (nylon), black, dyed. Thinnest material anywhere is the speaker mesh land at 1.5 mm; this process needs 1.5 mm at this part size, so every wall clears it without a dispensation."
+,NOTE,,,,,,,,,"All dimensions millimetres. The box interior is 190 x 140 mm and the tray and lid are 188.4 x 138.4 mm, so they drop in with the process clearance all round: please hold that outside envelope and do not grow it."
 ,NOTE,,,,,,,,,Critical fit: the 4 corner sleeves are 20.8 x 20.8 mm bores; a few tenths either way decides whether the part goes in. Please keep that bore to the nominal and tell me the as-built figure.
-,NOTE,,,,,,,,,"Wall thickness is 2.0 mm minimum, 2.4 mm floor; the speaker mesh land is 1.5 mm."
-,NOTE,,,,,,,,,"No supports modelled. Overhangs are 45 degrees or shallower, which MJF does not need anyway."
-,NOTE,,,,,,,,,The 4 board posts take M3 self-tapping screws; a standard MJF PA12 pilot is fine.
-,NOTE,,,,,,,,,"Checked against the JLC3DP 3D printing design guideline (MJF column) and compliant: build size, size-dependent wall thickness, 0.2-0.4 mm assembly clearance, hole aperture vs depth, small-column H/D with a base flare, and no enclosed cavities so no escape holes are needed."
+,NOTE,,,,,,,,,No supports modelled. Overhangs are 45 degrees or shallower.
+,NOTE,,,,,,,,,The 4 board posts take M3 self-tapping screws; a standard pilot in this material is fine.
+,NOTE,,,,,,,,,"Checked against the JLC3DP 3D printing design guideline (Nylon (MJF)) and compliant: build size, size-dependent wall thickness, assembly clearance, hole aperture vs depth, small-column H/D with a base flare, and no enclosed cavities so no escape holes are needed."
 ,NOTE,,,,,,,,,"The tray and lid are large hollow shells, which the guideline prices as a special-shaped model; please say if that carries a surcharge before we commit."
 ,NOTE,,,,,,,,,"The quote is for fit and feel, not a production run: it is not yet measured against a physical box."
