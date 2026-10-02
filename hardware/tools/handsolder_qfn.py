@@ -80,6 +80,7 @@ def _pin1_to_fab(fp):
 
 
 def build():
+    pcbnew.KIID.SeedGenerator(1)   # deterministic uuids across runs, so the file does not churn
     fp = _load()
     numbered = [p for p in fp.Pads() if p.GetNumber().isdigit()]
     assert len(numbered) == 25, f"expected 24 edge pads + exposed pad, got {len(numbered)}"
