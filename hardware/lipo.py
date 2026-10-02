@@ -228,6 +228,61 @@ BLOCKS = [
                ("+5V", 78.74, 36.83)]},
 ]
 
+# --- PCB (read by gen_pcb.py / route.py / check_gerbers.py) ------------------------------------
+# 50 x 40 mm, single-side SMD on top. Left edge: the LiPo solder pads. Right edge: J_PWR1 and
+# J_KEY1. Top edge: J_BAL1. Bucks in the middle with their input caps between them; MCU and
+# dividers in the lower-left, away from the switch nodes.
+W, H, CORNER = 70.0, 50.0, 2.0
+NETCLASS_EXPECT = (("VIN", [0.8, 0.2]), ("VBAT_SW", [0.8, 0.2]), ("+5V", [0.8, 0.2]),
+                   ("SW_A", [0.8, 0.2]), ("GND", [0.25, 0.2]), ("SDA_EXT", [0.25, 0.2]))
+DRC_RULES = {}
+BOTTOM = set()
+PLACE = {
+    # board edge: LiPo pads left, balance lead top, carrier + key right, M3 holes at the corners
+    "J_IN1": (5, 25, 90), "J_BAL1": (35, 4.5, 0),
+    "J_KEY1": (66, 14, 90), "J_PWR1": (66, 33, 90),
+    # input: fuse, reverse FET + gate clamp, TVS
+    "F_IN1": (12, 18, 0), "Q_REV1": (17.5, 18, 0), "R_REV1": (12, 22, 0),
+    "D_GZ1": (17.5, 22, 0), "D_TVS1": (24, 18, 0),
+    # balance dividers along the top
+    "R_TT1": (12, 10, 0), "R_TB1": (12, 14, 0), "C_TAP1": (16, 14, 0),
+    "R_TT2": (24, 10, 0), "R_TB2": (24, 14, 0), "C_TAP2": (28, 14, 0),
+    "R_TT3": (48, 10, 0), "R_TT3B": (48, 14, 0), "R_TB3": (52, 14, 0), "C_TAP3": (56, 14, 0),
+    # buck A: VIN -> 4.10 V VBAT_SW
+    "U_BA": (38, 22, 0), "C_BTA": (34, 18, 0),
+    "C_VIN1": (33, 22, 0), "C_VIN2": (33, 26, 0),
+    "L_A": (45, 27, 0), "R_FBA1": (39, 27, 0), "R_FBA2": (39, 31, 0),
+    "C_OA1": (53, 22, 90), "C_OA2": (53, 29, 90),
+    # buck B: VIN -> 5.07 V +5V
+    "U_BB": (38, 41, 0), "C_BTB": (34, 37, 0),
+    "C_VIN3": (33, 41, 0), "C_VIN4": (33, 45, 0),
+    "L_B": (45, 46, 0), "R_FBB1": (39, 46, 0), "R_FBB2": (39, 48, 0),
+    "C_OB1": (53, 41, 90), "C_OB2": (53, 47, 90),
+    # enable: key pull-up, pull-down, MCU kill FET
+    "R_EN1": (57, 20, 0), "R_EN2": (57, 25, 0), "Q_KILL": (61, 20, 0),
+    "R_GK": (61, 25, 0), "R_KILL": (57, 30, 0),
+    # always-on 3V3 and the MCU
+    "U_LDO": (9, 36, 0), "C_LDO1": (9, 40, 0), "C_LDO2": (13.5, 40, 0),
+    "U_MCU": (22, 44, 0), "C_MCU1": (14.5, 36, 0), "C_MCU2": (20, 36, 0),
+    "C_NRST": (25.5, 36, 0), "R_BOOT": (30, 33, 0),
+    "TP_SWDIO": (9.4, 44, 0), "TP_SWCLK": (12.1, 44, 0), "TP_NRST": (14.8, 44, 0),
+    "TP_3V3": (9.4, 47, 0), "TP_GND": (12.1, 47, 0),
+    "H1": (4.5, 4.5, 0), "H2": (65.5, 4.5, 0), "H3": (4.5, 45.5, 0), "H4": (65.5, 45.5, 0),
+}
+REF_AT = {"D_GZ1": (17.5, 24.5, 0), "D_TVS1": (24, 21.5, 0),
+          "J_PWR1": (61, 33, 90), "J_KEY1": (61.5, 8, 90),
+          "R_FBB2": (34, 48, 0),
+          "C_LDO1": (9, 42.5, 0), "C_LDO2": (13.5, 42.5, 0),
+          "C_NRST": (25.5, 38.2, 0), "U_MCU": (22, 44, 0)}
+HIDE_REF = ("TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_3V3", "TP_GND")
+LABELS = {}
+TEXTS = [("AirsoftCounter v2 LiPo", 10, 2.5, 0, 1.0, True), ("2026-10", 10, 4.5, 0, 1.0, True),
+         ("LIPO 2S/3S", 30, 25, 90, 0.8, False)]
+GND_VIAS = []
+HELTEC_PADS = {}
+SIZE_MM = (W, H)
+NPTH_XY = sorted((PLACE[r][0], PLACE[r][1]) for r in ("H1", "H2", "H3", "H4"))
+
 MODULES = {}
 VARIANTS = {"standard": set()}
 
