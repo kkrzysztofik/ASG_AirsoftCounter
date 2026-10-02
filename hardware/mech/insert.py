@@ -199,8 +199,8 @@ def make_lid():
     # button bosses: the lid's drilled hole lands on something that can clamp the button
     for bx0, bx1, by0, by1 in P.button_boxes():
         cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2
-        panel += cyl_z(cx, cy, z0 - 6, z0, P.BUTTON_D / 2 + 5)
-        panel -= cyl_z(cx, cy, z0 - 7, z0 + 1, P.BUTTON_D / 2 + 0.15)
+        panel += cyl_z(cx, cy, z0 - P.button_boss_h(), z0, P.BUTTON_D / 2 + 5)
+        panel -= cyl_z(cx, cy, z0 - P.button_boss_h() - 1, z0 + 1, P.BUTTON_D / 2 + 0.15)
 
     # LCD mounting bosses on the 93 x 55 grid
     for sx in (-1, 1):
@@ -386,7 +386,7 @@ def check_part(name, part):
     if shells != 1:
         raise SystemExit(
             f"FAIL {name}: {shells} shells, so it encloses a cavity; MJF needs a "
-            f"{P.MJF_MIN_ESCAPE_HOLE} mm escape hole into it"
+            f"{P.RULES['escape']} mm escape hole into it"
         )
     limit_x = P.BOX_IN[0] - 2 * P.FIT + 1e-6
     limit_y = P.BOX_IN[1] - 2 * P.FIT + 1e-6
@@ -401,8 +401,22 @@ def check_part(name, part):
                 f"FAIL {name}: {clash:.1f} mm3 of it sits inside a solid corner column; "
                 "the part cannot physically go into the box"
             )
-    print(f"ok    {name}: {sx:.1f} x {sy:.1f} x {sz:.1f}, {part.volume / 1000:.1f} cm3, {solids} solid")
 
+    # guideline 1: the process has its own minimum, expressed largest-side first
+    dims = sorted((sx, sy, sz), reverse=True)
+    lo = sorted(P.RULES["min_build"], reverse=True)
+    hi = sorted(P.RULES["max_build"], reverse=True)
+    if any(d < m - 1e-6 for d, m in zip(dims, lo, strict=True)):
+        raise SystemExit(
+            f"FAIL {name}: {dims[0]:.1f} x {dims[1]:.1f} x {dims[2]:.1f} is under "
+            f"{P.RULES['name']}'s {lo[0]:.0f} x {lo[1]:.0f} x {lo[2]:.0f} minimum build size"
+        )
+    if any(d > m + 1e-6 for d, m in zip(dims, hi, strict=True)):
+        raise SystemExit(
+            f"FAIL {name}: {dims[0]:.1f} x {dims[1]:.1f} x {dims[2]:.1f} exceeds "
+            f"{P.RULES['name']}'s build envelope"
+        )
+    print(f"ok    {name}: {sx:.1f} x {sy:.1f} x {sz:.1f}, {part.volume / 1000:.1f} cm3, {solids} solid")
 
 def main(argv):
     import argparse

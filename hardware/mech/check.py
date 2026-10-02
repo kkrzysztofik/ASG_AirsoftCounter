@@ -8,8 +8,12 @@ running on a machine that has no CAD stack. Exit code is the result.
 import pathlib
 import sys
 
+# Both directories are inserted explicitly. Relying on Python's implicit script-directory entry
+# works only when this file is run by path, and it leaves every reader, human or tooling, unable
+# to tell which params.py this resolves to.
 HERE = pathlib.Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE))         # hardware/mech: params.py
+sys.path.insert(0, str(HERE.parent))  # hardware:      design.py, pack.py
 import params  # noqa: E402
 
 
@@ -179,34 +183,41 @@ def jlc_wall_thickness():
         ("tray saddle rail", params.SADDLE_T, big),
         ("tray bracket arm", params.ARM_W, big),
         ("lid panel", params.LID_T, big),
-        ("grille mesh land", params.mesh_land(), grille),
-        ("grille face under the holes", params.GRILLE_T - params.GRILLE_RECESS, grille),
     ]
+    if params.making("grille"):
+        items.append(("grille mesh land", params.mesh_land(), grille))
+        items.append(("grille face under the holes", params.GRILLE_T - params.GRILLE_RECESS, grille))
     for name, wp in params.WALL_PARTS.items():
+        if not params.making(f"ring_{name}") and not params.making("rings"):
+            continue
         dia = wp["hole_d"] + params.BUSHING_FLANGE_D
         items.append((f"{name} ring width", params.BUSHING_FLANGE_D / 2, dia))
     for name, wall, size in items:
-        need = params.mjf_min_wall(size)
+        need = params.min_wall(size)
         if wall + 1e-9 < need:
-            return fail(f"JLC wall: {name} is {wall:.2f} mm, MJF needs {need:.2f} at {size:.0f} mm")
-    return ok(f"JLC wall: all {len(items)} features meet the size-dependent MJF minimum")
+            return fail(f"JLC wall: {name} is {wall:.2f} mm, {params.RULES['name']} needs "
+                        f"{need:.2f} at {size:.0f} mm")
+    return ok(f"JLC wall: all {len(items)} features meet the size-dependent "
+              f"{params.RULES['name']} minimum")
 
 
 def jlc_clearance():
-    """Guideline 5 and 10: MJF needs 0.2-0.4 mm per side, and its hole tolerance is +-0.3 mm.
+    """Guideline 5 and 10: the rule is per side, and the hole tolerance matters as much.
 
-    A nominal 0.2 mm gap is therefore inside the process noise, which is why FIT is what it is.
+    A nominal gap inside the process noise is a part that arrives unable to go in.
     """
-    per_side = params.FIT / 2
-    if per_side < params.MJF_MIN_CLEARANCE:
-        return fail(f"JLC clearance: {per_side:.2f} mm per side, MJF needs {params.MJF_MIN_CLEARANCE}")
-    if per_side < params.MJF_HOLE_TOL:
+    per_side = params.fit_per_side()
+    clear = params.RULES["clear"]
+    tol = params.RULES["hole_tol"]
+    if per_side < clear:
+        return fail(f"JLC clearance: {per_side:.2f} mm per side, {params.PROCESS} needs {clear}")
+    if per_side < tol:
         return fail(
-            f"JLC clearance: {per_side:.2f} mm per side is inside the +-{params.MJF_HOLE_TOL} mm "
-            "MJF hole tolerance, so the part can arrive unable to go in"
+            f"JLC clearance: {per_side:.2f} mm per side is inside the +-{tol} mm hole "
+            f"tolerance for {params.RULES['name']}, so it can arrive unable to go in"
         )
-    return ok(f"JLC clearance: {per_side:.2f} mm per side clears both the 0.2 mm rule and the "
-              f"+-{params.MJF_HOLE_TOL} mm hole tolerance")
+    return ok(f"JLC clearance: {per_side:.2f} mm per side clears the {clear} mm rule and the "
+              f"+-{tol} mm hole tolerance for {params.RULES['name']}")
 
 
 def jlc_holes():
@@ -218,7 +229,8 @@ def jlc_holes():
     ]
     for name, dia, depth in holes:
         if dia < 1.5:
-            return fail(f"JLC holes: {name} is {dia:.1f} mm, MJF has no entry below 1.5 mm")
+            return fail(f"JLC holes: {name} is {dia:.1f} mm, below the 1.5 mm floor for "
+                        f"{params.RULES['name']}")
         if depth > 3 * dia:
             return fail(f"JLC holes: {name} is {dia:.1f} mm across and {depth:.1f} mm deep, "
                         f"past the 3x guidance")
@@ -226,28 +238,17 @@ def jlc_holes():
 
 
 def jlc_build_size():
-    """Guideline 1: the build envelope, and the 5x5x5 / 10x2x2 minimum.
-
-    The minimum accepts either a 5 mm cube or a 10 x 2 x 2 sliver, so a flat ring is fine.
-    """
+    """Guideline 1: the build envelope. Per-part minimums need a real bounding box, so they are
+    checked in insert.py where the geometry exists."""
     big = (params.BOX_IN[0], params.BOX_IN[1], params.panel_z0())
+    hi = params.RULES["max_build"]
     for i, axis in enumerate("XYZ"):
-        if big[i] > params.MJF_MAX_BUILD[i]:
-            return fail(f"JLC build: {big[i]:.1f} mm on {axis} exceeds MJF's {params.MJF_MAX_BUILD[i]}")
-
-    rings = []
-    for name, wp in params.WALL_PARTS.items():
-        dia = wp["hole_d"] + params.BUSHING_FLANGE_D
-        rings.append((name, (dia, dia, params.BUSHING_FLANGE)))
-    for name, dims in rings:
-        cube = all(d >= 5.0 for d in dims)
-        sliver = max(dims) >= 10.0 and sorted(dims)[0] >= 2.0
-        if not (cube or sliver):
-            return fail(f"JLC build: {name} ring {dims} is under the minimum build size")
+        if big[i] > hi[i]:
+            return fail(
+                f"JLC build: {big[i]:.1f} mm on {axis} exceeds {params.RULES['name']}'s {hi[i]:.0f} mm"
+            )
     return ok(f"JLC build: largest part {big[0]:.0f} x {big[1]:.0f} x {big[2]:.0f} inside "
-              f"{params.MJF_MAX_BUILD[0]:.0f} x {params.MJF_MAX_BUILD[1]:.0f} x "
-              f"{params.MJF_MAX_BUILD[2]:.0f}; smallest is a {params.BUSHING_FLANGE:.0f} mm "
-              "thick ring, which passes on the 10 x 2 x 2 rule")
+              f"{hi[0]:.0f} x {hi[1]:.0f} x {hi[2]:.0f} for {params.RULES['name']}")
 
 
 def jlc_columns():
@@ -265,6 +266,14 @@ def jlc_columns():
               f"{params.POST_FLARE:.0f} mm flare at the base")
 
 
+def process_is_known():
+    if params.PROCESS not in params.PROCESS_RULES:
+        return fail(f"unknown MECH_PROCESS {params.PROCESS!r}, expected one of "
+                    f"{', '.join(params.PROCESS_RULES)}")
+    return ok(f"process {params.PROCESS} = {params.RULES['name']}, "
+              f"FIT {params.FIT} mm total ({params.fit_per_side():.2f} per side)")
+
+
 def wall_parts_sane():
     for name, p in params.WALL_PARTS.items():
         if p["device_d"] >= p["hole_d"]:
@@ -273,6 +282,7 @@ def wall_parts_sane():
 
 
 CHECKS = [
+    process_is_known,
     box_fits,
     rasters_match,
     stack_fits,

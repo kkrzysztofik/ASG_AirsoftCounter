@@ -1,0 +1,13 @@
+Item,Part,File,Qty,Volume cm3,Est cost @0.55/cm3,Material,Colour,Surface finish,Tolerance,Notes
+1,tray,01_tray.step,1,,,FDM PETG,black,as-printed / standard,standard,"base tray: corner sleeves, cell saddles, board posts, cable clips, wall backings"
+2,lid,02_lid.step,1,,,FDM PETG,black,as-printed / standard,standard,"lid panel: LCD frame, button bosses, NFC opening, corner ears"
+,TOTAL,,2,0.0,0.00,FDM PETG,,,,Estimate from solid volume only; the shop prices its own build.
+,NOTE,,,,,,,,,"Quoted process: FDM PETG, dyed. Thinnest wall 2.0 mm, thinnest feature 1.5 mm (the speaker mesh land): both inside MJF's minimum, so no feature needs thickening for the process."
+,NOTE,,,,,,,,,"All dimensions millimetres. The box interior is 190 x 140 mm and the tray and lid are 187.4 x 137.4 mm, so they drop in with 0.4 mm all round: please hold that outside envelope and do not grow it."
+,NOTE,,,,,,,,,Critical fit: the 4 corner sleeves are 21.3 x 21.3 mm bores; a few tenths either way decides whether the part goes in. Please keep that bore to the nominal and tell me the as-built figure.
+,NOTE,,,,,,,,,"Wall thickness is 2.0 mm minimum, 2.4 mm floor; the speaker mesh land is 1.5 mm."
+,NOTE,,,,,,,,,"No supports modelled. Overhangs are 45 degrees or shallower, which MJF does not need anyway."
+,NOTE,,,,,,,,,The 4 board posts take M3 self-tapping screws; a standard MJF PA12 pilot is fine.
+,NOTE,,,,,,,,,"Checked against the JLC3DP 3D printing design guideline (MJF column) and compliant: build size, size-dependent wall thickness, 0.2-0.4 mm assembly clearance, hole aperture vs depth, small-column H/D with a base flare, and no enclosed cavities so no escape holes are needed."
+,NOTE,,,,,,,,,"The tray and lid are large hollow shells, which the guideline prices as a special-shaped model; please say if that carries a surcharge before we commit."
+,NOTE,,,,,,,,,"The quote is for fit and feel, not a production run: it is not yet measured against a physical box."

@@ -1,24 +1,71 @@
 """Every dimension for the Pawbol S-BOX 416-P insert.
 
-No imports: check.py has to run on a plain /usr/bin/python3 with nothing installed.
+No third-party imports: check.py has to run on a plain /usr/bin/python3 with nothing installed.
 Coordinates: origin at the inner floor corner of the box, +X along 190, +Y along 140, +Z up.
 Sources are named per line; anything marked MEASURE is a placeholder until the box arrives.
+
+Set MECH_PROCESS to price and validate for a different print process: mjf (default), fdm, sla.
 """
+
+import os
 
 # --- JLC3DP design guideline ------------------------------------------------------------------
 # Source: https://jlc3dp.com/help/article/3d-printing-design-guideline, read 2026-10-02. The MJF
 # column is the one that applies; the SLA/FDM figures are stricter or looser and we are not using
 # them. Everything below is asserted in check.py so a rule cannot be quietly broken by a tweak.
-GUIDE_SOURCE = "jlc3dp.com/help/article/3d-printing-design-guideline (MJF column)"
-# Wall thickness scales with part size. (largest part dimension mm, minimum wall mm)
-MJF_WALL_BY_SIZE = ((50.0, 1.0), (100.0, 1.2), (200.0, 1.5), (400.0, 2.0))
-MJF_MIN_CLEARANCE = 0.2       # per side, between parts that assemble together (range 0.2-0.4)
-MJF_HOLE_TOL = 0.3            # +/- mm, and holes shrink rather than grow
-MJF_MIN_ESCAPE_HOLE = 2.5     # any enclosed cavity needs one, two if it is under 3.0
-MJF_EMBOSS_MIN = 0.8          # embossed or engraved detail, deep and wide
-MJF_COLUMN_RATIO = 2.0        # H/D guidance for a printed column (D=3 -> H=3-6)
-MJF_MIN_BUILD = (10.0, 2.0, 2.0)   # the "10 x 2 x 2" alternative to 5 x 5 x 5
-MJF_MAX_BUILD = (380.0, 284.0, 380.0)
+GUIDE_SOURCE = "jlc3dp.com/help/article/3d-printing-design-guideline"
+
+
+# --- print process ----------------------------------------------------------------------------
+# Source: jlc3dp.com/help/article/3d-printing-design-guideline, read 2026-10-02. wall is the
+# (largest part dimension, minimum wall) table; clear and hole_tol are millimetres per side.
+PROCESS = os.environ.get("MECH_PROCESS", "mjf")
+PROCESS_RULES = {
+    "mjf": {
+        "name": "Nylon (MJF)",
+        "wall": ((50.0, 1.0), (100.0, 1.2), (200.0, 1.5), (400.0, 2.0)),
+        "clear": 0.2, "hole_tol": 0.3,
+        "min_build": (10.0, 2.0, 2.0), "max_build": (380.0, 284.0, 380.0),
+        "escape": 2.5,
+    },
+    "fdm": {
+        # FDM's wall row is '/' at 50 mm in the published table and the rest of it was behind a
+        # truncated render, so the values below are our own defensible floor (3 perimeters of a
+        # 0.4 mm nozzle), not a quoted figure. Everything else is from the table.
+        "name": "Plastic (FDM)",
+        "wall": ((100.0, 1.2), (200.0, 2.0), (400.0, 2.0)),
+        "clear": 0.5, "hole_tol": 0.4,
+        "min_build": (30.0, 30.0, 10.0), "max_build": (580.0, 480.0, 480.0),
+        "escape": 2.5,
+    },
+    "sla": {
+        "name": "Resin (SLA)",
+        "wall": ((50.0, 0.5), (100.0, 0.8), (200.0, 1.0), (400.0, 1.5)),
+        "clear": 0.2, "hole_tol": 0.3,
+        "min_build": (5.0, 5.0, 5.0), "max_build": (780.0, 780.0, 530.0),
+        "escape": 2.5,
+    },
+}
+RULES = PROCESS_RULES[PROCESS]
+# Which parts are being made by this process. The tray and lid are the FDM candidates; the
+# grille, the guide ring and the wall rings are small flat parts that FDM's minimum build size
+# rejects, so they stay on MJF or SLA and their features must not be judged against FDM's rules.
+PARTS = os.environ.get("MECH_PARTS", "all")
+
+
+def making(part):
+    """True when this run is making that part, so per-part rules only apply to real parts."""
+    return PARTS == "all" or part in PARTS.split(",")
+
+
+def min_wall(max_dim):
+    """Minimum wall a part of this size may have, for the selected process."""
+    wall = RULES["wall"][0][1]
+    for size, w in RULES["wall"]:
+        if max_dim <= size:
+            return w
+        wall = w
+    return wall
 
 
 # --- enclosure -----------------------------------------------------------------------------
@@ -28,11 +75,14 @@ BOX_IN = (190.0, 140.0, 70.0)  # MEASURE (firm per drawing, confirm with a rule)
 WALL = 3.0                    # (196 - 190) / 2, confirmed by (146 - 140) / 2
 LID_T = 2.5                   # printed lid panel thickness (the transparent lid is what faces weather)
 LID_RECESS = 8.0              # MEASURE depth available above the base rim
-FIT = 0.8                     # drop-in clearance, whole part. Must be at least twice the MJF
-                              # hole tolerance (0.3), or the part arrives unable to go in.
+# Drop-in clearance, whole part. The rule is per side and the bigger of the two constraints
+# wins: the assembled-parts clearance, and the hole tolerance, because holes come out small.
+# The 1.33 is margin for a first-off part.
+FIT = round(2 * max(RULES["clear"], RULES["hole_tol"]) * 1.33, 1)
 FLOOR_T = 2.4                 # tray floor thickness
-FLOOR_FIELD = 1.6             # floor left after the lightening pocket; the MJF floor is 1.5 at
-                              # this part size, so this is that plus a little
+# Floor left under the lightening pocket. Sized off the rule rather than picked, because FDM
+# wants 2.0 mm where MJF wants 1.5 at this part size and the difference is not a free choice.
+FLOOR_FIELD = round(min_wall(max(BOX_IN[0], BOX_IN[1])) + 0.1, 2)
 
 # --- corner columns and screws --------------------------------------------------------------
 # The drawing dimensions 148 and (probably) 99 span the corner screw axes. Only 148 is certain.
@@ -257,14 +307,16 @@ def _gap(a, b):
     return (dx * dx + dy * dy) ** 0.5
 
 
-def mjf_min_wall(max_dim):
-    """Minimum wall an MJF part of this size may have, per the guideline table."""
-    wall = MJF_WALL_BY_SIZE[0][1]
-    for size, w in MJF_WALL_BY_SIZE:
-        if max_dim <= size:
-            return w
-        wall = w
-    return wall
+def fit_per_side():
+    return FIT / 2
+
+
+def button_boss_h():
+    """How far the lid panel's button bosses hang below it. Sized off the rule: some processes
+    refuse a part whose smallest dimension is under their minimum, and this is what sets it, so
+    the lid panel grows to 10 mm for FDM without any hand tuning.
+    """
+    return round(max(6.0, min(RULES["min_build"]) - LID_T), 2)
 
 
 def mesh_land():

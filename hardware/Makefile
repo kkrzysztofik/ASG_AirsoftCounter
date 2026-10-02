@@ -76,15 +76,23 @@ boards:
 # Printed insert for the Pawbol S-BOX 416-P. check.py is deliberately run on the system
 # python3: it is the half of the checking that has to work with no CAD stack installed.
 # insert.py is a PEP-723 script, so uv resolves build123d from the file's own metadata.
+# PROC picks the print process everything is validated and priced against: mjf, fdm or sla.
+# PARTS limits a run to the parts that process will actually make, so an FDM run is not judged
+# against features belonging to the small flat parts it rejects.
+PROC ?= mjf
+PARTS ?= all
+export MECH_PROCESS = $(PROC)
+export MECH_PARTS = $(PARTS)
 .PHONY: mech
 mech:
 	/usr/bin/python3 mech/check.py
-	uv run mech/insert.py --part all --check
+	uv run mech/insert.py --part $(PARTS) --check
 
 # Quote package for JLCPCB 3D printing: one model per part in a zip, plus the quote sheet.
-# MAT is the process the quote is priced against; MJF PA12 is the intended one.
-MAT ?= MJF PA12 (nylon), black
+# MAT follows PROC unless overridden. Regenerate per process; the filenames carry the process
+# so an FDM quote cannot be mistaken for the MJF one.
+MAT ?= $(shell /usr/bin/python3 -c "import sys; sys.path.insert(0,'mech'); import quote; print(quote.MATERIAL)")
 .PHONY: mech-fab
 mech-fab: mech
-	/usr/bin/python3 mech/quote.py --format stl --material "$(MAT)"
-	/usr/bin/python3 mech/quote.py --format step --material "$(MAT)"
+	/usr/bin/python3 mech/quote.py --parts "$(PARTS)" --format stl --material "$(MAT)"
+	/usr/bin/python3 mech/quote.py --parts "$(PARTS)" --format step --material "$(MAT)"

@@ -21,7 +21,14 @@ sys.path.insert(0, str(HERE))
 import params as P  # noqa: E402
 
 FAB = HERE / "fab"
-MATERIAL = "MJF PA12 (nylon), black"
+# What the quote is priced against. The material label follows the process, so a quote prepared
+# with MECH_PROCESS=fdm cannot claim to be MJF.
+MATERIAL_BY_PROCESS = {
+    "mjf": "MJF PA12 (nylon), black",
+    "fdm": "FDM PETG",
+    "sla": "SLA 9000R resin",
+}
+MATERIAL = MATERIAL_BY_PROCESS.get(P.PROCESS, MATERIAL_BY_PROCESS["mjf"])
 
 # (order, file stem, qty, note). Order is the row order on the sheet and the filename prefix,
 # so the quote lines up with the drawing.
@@ -81,13 +88,27 @@ def stl_volume_cm3(path):
     return abs(total) / 1000.0
 
 
-def file_list(fmt):
+def file_list(fmt, wanted=None):
     """[(item, zip name, source path)] in quote order. The number prefix keeps the sheet and
-    the zip in the same order as the model set."""
+    the zip in the same order as the model set. `wanted` filters to the parts a process can
+    actually make, so an FDM quote never carries the small flat parts it rejects."""
     out = []
     for i, (stem, _qty, _note) in enumerate(PARTS, start=1):
+        if wanted and stem not in wanted:
+            continue
         out.append((i, f"{i:02d}_{stem}.{fmt}", HERE / "out" / f"{stem}.{fmt}"))
     return out
+
+
+def want_list(raw):
+    if not raw or raw == "all":
+        return None
+    want = [p.strip() for p in raw.split(",") if p.strip()]
+    known = {stem for stem, _q, _n in PARTS}
+    unknown = [p for p in want if p not in known]
+    if unknown:
+        raise SystemExit(f"unknown part(s) {unknown}; known: {', '.join(sorted(known))}")
+    return set(want)
 
 
 def main(argv):
@@ -96,9 +117,12 @@ def main(argv):
     ap.add_argument("--rate", type=float, default=0.55,
                     help="estimated price per cm3, for the estimate column only")
     ap.add_argument("--format", default="stl", choices=("stl", "step"))
+    ap.add_argument("--parts", default="all",
+                    help="comma-separated part names, or all")
     args = ap.parse_args(argv)
 
-    files = file_list(args.format)
+    wanted = want_list(args.parts)
+    files = file_list(args.format, wanted)
     absent = [str(path) for _i, _n, path in files if not path.exists()]
     if absent:
         raise SystemExit("missing models, run `make mech` first:\n  " + "\n  ".join(absent))
@@ -106,29 +130,31 @@ def main(argv):
     FAB.mkdir(exist_ok=True)
     today = datetime.date.today().isoformat()
 
-    zip_path = FAB / f"jlc3dp_{today}_{args.format}.zip"
+    zip_path = FAB / f"jlc3dp_{today}_{P.PROCESS}_{args.format}.zip"
     raw = 0
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
         for _item, name, path in files:
             raw += path.stat().st_size
             z.write(path, name)
 
-    csv_path = FAB / f"jlc3dp_quote_{today}_{args.format}.csv"
+    csv_path = FAB / f"jlc3dp_quote_{today}_{P.PROCESS}_{args.format}.csv"
     total_cm3 = 0.0
     with csv_path.open("w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["Item", "Part", "File", "Qty", "Volume cm3", f"Est cost @{args.rate}/cm3",
                     "Material", "Colour", "Surface finish", "Tolerance", "Notes"])
         for item, (stem, qty, note), (_i, name, path) in zip(range(1, len(PARTS) + 1), PARTS, files,
-                                                            strict=True):
+                                                            strict=False):
+            if wanted and stem not in wanted:
+                continue
             vol = stl_volume_cm3(path) if args.format == "stl" else float("nan")
             known = vol == vol  # NaN-safe: a STEP zip has no mesh to measure
             total_cm3 += vol if known else 0.0
             w.writerow([item, stem, name, qty, f"{vol:.1f}" if known else "",
                         f"{vol * args.rate * qty:.2f}" if known else "",
                         args.material, "black", "as-printed / standard", "standard", note])
-        w.writerow(["", "TOTAL", "", sum(q for _s, q, _n in PARTS), f"{total_cm3:.1f}",
-                    f"{total_cm3 * args.rate:.2f}", args.material, "", "", "",
+        w.writerow(["", "TOTAL", "", sum(q for s, q, _n in PARTS if not wanted or s in wanted),
+                    f"{total_cm3:.1f}", f"{total_cm3 * args.rate:.2f}", args.material, "", "", "",
                     "Estimate from solid volume only; the shop prices its own build."])
         for n in SHOP_NOTES:
             w.writerow(["", "NOTE", "", "", "", "", "", "", "", "", n])
