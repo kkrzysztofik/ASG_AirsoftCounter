@@ -1,5 +1,6 @@
 """Pick the board module the generators work on: BOARD=carrier (default, design.py), pack (pack.py),
-pack_b (pack_b.py, the no-pack-MCU variant) or lipo (lipo.py, the 2S/3S LiPo power board).
+pack_b (pack_b.py, the no-pack-MCU variant), lipo (lipo.py, the 2S/3S LiPo power board), or the
+hand-built TME variants carrier_tme / pack_tme / lipo_tme (nothing machine-placed).
 
 Every generator imports the board as `from board import design`, so the same code
 builds either board from its own data module.
@@ -9,7 +10,8 @@ import os
 
 NAME = os.environ.get("BOARD", "carrier")
 design = importlib.import_module({"carrier": "design", "pack": "pack", "pack_b": "pack_b",
-                                "lipo": "lipo"}[NAME])
+                                "lipo": "lipo", "carrier_tme": "carrier_tme",
+                                "pack_tme": "pack_tme", "lipo_tme": "lipo_tme"}[NAME])
 
 
 def check_structure(m):

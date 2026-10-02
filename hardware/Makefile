@@ -49,7 +49,8 @@ check: route
 # print_1to1.pdf leaves out F.Cu: the GND pour would print solid black and hide the labels;
 # pads come from the F.Fab sketch instead.
 # jlc.py writes the JLCPCB assembly BOM + CPL ($(FAB)/jlc_*.csv) and checks them against the zip;
-# tme.py turns that BOM into TME Quick Buy lists ($(FAB)/tme_*.csv).
+# a *_tme board is hand-built, so it has no JLC files and tme.py writes its list straight from the
+# module instead ($(FAB)/tme_bom.csv).
 fab: check
 	rm -rf $(FAB)/gerbers $(ZIP) $(FAB)/jlc_*.csv
 	mkdir -p $(FAB)/gerbers
@@ -58,7 +59,9 @@ fab: check
 		--generate-map --map-format gerberx2 -o $(FAB)/gerbers/ $(BOARD).kicad_pcb
 	zip -jqX $(ZIP) $(FAB)/gerbers/* -x '*drl_map*' '*.gbrjob'
 	$(PY) check_gerbers.py $(ZIP) || { rm -f $(ZIP); exit 1; }
+ifeq ($(filter %_tme,$(BOARD)),)
 	$(PY) jlc.py
+endif
 	$(PY) tme.py
 	kicad-cli sch export bom --exclude-dnp --fields 'Reference,Value,Footprint,$${QUANTITY}' \
 		--labels 'Refs,Value,Footprint,Qty' --group-by Value,Footprint -o $(FAB)/bom.csv $(BOARD).kicad_sch
