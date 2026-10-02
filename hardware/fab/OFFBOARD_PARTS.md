@@ -32,7 +32,7 @@ cheaper alternatives per row are in the section below the table.
 | 22 | Enclosure Kradex ZP240.190.105SJp, clear lid, IP67 | 1 | Botland (in stock) / TME | KDX-16650 / ZP240190105SJP-PC | https://botland.com.pl/obudowy/16650-kradex-hermetyczna-obudowa-zp240190105sjp-ip67-tm-abs-240x190x105mm-z-mosieznymi-tulejami-jasnoszara-przezroczysta-5905275016433.html | Botland's has an ABS base. TME's all-PC version was out of stock. |
 | 23 | Kradex ZP240.190-PCB mounting plate | 1 | TME | ZP240.190-PCB | https://www.tme.eu/pl/details/zp240.190-pcb/obudowy-akcesoria-pozostale/kradex/ | "While stocks last" (38 in stock). |
 | 24 | Harness wire, 24 AWG stranded | – | any | – | – | XH contacts take up to 0.34 mm² and PicoBlade up to 0.13 mm². |
-| 25 | Pre-crimped pigtails, JST-XH and PicoBlade | 1 set | **other: AliExpress** | – | – | Alternative to #16–20. Arrives already terminated, so **no crimper is needed**. Cheaper and faster than hand-crimping ~30 contacts. |
+| 25 | Pre-crimped pigtails, JST-XH | 1 set | **other: msalamon / Allegro** | – | see "Ready-made cables" below | Alternative to #16–20. Arrives already terminated, so **no crimper is needed**. Per-lead list and links below. |
 
 ## Prices and cheaper alternatives
 
@@ -64,3 +64,24 @@ and the Heltec V4 pin map are frozen by the carrier.
 **The crimper is the biggest single line and is not in the table.** A usable JST/PicoBlade
 crimper is 60–250 zł. Pre-crimped pigtails (#25) cost ~15 zł and remove that purchase,
 which is more than every other swap here combined. Order them before anything else.
+
+## Ready-made cables (no crimper)
+
+Checked 2026-10-02. Every board connector is a JST XH 2.5 mm header (B*B-XH-A). Shops sell the mating
+XHP housing on a wire as a "JST-XH 2,54 **męski**, przewód 20 cm + gniazdo" set: the wired plug is what
+you need; the loose PCB socket in the bag is a spare. "XH2.54" and "XH2.5" are the same series. All
+pigtails below are single-ended (bare tinned ends), 26 AWG, 20 cm: solder and heat-shrink the far end.
+
+| Lead | Board end | Far end | Buy | Qty | Link | Notes |
+|---|---|---|---|---|---|---|
+| Carrier J_PWR1 <-> pack / LiPo J_PWR1 | XHP-6 | XHP-6 | 2 x 6-pin pigtail, joined wire-to-wire **1:1** | 2 | [msalamon 6-pin, 2.68 zł](https://sklep.msalamon.pl/produkt/przewod-gniazdo-jst-xh-254mm-20cm-6-pin/) | Cut both to ~7 cm and join same colour to same colour, so pin 1 meets pin 1. Ready double-ended cables exist ([Keszoox 6-pin, 22 AWG, "Same Side"](https://keszoox.com/products/jst-xh-2-54mm-6pin-cable-connector-both-sided), ~$4.26, often sold out), but **never buy a "Reverse Side" one**: it swaps BAT with I2C. 26 AWG is enough for a 15 cm link; 22-24 AWG if you can get it. |
+| J_LCD1 | XHP-4 | LCD I2C pins | 4-pin pigtail | 1 | [msalamon 4-pin, 2.37 zł](https://sklep.msalamon.pl/produkt/przewod-gniazdo-jst-xh-254mm-20cm-4-pin/) | **Newhaven NHD-0420D3Z:** solder into the J2 holes (no pins fitted), crossed: XH 1 GND -> J2.5, XH 2 5V -> J2.6, XH 3 SDA -> J2.4, XH 4 SCL -> J2.3. **Botland 2004A + HW-61:** its header is GND VCC SDA SCL, so it is straight; solder to the pins or use an XH-to-Dupont-female lead ([Abra](https://abra-electronics.com/interconnects/connectors/jst-connectors/jst-xh/con-jst-xh-4d-connector-jst-4-pin-xh2-54-to-dupont-jumper-connector-female-4x1-pin-20cm.html), [Funduino](https://funduinoshop.com/en/components/cable-systems/kabeltypen/jst-system/jst-xh2.54-male-to-dupont-female-cable-4p-24awg-150cm)). |
+| J_NFC1 | XHP-4 | PN532 I2C header | 4-pin pigtail | 1 | as J_LCD1 | Solder straight into the PN532 holes instead of the supplied pin strip; the V3 board's I2C header is GND VCC SDA SCL, same as J_NFC1. |
+| J_BTN_R1, J_BTN_B1 | XHP-4 | button lugs | 4-pin pigtail | 2 | as J_LCD1 | Solder to the ONPOW lugs (COM/NO, LED +/-) per the carrier silkscreen. |
+| J_BUZ1, J_SPK1, pack J_KEY1 | XHP-2 | buzzer leads, speaker tabs, key switch | 2-pin pigtail | 3 | [Gotronik 6-pack, 14.15 zł](https://www.gotronik.pl/wtyczka-jst-xh254-z-przewodem-20cm-gniazdo-x-6szt-p-5042.html) / [msalamon 2-pin, 2.16 zł](https://sklep.msalamon.pl/produkt/przewod-gniazdo-jst-xh-254mm-20cm-2-pin/) (out of stock 2026-10-02) | Allegro has the same for ~2 zł ("JST XH 2.54 2pin z przewodem 20cm"). |
+| J_HBAT1 | XHP-2 | Heltec battery socket (1.25 mm) | 2-pin XH pigtail + **the battery cable that ships with the Heltec V4** | 1 | as above | The V4 box contains two SH1.25 leads (battery, solar). Join one to an XH-2 pigtail: XH 1 = VBAT (+), XH 2 = GND. **Check the Heltec lead's polarity with a meter** before joining; 1.25 mm leads have no standard colours. Spares: Allegro "Micro JST 1.25 2PIN" (PicoBlade-compatible; avoid "GH1.25", which does not mate). Makes #16-17 unnecessary. |
+| LiPo J_IN1 | solder pads | battery XT60 | XT60 **female** (gniazdo) with 14 AWG, 10 cm | 1 | [Botland 7517](https://botland.store/wires-and-power-connectors/7517-xt60-socket-with-cable-10cm-5904422335854.html) / [modele.sklep.pl, 3.99 zł](https://modele.sklep.pl/gniazdo-xt-60-z-przewodem-14awg-10-cm-czarny-czerwony-msp-p-3526.html) | Battery packs carry the male XT60, so the board lead is the female. Matches the 1.7 mm pad holes (14 AWG). |
+| LiPo J_BAL1 | B4B-XH | battery balance plug | **nothing** | – | – | The pack's balance plug (XHP-4 for 3S, XHP-3 for 2S on pins 1-3) plugs straight in. |
+
+Per device: 2 x 6-pin, 4 x 4-pin, 4 x 2-pin pigtails, plus the XT60 lead for the LiPo build; about 25 zł
+with spares. Before the first plug-in, **meter every lead pin 1 to pin 1**: cheap pigtails use random colours.

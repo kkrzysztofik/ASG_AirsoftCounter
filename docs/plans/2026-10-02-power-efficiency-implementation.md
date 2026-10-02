@@ -147,14 +147,14 @@ rtk git commit -m "hardware: power model with the Newhaven LCD and a weekend che
 
 **Step 1: Check the outline before writing it down.** Open the datasheet drawing
 (https://newhavendisplay.com/content/specs/NHD-0420D3Z-FL-GBW-V3.pdf, page 3). Record the module
-outline, the mounting-hole grid and hole diameter, and the P1 pin order. The current doc assumes
+outline, the mounting-hole grid and hole diameter, and the J2 pin order. The current doc assumes
 98x60 mm with M3 on 93x55: if the Newhaven differs, write the real numbers and flag the enclosure
 row (item 22) and the 4 LCD standoffs (item 21).
 
 **Step 2: Replace parts-table row 5** with:
 
 ```
-| 5 | 20x4 serial LCD, transflective yellow-green | 1 | Mouser | 763-0420D3ZFLGBW-V3 (Newhaven NHD-0420D3Z-FL-GBW-V3) | https://www.mouser.com/c/?q=NHD-0420D3Z-FL-GBW-V3 | ~$17 (also Newhaven direct, DigiKey NHD-0420D3Z-FL-GBW-V3-ND; TME has none). 5 V, <outline from step 1>. STN(+) transflective: readable in daylight with the backlight off. Backlight 1-8 by I2C command. I2C 0x28 (7-bit), **50 kHz max**, 10k pull-ups on the module (carrier R_SDA5/R_SCL5 stay DNP). **☐ Before wiring: bridge jumper R1 (I2C mode)** — it ships in RS-232 mode. **☐ On arrival: measure** 5.0 V supply current at backlight level 8 and level 1; those replace `LCD_ON_5V` and `LCD_IDLE_5V` in `power_budget.py`. Wire P1 VSS/VDD/SDA/SCL to the J_LCD1 XHP-4 (GND 5V SDA SCL). |
+| 5 | 20x4 serial LCD, transflective yellow-green | 1 | Mouser | 763-0420D3ZFLGBW-V3 (Newhaven NHD-0420D3Z-FL-GBW-V3) | https://www.mouser.com/c/?q=NHD-0420D3Z-FL-GBW-V3 | ~$17 (also Newhaven direct, DigiKey NHD-0420D3Z-FL-GBW-V3-ND; TME has none). 5 V, <outline from step 1>. STN(+) transflective: readable in daylight with the backlight off. Backlight 1-8 by I2C command. I2C 0x28 (7-bit), **50 kHz max**, 10k pull-ups on the module (carrier R_SDA5/R_SCL5 stay DNP). **☐ Before wiring: bridge jumper R1 (I2C mode)** — it ships in RS-232 mode. **☐ On arrival: measure** 5.0 V supply current at backlight level 8 and level 1; those replace `LCD_ON_5V` and `LCD_IDLE_5V` in `power_budget.py`. I2C is on **J2** (2.54 mm holes, no pins fitted: 1 SPISS, 2 SDO, 3 SCL, 4 SDA, 5 VSS, 6 VDD), not J1 (RS-232). The order differs from J_LCD1, so solder the XHP-4 pigtail crossed: XH 1 GND -> J2.5, XH 2 5V -> J2.6, XH 3 SDA -> J2.4, XH 4 SCL -> J2.3; J2.1/J2.2 open. |
 ```
 
 **Step 3: Replace cost-table row 5** with: `| 5 | **~$17** (Mouser) | generic yellow-green 2004A + PCF8574 (~25 zł) | ~-45 zł | high — on/off backlight only, transmissive, the firmware needs the HD44780 driver back |`
