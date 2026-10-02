@@ -7,9 +7,12 @@ divider); fab/PARTS_REVIEW.md (5.1 V rail); design doc (PN532 polling ~20 mA). E
 marked EST is a guess: replace it with a measurement once the board exists (USB meter or INA219 in
 the J_PWR1 lead). Measure LCD_IDLE_5V and HELTEC_RX first.
 
-    /usr/bin/python3 power_budget.py
+    /usr/bin/python3 power_budget.py [--tme]
 """
+import sys
 from math import ceil
+
+TME = "--tme" in sys.argv[1:]   # hand-build boards: L072 + 4x INA228 + PCM5100A/PAM8302A
 
 CELLS_MAH = 4 * 3350  # 4x Samsung INR18650-35E in parallel (the pack board). 3350 mAh is the
                       # datasheet minimum (rated 3250 at 0.2 C to 2.65 V); 3400 is only the typical
@@ -64,16 +67,21 @@ LED_RING_5V = 15.0  # one ONPOW 6 V ring run at 5 V; design.py's figure, ONPOW p
                     # Two rings are fitted (LR + LB), so scenario() counts this twice (once with opt).
 BUZZER_5V = 8.0  # BZ-38: TME's spec page, piezo with generator, 3-28 V, 8 mA
 GATE_PD = 3.0 / 11e3 * 1e3  # 10k gate pull-down + 1k: 0.27 mA per driver that is on
-AMP_ON = 13.0  # NS4168 quiescent with CTRL high; firmware holds CTRL low between clips (1 uA off)
+AMP_ON = 4.0 if TME else 13.0  # PAM8302A quiescent no-load vs NS4168 quiescent with CTRL high;
+                               # firmware holds the amp SD low between clips (1 uA off)
 AMP_PLAYING = 0.4 / VBAT * 1e3  # EST: ~0.4 W average electrical while a clip plays
-BOOST_IDLE = 1.0  # EST: MT3608 switching at near-zero load
+DAC_STANDBY = 0.5 if TME else 0.0  # PCM5100A standby with clocks stopped (clocks low > 1 s)
+BOOST_IDLE = 1.0  # EST: MT3608/MCP1640 switching at near-zero load
 # Pack board with the key off (the carrier is unpowered; only the pack's own electronics drain the
 # cells). EST from the P0 datasheets: STM32C071 Stop with RTC/LSI is 85 uA typical, so the design
 # doc's "tens of uA" target is unreachable; PAC1934 SLEEP 5 uA (DS20005850E; its PWRDN state is
 # 0.1 uA but loses the configuration and accumulators), BQ25601 battery-only
 # ~4.5 uA, XC6206 Iq ~1 uA, plus the 4 x 1M gate resistors (4.2 V / 1M = 4.2 uA each) while the
 # switches are on. Cell self-discharge (~1-3 %/month) dominates this after about a year.
-PACK_IQ_MA = 0.085 + 0.005 + 0.0045 + 0.001 + 4 * 0.0042
+# TME: the L072's Stop IDD is 0.43 uA typ (DS10690 Table 37) and each INA228 2.8 uA in shutdown.
+MCU_STOP_MA = 0.00043 if TME else 0.085
+MON_IQ_MA = 4 * 0.0028 if TME else 0.005
+PACK_IQ_MA = MCU_STOP_MA + MON_IQ_MA + 0.0045 + 0.001 + 4 * 0.0042
 # Cell branch series resistance (5 A fuse + 20 mOhm shunt + back-to-back AO3401A + track) ~150 mOhm
 # EST. Deliberately not modelled: it drops < 0.3 V at these currents, well inside the 0.84 USABLE
 # derate that already covers the 3.5 V shutdown.
@@ -96,6 +104,8 @@ def scenario(deluxe, game, backlight, status_s=30, clip_duty=0.05, opt=False):
         ma["GNSS"] = GNSS_OPT if opt else GNSS
         ma["PN532"] = (NFC_POLL_OPT if opt else NFC_POLL) if game else NFC_IDLE
         ma["Amp (on only for clips)"] = (AMP_ON + AMP_PLAYING) * clip_duty if game else 0.0
+        if TME:
+            ma["DAC standby"] = DAC_STANDBY
     five = LCD_IDLE_5V + (LCD_ON_5V - LCD_IDLE_5V) * backlight
     if game:
         five += (1 if opt else 2) * LED_RING_5V + BUZZER_5V * READY_BUZZ_DUTY  # opt: one ring lit
@@ -107,6 +117,8 @@ def scenario(deluxe, game, backlight, status_s=30, clip_duty=0.05, opt=False):
 # Key left on, firmware asleep: what still draws from the cells
 PARKED = {"Heltec deep sleep": HELTEC_SLEEP, "PN532 module idle": NFC_IDLE,
           "LCD idle via boost": from_5v(LCD_IDLE_5V) + BOOST_IDLE}
+if TME:
+    PARKED["DAC standby"] = DAC_STANDBY
 GAME_H, DAYS = 10, 2  # a weekend: two 10 h game days and the night between them parked
 NIGHT_H = 12
 AGED = 0.8  # cells at 80 % of rated capacity (end of the 35E's rated cycle life)
@@ -132,6 +144,7 @@ def show(name, ma):
 def main():
     t = lora_airtime_s(40, 9)
     _, duty = lora_avg(30)
+    print(f"model: {'TME hand-build (L072 + INA228 + PCM5100A/PAM8302A)' if TME else 'JLC (C071 + PAC1934 + NS4168)'}")
     print(f"STATUS 40 B at SF9/125 kHz: {t * 1000:.0f} ms on air, {100 * duty:.1f} % duty at 30 s "
           f"(sub-band limit 10 %)")
     show("Deluxe, game running, backlight on", scenario(True, True, 1.0))
