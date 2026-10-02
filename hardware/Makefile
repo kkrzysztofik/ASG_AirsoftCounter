@@ -77,6 +77,9 @@ boards:
 	$(MAKE) BOARD=pack all
 	$(MAKE) BOARD=pack_b all
 	$(MAKE) BOARD=lipo all
+	$(MAKE) BOARD=carrier_tme all
+	$(MAKE) BOARD=pack_tme all
+	$(MAKE) BOARD=lipo_tme all
 
 # Printed insert for the Pawbol S-BOX 416-P. check.py is deliberately run on the system
 # python3: it is the half of the checking that has to work with no CAD stack installed.

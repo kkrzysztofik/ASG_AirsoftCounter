@@ -3,6 +3,7 @@
 **Separate boards, separate orders.** The carrier is `fab/carrier_gerbers_jlcpcb.zip` (90 x 60 mm,
 sections 1-6 below), the 4x18650 pack board is `fab/pack/pack_gerbers_jlcpcb.zip` (96 x 90 mm,
 section 7) and the 2S/3S LiPo board is `fab/lipo/lipo_gerbers_jlcpcb.zip` (70 x 50 mm, section 8).
+The hand-build TME variants are the same three outlines, ordered **bare** (section 9).
 The Economic setup fee is per order per Extended part type, so the totals below are per board.
 
 Regenerate everything with `cd hardware && make boards` (all boards; it exits non-zero if ERC, DRC
@@ -253,3 +254,26 @@ on both layers.
 
 **Note.** 4S is out of scope, but the input rating (TPS54302 28 V, HT7533-1 30 V) leaves room if the
 SMBJ15A is swapped for a higher-standoff TVS.
+
+## 9. TME hand-build boards (carrier_tme, pack_tme, lipo_tme)
+
+The same three boards re-drawn for an iron-only build from TME parts. **Order bare PCBs only, no JLC
+assembly**: `fab/carrier_tme/carrier_tme_gerbers_jlcpcb.zip` (90 x 60 mm, settings as sections 1-2),
+`fab/pack_tme/pack_tme_gerbers_jlcpcb.zip` (96 x 90 mm, section 7) and
+`fab/lipo_tme/lipo_tme_gerbers_jlcpcb.zip` (70 x 50 mm, section 8).
+
+**Parts.** Upload `fab/<board>_tme/tme_bom.csv` (`symbol;qty`) to TME Quick Buy, or paste the symbols
+into the TME search. The LCSC-only parts are not in it: the pack's 18650 holders (MYOUNG
+BH-18650-A6AJ012) and bead NTCs, plus the off-board parts in `fab/offboard/`.
+
+**Hand-solder notes.**
+- **BQ25601 (U_CHG, pack_tme)** is a QFN-24 with a 1.5 mm plated hole through the exposed pad
+  (`local:QFN-24-...HandSolder`, pads extended 0.6 mm): flux the pad ends and drag the numbered pins,
+  then fill the exposed pad through the hole from the **back** with the iron tip.
+- The **USB4085** USB-C and the **6x6 tact switches** are through-hole and must clear the bottom-side
+  holders; the pack places them in the holder-free strips. Check `fab/<board>_tme/print_1to1.pdf`
+  (F.Fab + silk, with the QFN pin-1 marker) before soldering.
+- The LQFP-32 L072 and the VSSOP-10 INA228s are leaded and drag-solderable.
+
+**Board facts.** Same outline, holes and 2-layer stack as the JLC originals; the pack keeps 0.8 mm
+power traces except `+5V`, which is 0.25 mm (82 mA peak) so the MCP1640's fine VOUT pad takes it.

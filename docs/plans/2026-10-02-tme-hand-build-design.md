@@ -1,6 +1,7 @@
 # TME hand-build variants: carrier, pack A, LiPo (design)
 
-Date: 2026-10-02. Status: approved, not started.
+Date: 2026-10-02. Status: built (T0-T6); the three boards pass `make boards`. Layout deviations are
+recorded at the end of "Changes against this design".
 
 ## Goal
 
@@ -63,6 +64,22 @@ Rejected: LTC4002 leaded charger (no power path, no I2C control), Charger 6 Clic
 - **PCM5100A XSMT sits on AMP_SD**: the expander line that enables the amp also unmutes the DAC.
 - **MCP1640 needs no catch diode** (synchronous): `D1` goes. FB divider 75k/24k -> 1.21 V x 4.125 = 4.99 V.
 - Amp input resistors **R_INP = R_INN = 240 k** (see Parts below for the arithmetic).
+
+## Layout deviations (from the T5.2 build)
+
+- **One INA228 per cell block** (schematic), beside that cell's 10R Kelvin split, instead of four in
+  the PAC1934's monitor block: four long sense routes disappear and the four monitors stop crowding
+  one block. The monitor block keeps only the diode-OR and the 3V3 LDO.
+- **`+5V` drops out of the 0.8 mm Power net class** (0.25 mm Default): the MCP1640's VOUT is a
+  0.95 mm-pitch SOT-23 pad that cannot take a 0.8 mm track, and the rail's peak is 82 mA. `VBAT_SW`
+  stays 0.8 mm.
+- **Default clearance 0.15 mm** (was 0.2) on pack_tme: the USB4085's own through-hole pads sit
+  0.15 mm apart. JLCPCB's 2-layer minimum is 0.127 mm.
+- **The hand-solder QFN's pin-1 silk marker moves to F.Fab**: the extended pads cover it, so the
+  marker is printed (F.Fab is in the 1:1 print) instead of clipped by solder mask.
+- **Pack placement**: `U_CHG` moves to the holder-free right strip (its exposed pad is filled from
+  the back), `J_USB1` pulls in to x 87 so its silk clears the board edge, the THT tact switches sit
+  in the left holder-free strip (x 1.6, rotated) and `J_PWR1`/`J_KEY1` shift down to make room.
 
 ## Parts (verified 2026-10-02)
 
