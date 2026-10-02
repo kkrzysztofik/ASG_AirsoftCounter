@@ -22,28 +22,30 @@ HERE = Path(__file__).parent
 FAB = HERE / os.environ.get("FAB", "fab")
 
 # LCSC number -> TME symbol. Same maker part unless a comment says otherwise.
+# Royalohm resistors use TME's cut-tape SMD0805-*/SMD1206-* symbols (0805S8F/1206S4J, 100 pcs): the
+# 0805W8F.../1206W4F... symbols are the same parts sold only as 5000 pcs reels (checked 2026-10-02).
 TME = {
     "C105362": "ERJ8BWFR010V",          # sub: Panasonic 10 mOhm 1206 0.5 W 1 % (PSA FMF06FTHR010 not at TME)
     "C12891": "CL31A226KAHNNNE",
     "C144395": "B4B-XH-A (LF)(SN)",
     "C144397": "B6B-XH-A",
-    "C149504": "0805W8F1003T5E",        # Uni-Royal is Royalohm at TME
+    "C149504": "SMD0805-100K-1%",       # Uni-Royal is Royalohm at TME
     "C15008": "CL31A107MQHNNNE",
     "C15127": "AO3401A",
     "C158012": "B2B-XH-A (LF)(SN)",
     "C15850": "CL21A106KAYNNNE",
-    "C17414": "0805W8F1002T5E",
-    "C17415": "0805W8F100JT5E",
-    "C17477": "0805W8F0000T5E",
-    "C17513": "0805W8F1001T5E",
-    "C17514": "0805W8F1004T5E",
-    "C17621": "0805W8F3002T5E",
-    "C17673": "0805W8F4701T5E",
-    "C17709": "0805W8F4703T5E",
-    "C17713": "0805W8F4702T5E",
+    "C17414": "SMD0805-10K-1%",
+    "C17415": "SMD0805-10R-1%",
+    "C17477": "SMD0805-0R",
+    "C17513": "SMD0805-1K-1%",
+    "C17514": "SMD0805-1M-1%",
+    "C17621": "SMD0805-30K-1%",
+    "C17673": "SMD0805-4K7-1%",
+    "C17709": "SMD0805-470K-1%",
+    "C17713": "SMD0805-47K-1%",
     "C1779": "CL21A475KAQNNNE",
-    "C17819": "0805W8F7502T5E",
-    "C17888": "1206W4F0000T5E",
+    "C17819": "SMD0805-75K-1%",
+    "C17888": "SMD1206-0R",             # 1206S4J0000T5E: Royalohm 1206 jumper, 2 A <50 mOhm like W4F
     "C19077425": "MMSZ5240BT1G",        # onsemi, SOD-123
     "C19077569": "SMBJ15A-TSC",         # Taiwan Semi, unidirectional SMB
     "C2046332": "SRN6045TA-100M",
@@ -54,7 +56,7 @@ TME = {
     "C14289": "MCP1703AT-3302E/MB",     # sub: same SOT-89 pinout (1 GND, 2 VIN, 3 VOUT), 2 uA Iq, stable with
                                         # the 10 uF caps; but 16 V operating / 18 V abs max vs HT7533's 30 V,
                                         # so less margin above the SMBJ15A clamp
-    "C27834": "0805W8F5101T5E",
+    "C27834": "SMD0805-5K1-1%",
     "C28323": "CL21B105KBFNNNE",
     "C2905422": "ZL262-18SG",           # sub: Connfly 1x18 2.54 mm socket, 8.5 mm like the Kinghelm H8.5
     "C311983": "TPS54302DDCR",

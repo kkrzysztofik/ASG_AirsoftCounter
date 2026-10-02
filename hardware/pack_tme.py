@@ -61,7 +61,7 @@ TME |= {
     ("TACT 6x6", TACT_THT): "B3F-1000",
     ("MCP1640T-I/CHY", SOT23_6): "MCP1640T-I/CHY",
     ("4u7 2A", pack.LRN6045): "SRN60454R7Y-BOU-0",
-    ("24k", R0805[1]): "0805W8F2402T5E",
+    ("24k", R0805[1]): "SMD0805-24K-1%",
     ("10k NTC 0603", R0805[1]): "NTCS0603E3103FLT",
 }
 MODULES, VARIANTS = {}, {"standard": set()}

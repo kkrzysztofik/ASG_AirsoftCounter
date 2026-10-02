@@ -262,8 +262,11 @@ assembly**: `fab/carrier_tme/carrier_tme_gerbers_jlcpcb.zip` (90 x 60 mm, settin
 `fab/pack_tme/pack_tme_gerbers_jlcpcb.zip` (96 x 90 mm, section 7) and
 `fab/lipo_tme/lipo_tme_gerbers_jlcpcb.zip` (70 x 50 mm, section 8).
 
-**Parts.** Upload `fab/<board>_tme/tme_bom.csv` (`symbol;qty`) to TME Quick Buy, or paste the symbols
-into the TME search. The LCSC-only parts are not in it: the pack's 18650 holders (MYOUNG
+**Parts.** Upload `fab/tme_bom_all.csv` (`symbol;qty`, all three boards, written by
+`/usr/bin/python3 tme_all.py`) to TME Quick Buy: small passives carry spares (+10 %, at least 5) and
+resistors are rounded up to TME's 100 pcs cut tape. `fab/<board>_tme/tme_bom.csv` is one board's exact
+count. Check the Quick Buy result for stock: INA228AIDGSR (pack_tme, 4 pcs) showed none at TME on
+2026-10-02; INA228AIDGST is the same chip on a small reel. The LCSC-only parts are not in it: the pack's 18650 holders (MYOUNG
 BH-18650-A6AJ012) and bead NTCs, plus the off-board parts in `fab/offboard/`.
 
 **Hand-solder notes.**
