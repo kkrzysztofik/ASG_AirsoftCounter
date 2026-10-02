@@ -1,7 +1,7 @@
 # AirsoftCounter LiPo board: 2S/3S airsoft LiPo instead of the 18650 pack
 
 Date: 2026-10-02
-Status: design approved, hardware not started. A third power board next to the 18650 pack variants A
+Status: hardware generated (`make BOARD=lipo all` into `fab/lipo/`). A third power board next to the 18650 pack variants A
 (`2026-10-01-pack-board-design.md`) and B (`2026-10-02-pack-board-variant-b-design.md`). Fit one
 power board per build; the carrier does not change.
 
@@ -145,6 +145,27 @@ Sources: vendor datasheets and the live JLCPCB parts API (type: B Basic / P Pref
 - The bucks default ON when the key is on: the kill FET's gate has a pull-down (R_GK), so the bucks
   run with the MCU unflashed (bring-up) and the firmware latches them off.
 - One 10 uH inductor (`L_A` = `L_B`, C2046332) for both bucks: its 4.6 A Isat covers buck A's peaks.
+
+## Generated
+
+`hardware/lipo.py` -> `make BOARD=lipo all` writes `lipo.kicad_sch`, `lipo.kicad_pcb` and the JLCPCB
+package into `fab/lipo/` (gerber zip, BOM/CPL, schematic and renders). Freerouting: 462 tracks/vias,
+0 unrouted; ERC 0, DRC 0 violations, 0 schematic-parity issues; gerbers 11 files, 70 x 50 mm,
+4 x 3.2 mm NPTH. The 49 placed parts are 37 Basic, 2 Preferred (75k C17819, BSS138 C7420339) and
+10 Extended LCSC numbers (12 placements): 7 SMD types (5 A fuse C48332, AO3407A C15155, BZT52C12
+C43491, SMBJ15A C113988, TPS54302 x2 C311983, SRN6045TA x2 C2046332, STM32C071 C42116633) and the
+3 through-hole XH headers (KEY C158012, BAL C144395, PWR C144397). Economic PCBA charges one
+feeder-setup fee per SMD Extended type; the XH headers are per-joint.
+
+## Bring-up
+
+Bench supply on `J_IN1` at 7.4 V with a 100 mA limit:
+1. Key open: only the LDO runs. `TP_3V3` reads 3.3 V and the input current is a few hundred uA with a
+   blank MCU (STM32C0 Stop ~85 uA + LDO ~2.5 uA + dividers ~10 uA + buck shutdown).
+2. Key closed: `VBAT_SW` 4.10 V and `+5V` 5.07 V. The bucks default on because `R_GK` pulls the kill
+   FET's gate low; the firmware latches them off later.
+3. Reversed supply: no current (the reverse P-FET blocks; the TVS should not conduct).
+4. Then a real 2S pack and a real 3S pack, reading the three balance taps through the firmware.
 
 ## Unverified
 - STM32C071 system bootloader over I2C (AN2606): if it is supported, the Heltec could flash the

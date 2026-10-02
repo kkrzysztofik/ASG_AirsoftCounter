@@ -1,12 +1,12 @@
 # Ordering the PCBs from JLCPCB (bare board or assembled)
 
-**Two boards.** The carrier is `fab/carrier_gerbers_jlcpcb.zip` (90 x 60 mm, sections 1-6 below).
-The 4x18650 pack board is `fab/pack/pack_gerbers_jlcpcb.zip` (96 x 90 mm, section 7). They are two
-separate orders; the Economic setup fee is per order per Extended part type, so the totals below are
-per board.
+**Separate boards, separate orders.** The carrier is `fab/carrier_gerbers_jlcpcb.zip` (90 x 60 mm,
+sections 1-6 below), the 4x18650 pack board is `fab/pack/pack_gerbers_jlcpcb.zip` (96 x 90 mm,
+section 7) and the 2S/3S LiPo board is `fab/lipo/lipo_gerbers_jlcpcb.zip` (70 x 50 mm, section 8).
+The Economic setup fee is per order per Extended part type, so the totals below are per board.
 
-Regenerate everything with `cd hardware && make boards` (both boards; it exits non-zero if ERC, DRC
-or the gerber check fails, for either board).
+Regenerate everything with `cd hardware && make boards` (all boards; it exits non-zero if ERC, DRC
+or the gerber check fails, for any board).
 
 ## 1. Upload
 
@@ -199,3 +199,52 @@ GND pours on both layers.
 the board, standoffs need about 20 mm plus clearance (holder 14.9 mm, the cell top sits higher). Before paying
 for boards, put a real BH-18650-A6AJ012 on the 1:1 print (`fab/pack/print_1to1.pdf`): check the tab
 slots and pegs, and that the floor window leaves room for the bead NTC (design doc, Unverified).
+
+## 8. The LiPo board (2S/3S)
+
+`fab/lipo/lipo_gerbers_jlcpcb.zip`, 70 x 50 mm, 2 layers, 1.6 mm, rounded corners, top-side
+assembly only. Upload it as its own order and fill in the form as in section 2 (JLC auto-detects the
+size and layer count; if it shows something else, stop). Schematic `fab/lipo/schematic.pdf`, renders
+`fab/lipo/top.png` / `bottom.png`.
+
+**Assembly.** Same Economic PCBA flow. BOM `fab/lipo/jlc_bom.csv` (25 lines), CPL
+`fab/lipo/jlc_cpl.csv` (49 placements, all top side). **By hand, after the board arrives:**
+1. The XT60 pigtail on `J_IN1`: two solder pads at a 6 mm pitch with a 1.7 mm drill. Use a 14 AWG /
+   1.5 mm2 lead (design doc, Parts) and a female XT60 inline or panel connector; T-plug users use an
+   adapter lead. `J_IN1` is not in the BOM/CPL.
+2. The five test pads (`TP_SWDIO`, `TP_SWCLK`, `TP_NRST`, `TP_3V3`, `TP_GND`) are bare pads: solder a
+   wire for bring-up, or leave them and use a pogo/SWD adapter. They are not in the BOM/CPL either.
+
+Order an XT60 female pigtail (or a bare female XT60 + 14 AWG wire) and JST-XH housings/crimps for
+`J_BAL1` (4-pin; a 2S 3-pin plug fits pins 1-3), `J_KEY1` (2-pin, the IP65 key switch) and `J_PWR1`
+(6-pin, the same 1:1 harness as the pack board's `J_PWR1`).
+
+**Bring-up** (bench supply on `J_IN1`, 7.4 V, 100 mA limit; see the design doc's Bring-up):
+key open -> only 3.3 V on `TP_3V3`, a few hundred uA in; key closed -> 4.10 V on `VBAT_SW` and
+5.07 V on `+5V`; reversed supply -> no current; then a real 2S and a real 3S pack.
+
+**Setup fees (SMD Extended types, about $3 each).** 7 types, about $21 per order: the 5 A fuse
+(C48332), AO3407A (C15155), BZT52C12 (C43491), SMBJ15A (C113988), TPS54302DDCR (C311983),
+SRN6045TA-100M (C2046332) and STM32C071KBTx (C42116633). None has a Basic/Preferred replacement
+(parts API, 2026-10-02: the 12 V zener was searched too). **3 through-hole Extended types** (no
+loading fee, per-joint charge): `J_KEY1` (C158012), `J_BAL1` (C144395), `J_PWR1` (C144397).
+**Preferred (no fee):** 75k (C17819) and BSS138 (C7420339). Everything else is Basic.
+
+**Placement preview checks** (the CPL carries KiCad rotations, no JLC corrections):
+
+| Part | What to check |
+|---|---|
+| U_BA/U_BB (TPS54302, TSOT-23-6) | The pin-1 mark sits at the silkscreen pin-1 mark. |
+| U_MCU (STM32C071, LQFP-32) | The pin-1 corner sits at the silkscreen pin-1 mark. |
+| Q_REV1/Q_KILL (SOT-23) | The single pin (drain, pin 3) is on the single-pad side. |
+| D_GZ1 (SOD-123), D_TVS1 (SMB) | The cathode band is on the silkscreen band side. |
+| J_KEY1/J_BAL1/J_PWR1 (XH) | The latch side faces the same way as the silkscreen outline; pin 1 is at the marked end. |
+| `J_IN1` (solder pads) | Not in the CPL: hand-soldered. |
+
+**Board facts.** 70 x 50 mm, 1 oz; 462 tracks/vias; signal 0.25 mm, power 0.8 mm (the two SW nodes
+stay 0.25 mm: the TSOT-23-6 SW pad at 0.95 mm pitch cannot take 0.8 mm); vias 0.6/0.3 mm (tented);
+PTH 0.95/1.0 mm (the XH headers) and the 1.7 mm `J_IN1` solder pads; NPTH 4 x 3.2 mm M3. GND pours
+on both layers.
+
+**Note.** 4S is out of scope, but the input rating (TPS54302 28 V, HT7533-1 30 V) leaves room if the
+SMBJ15A is swapped for a higher-standoff TVS.
