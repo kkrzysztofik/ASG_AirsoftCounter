@@ -38,7 +38,8 @@ def unconnected_nets():
             for pin in gen_sch.kids(body, "pin"):
                 n, name = (gen_sch.unq(gen_sch.child(pin, k)[1]) for k in ("number", "name"))
                 if f"{ref}.{n}" not in used:
-                    out[f"{ref}.{n}"] = f"unconnected-({ref}-{name}-Pad{n})"
+                    # KiCad escapes "/" in a pin name as "{slash}" when it names an unconnected net
+                    out[f"{ref}.{n}"] = f"unconnected-({ref}-{name.replace('/', '{slash}')}-Pad{n})"
     return out
 
 
