@@ -2,3 +2,4 @@
 cmake
 cmake-build-debug
 CMakeLists.txt
+.superpowers/
