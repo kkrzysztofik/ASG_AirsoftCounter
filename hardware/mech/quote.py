@@ -20,6 +20,7 @@ sys.path.insert(0, str(HERE))
 import params as P  # noqa: E402
 
 FAB = HERE / "fab"
+MATERIAL = "MJF PA12 (nylon), black"
 
 # (order, file stem, qty, note). Order is the row order on the sheet and the filename prefix,
 # so the quote lines up with the drawing.
@@ -34,14 +35,19 @@ for _dev, _wp in P.WALL_PARTS.items():
 
 # These are the things a print shop has to be told and the model cannot carry.
 SHOP_NOTES = [
-    f"All dimensions millimetres. Tray and lid are {P.BOX_IN[0]:.0f} x {P.BOX_IN[1]:.0f} mm envelopes; "
-    f"they must stay under {P.BOX_IN[0] - 2 * P.FIT:.1f} x {P.BOX_IN[1] - 2 * P.FIT:.1f} mm to drop into the box.",
+    f"Quoted process: {MATERIAL}, dyed. Thinnest wall {P.SLEEVE_WALL:.1f} mm, thinnest feature "
+    f"{P.MESH_PITCH - P.MESH_HOLE_D:.1f} mm (the speaker mesh land): both inside MJF's minimum, "
+    "so no feature needs thickening for the process.",
+    f"All dimensions millimetres. The box interior is {P.BOX_IN[0]:.0f} x {P.BOX_IN[1]:.0f} mm and the "
+    f"tray and lid are {P.BOX_IN[0] - 2 * P.FIT:.1f} x {P.BOX_IN[1] - 2 * P.FIT:.1f} mm, so they drop in "
+    "with 0.4 mm all round: please hold that outside envelope and do not grow it.",
     f"Critical fit: the 4 corner sleeves are {P.COLUMN_SIZE[0] + P.FIT:.1f} x "
-    f"{P.COLUMN_SIZE[1] + P.FIT:.1f} mm bores; a few tenths either way decides whether the part goes in.",
+    f"{P.COLUMN_SIZE[1] + P.FIT:.1f} mm bores; a few tenths either way decides whether the part goes in. "
+    "Please keep that bore to the nominal and tell me the as-built figure.",
     f"Wall thickness is {P.SLEEVE_WALL:.1f} mm minimum, {P.FLOOR_T:.1f} mm floor; the speaker mesh land "
     f"is {P.MESH_PITCH - P.MESH_HOLE_D:.1f} mm.",
-    "No supports modelled. Overhangs are 45 degrees or shallower; please confirm the process does not "
-    "need any, or quote support removal if it does.",
+    "No supports modelled. Overhangs are 45 degrees or shallower, which MJF does not need anyway.",
+    "The 4 board posts take M3 self-tapping screws; a standard MJF PA12 pilot is fine.",
     "The quote is for fit and feel, not a production run: it is not yet measured against a physical box.",
 ]
 
@@ -57,7 +63,7 @@ def file_list(fmt):
 
 def main(argv):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--material", default="MJF PA12 (nylon), black")
+    ap.add_argument("--material", default=MATERIAL)
     ap.add_argument("--format", default="stl", choices=("stl", "step"))
     args = ap.parse_args(argv)
 
