@@ -103,7 +103,8 @@ HELTEC_PADS = design.HELTEC_PADS
 SIZE_MM = design.SIZE_MM
 NPTH_XY = design.NPTH_XY
 PLACE = dict(design.PLACE)
-REF_AT = dict(design.REF_AT)
+REF_AT = {r: v for r, v in design.REF_AT.items() if r != "U3"}
+REF_AT |= {"U_AMP": (10.5, 27.5, 0), "C_DCPV": (20, 42, 0), "C_INP": (25, 42, 0)}
 _driver = design._driver
 
 
@@ -125,6 +126,65 @@ def _copy_blocks():
 
 
 BLOCKS = _copy_blocks()
+# Block 1 was the NS4168 amp; it now holds the DAC, its caps and the PAM8302A amp.
+BLOCKS[1] = {
+    "title": "I2S DAC and speaker amp", "at": (403.86, 12.7), "size": (152.4, 152.4),
+    "parts": {
+        # Rows 25.4 mm apart and 12.7 mm between 2-pin parts: enough margin for wire routing.
+        # The two ICs sit 23 mm apart so their pin zones stay clear.
+        "C_DVDD": (25.4, 25.4, 0, None), "C_DAVDD": (38.1, 25.4, 0, None),
+        "C_DCPV": (50.8, 25.4, 0, None), "C_DBULK": (63.5, 25.4, 0, None),
+        "C_DCP": (76.2, 25.4, 0, None), "C_DNEG": (88.9, 25.4, 0, None),
+        "C_DLDO": (101.6, 25.4, 0, None), "C_OL": (114.3, 25.4, 0, None),
+        "C_OR": (127.0, 25.4, 0, None),
+        "U_DAC": (55.88, 50.8, 0, None),
+        "U_AMP": (101.6, 50.8, 0, None),
+        "R_OL": (25.4, 76.2, 0, None), "R_OR": (38.1, 76.2, 0, None),
+        "C_INP": (50.8, 76.2, 0, None), "C_INN": (63.5, 76.2, 0, None),
+        "R_INP": (76.2, 76.2, 0, None), "R_INN": (88.9, 76.2, 0, None),
+        "C_AMP1": (101.6, 76.2, 0, None), "C_AMP2": (114.3, 76.2, 0, None),
+        "R_SD1": (127.0, 76.2, 0, None), "R_SDPD1": (139.7, 63.5, 0, None),
+        "J_SPK1": (139.7, 88.9, 0, "x"),
+    },
+    # Every net that leaves its pin pair is tagged explicitly in the free column at x=15.24:
+    # the DAC-to-amp nets are too short for gen_sch's labeler to find a straight run, so
+    # auto-naming them is not reliable. +3V3/GND are wired here because the DAC's three supply
+    # pins are 2.54 mm apart and cannot each take their own power port.
+    "tags": {
+        "I2S_BCLK": [(15.24, 10.16, "L")], "I2S_LRCLK": [(15.24, 15.24, "L")],
+        "I2S_DIN": [(15.24, 20.32, "L")],
+        "+3V3": [(15.24, 25.4, "L")], "GND": [(15.24, 30.48, "L")],
+        "DAC_CAPP": [(15.24, 35.56, "L")], "DAC_CAPM": [(15.24, 40.64, "L")],
+        "DAC_VNEG": [(15.24, 45.72, "L")], "DAC_LDOO": [(15.24, 50.8, "L")],
+        "DAC_OL": [(15.24, 55.88, "L")], "DAC_OR": [(15.24, 60.96, "L")],
+        "AUD_L": [(15.24, 66.04, "L")], "AUD_R": [(15.24, 71.12, "L")],
+        "AMP_INP_C": [(15.24, 76.2, "L")], "AMP_INN_C": [(15.24, 81.28, "L")],
+        "AMP_INP": [(15.24, 86.36, "L")], "AMP_INN": [(15.24, 91.44, "L")],
+        "AMP_SD_R": [(15.24, 96.52, "L")], "SPK_P": [(15.24, 101.6, "L")],
+        "SPK_N": [(15.24, 106.68, "L")],
+        "AMP_SD": [(149.86, 76.2, "L")],
+    },
+    "wired": {"+3V3", "GND"},
+}
+
+PLACE = {r: v for r, v in design.PLACE.items() if r != "U3"}
+# The DAC/amp corner is dense; reference text there collides with neighbouring silk, so it is
+# hidden (the value stays, and the refs are on the fab print and in the schematic).
+HIDE_REF = ("U_DAC", "U_AMP", "C_DCP", "C_DNEG", "C_DLDO", "C_DVDD", "C_DAVDD", "C_DCPV",
+            "C_DBULK", "R_OL", "C_OL", "R_OR", "C_OR", "C_INP", "R_INP", "C_INN", "R_INN")
+PLACE |= {
+    # DAC + amp replace the NS4168 in the J_SPK1 corner. U_AMP takes the U3 spot; the DAC and
+    # its passives come from a courtyard-free-space search on the JLC board (the corner is dense,
+    # so a few of them sit up to 19 mm away), each with >=1 mm to its neighbours for the iron.
+    "U_DAC": (25.0, 18.0, 0), "U_AMP": (15.2, 23.2, 90),
+    "C_DCP": (21.0, 24.0, 0), "C_DNEG": (26.0, 24.0, 0),
+    "C_DLDO": (5.0, 13.0, 0), "C_DVDD": (31.0, 24.0, 0), "C_DAVDD": (32.0, 21.0, 0),
+    "C_DCPV": (20.0, 39.5, 0), "C_DBULK": (12.0, 40.0, 0),
+    "R_OL": (4.0, 10.0, 0), "C_OL": (32.0, 18.0, 0),
+    "R_OR": (7.0, 40.0, 0), "C_OR": (32.0, 15.0, 0),
+    "C_INP": (25.0, 39.5, 0), "R_INP": (20.5, 42.5, 0),
+    "C_INN": (36.0, 24.0, 0), "R_INN": (25.5, 42.5, 0),
+}
 
 
 def check_header(m):
