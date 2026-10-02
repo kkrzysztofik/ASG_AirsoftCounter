@@ -35,6 +35,15 @@ def check_structure(m):
         assert refs <= m.PARTS.keys(), f"module {mod}: unknown parts {refs - m.PARTS.keys()}"
     for v, mods in m.VARIANTS.items():
         assert mods <= m.MODULES.keys(), f"variant {v}: unknown modules {mods - m.MODULES.keys()}"
+    if hasattr(m, "TME"):
+        # Hand-built board: nothing machine-placed, every bought part has a TME symbol.
+        assert not m.LCSC and not m.assembled(), "TME board must have no LCSC parts / placements"
+        bought = {(v, fp) for r, (v, sym, fp) in m.PARTS.items()
+                  if sym != "Mechanical:MountingHole" and r not in m.DNP | m.NOT_TME}
+        missing = sorted(k for k in bought if k not in m.TME)
+        assert not missing, f"parts without a TME symbol: {missing}"
+        stale = m.TME.keys() - bought
+        assert not stale, f"TME entries no part uses: {stale}"
 
 
 if __name__ == "__main__":
@@ -47,4 +56,26 @@ if __name__ == "__main__":
         assert "single pin" in str(e), e
     else:
         raise SystemExit("check_structure accepted a single-pin net")
+
+    bom = {"R1": ("1k", "Device:R", "fp"), "R2": ("2k", "Device:R", "fp")}
+    nets = {"A": ["R1.1", "R2.1"]}
+
+    def tme_ns(table):
+        return types.SimpleNamespace(PARTS=bom, NETS=nets, DNP=set(), NOT_TME=set(), LCSC={},
+                                     MODULES={}, VARIANTS={"x": set()}, TME=table,
+                                     assembled=lambda v="x": [])
+
+    check_structure(tme_ns({("1k", "fp"): "S1", ("2k", "fp"): "S2"}))   # complete table passes
+    try:
+        check_structure(tme_ns({("1k", "fp"): "S1"}))
+    except AssertionError as e:
+        assert "without a TME symbol" in str(e), e
+    else:
+        raise SystemExit("check_structure accepted a TME table missing a part")
+    try:
+        check_structure(tme_ns({("1k", "fp"): "S1", ("2k", "fp"): "S2", ("3k", "fp"): "S3"}))
+    except AssertionError as e:
+        assert "no part uses" in str(e), e
+    else:
+        raise SystemExit("check_structure accepted a stale TME entry")
     print("board.py self-check ok")
