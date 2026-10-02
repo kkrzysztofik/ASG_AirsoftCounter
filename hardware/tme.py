@@ -16,6 +16,8 @@ import os
 import sys
 from pathlib import Path
 
+from board import design  # pyright: ignore[reportMissingImports]
+
 HERE = Path(__file__).parent
 FAB = HERE / os.environ.get("FAB", "fab")
 
@@ -88,29 +90,53 @@ HAND = {
 }
 
 
+def from_lcsc(lcsc_table, keys):
+    """TME symbols for the (value, footprint) keys a JLC module already maps to LCSC numbers."""
+    return {k: TME[lcsc_table[k]] for k in keys if k in lcsc_table and lcsc_table[k] in TME}
+
+
 def main():
     boards = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    board_name = os.environ.get("BOARD", "")
+    if board_name.endswith("_tme"):
+        qty = {}
+        for r, (v, sym, fp) in design.PARTS.items():
+            if sym != "Mechanical:MountingHole" and r not in design.DNP | design.NOT_TME:
+                qty[design.TME[(v, fp)]] = qty.get(design.TME[(v, fp)], 0) + boards
+        (FAB / "tme_bom.csv").write_text("".join(f"{s};{n}\n" for s, n in sorted(qty.items())))
+        print(f"tme ok ({board_name}): {len(qty)} TME lines")
+        return
     boms = sorted(FAB.glob("jlc_bom*.csv"))
     if not boms:
         sys.exit(f"tme: no jlc_bom*.csv in {FAB} (run jlc.py first)")
     for bom in boms:
         tme, other = [], []
-        with open(bom, newline="") as f:
-            for row in csv.DictReader(f):
-                lcsc, qty = row["LCSC Part #"], len(row["Designator"].split(",")) * boards
-                if lcsc in TME:
-                    tme.append(f"{TME[lcsc]};{qty}\n")
-                elif lcsc in OTHER:
-                    other.append([lcsc, OTHER[lcsc], qty])
-                else:
-                    sys.exit(f"tme: {bom.name}: {lcsc} ({row['Comment']}) has no TME symbol; add it to tme.py")
+        try:
+            with open(bom, newline="") as f:
+                rows = list(csv.DictReader(f))
+        except OSError as e:
+            sys.exit(f"tme: cannot read {bom}: {e}")
+        for row in rows:
+            lcsc, qty = row["LCSC Part #"], len(row["Designator"].split(",")) * boards
+            if lcsc in TME:
+                tme.append(f"{TME[lcsc]};{qty}\n")
+            elif lcsc in OTHER:
+                other.append([lcsc, OTHER[lcsc], qty])
+            else:
+                sys.exit(f"tme: {bom.name}: {lcsc} ({row['Comment']}) has no TME symbol; add it to tme.py")
         tme += [f"{sym};{qty * boards}\n" for sym, qty in HAND.get(FAB.name, [])]
         suffix = bom.name.removeprefix("jlc_bom")
         (FAB / f"tme_bom{suffix}").write_text("".join(tme))
-        with open(FAB / f"tme_other{suffix}", "w", newline="") as f:
-            csv.writer(f, lineterminator="\n").writerows([["LCSC Part #", "Part", "Qty"], *other])
+        try:
+            with open(FAB / f"tme_other{suffix}", "w", newline="") as f:
+                csv.writer(f, lineterminator="\n").writerows([["LCSC Part #", "Part", "Qty"], *other])
+        except OSError as e:
+            sys.exit(f"tme: cannot write {FAB}/tme_other{suffix}: {e}")
         print(f"tme ok ({bom.name}): {len(tme)} TME lines, {len(other)} parts to buy elsewhere")
 
 
 if __name__ == "__main__":
+    assert from_lcsc({("1k", "fp"): "C17513"}, {("1k", "fp")}) == {("1k", "fp"): TME["C17513"]}
+    assert from_lcsc({("1k", "fp"): "C999999"}, {("1k", "fp")}) == {}          # unknown LCSC
+    assert from_lcsc({("1k", "fp"): "C17513"}, {("2k", "fp")}) == {}          # key not in table
     main()
