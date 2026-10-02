@@ -246,7 +246,8 @@ def verify():
     b = pcbnew.LoadBoard(str(PCB))
     ds = b.GetDesignSettings()
     got = [pcbnew.ToMM(v) for v in (ds.m_MinClearance, ds.m_TrackMinWidth, ds.m_ViasMinSize, ds.m_MinThroughDrill)]
-    assert got == [0.2, 0.15, 0.6, 0.3], f"project rules {got}"
+    want = [getattr(design, "DRC_RULES", {}).get("min_clearance", 0.2), 0.15, 0.6, 0.3]
+    assert got == want, f"project rules {got}"
     ns = ds.m_NetSettings
     # KiCad 9 names pattern-matched classes "Power,Default" (Default fills unset fields): check values
     for net, want in design.NETCLASS_EXPECT:

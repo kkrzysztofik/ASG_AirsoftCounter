@@ -106,11 +106,13 @@ for i in range(1, 5):
 
 # --- layout: reused from variant A by assignment; edited in T5.2 --------------------------------
 W, H, CORNER = pack.W, pack.H, pack.CORNER
-NETCLASS_POWER = pack.NETCLASS_POWER
-NETCLASS_EXPECT = pack.NETCLASS_EXPECT
+NETCLASS_POWER = tuple(p for p in pack.NETCLASS_POWER if p != "+5V")   # 82 mA peak; U1's fine VOUT pad
+NETCLASS_EXPECT = tuple((n, [0.8, 0.2] if n != "+5V" and w == 0.8 else [0.25, 0.15])
+                        for n, (w, _) in pack.NETCLASS_EXPECT)
+DEFAULT_CLEARANCE = 0.15   # the USB4085's own THT pads sit 0.15 mm apart
 RAILS = pack.RAILS
 PORT_LIB = pack.PORT_LIB
-DRC_RULES = pack.DRC_RULES
+DRC_RULES = {**pack.DRC_RULES, "min_clearance": 0.15}   # USB4085 THT pads sit 0.15 mm apart
 BOTTOM = pack.BOTTOM
 _CELL_X, _CELL_Y = pack._CELL_X, pack._CELL_Y
 _HOLDER_NPTH = pack._HOLDER_NPTH
@@ -124,10 +126,28 @@ GND_VIAS = list(pack.GND_VIAS)
 HELTEC_PADS = {}
 SIZE_MM = pack.SIZE_MM
 NPTH_XY = pack.NPTH_XY
-HIDE_REF = pack.HIDE_REF
+HIDE_REF = pack.HIDE_REF + ("U_CHG", "R_ALERT", "C_VDDA", "C_MCU3", "SW_BOOT", "SW_RST")
 SENSE_IN = pack.SENSE_IN
 PLACE = dict(pack.PLACE)
+for _gone in ("U_MON", "R_PWRDN", "D1"):   # replaced / dropped by the TME build
+    del PLACE[_gone]
+PLACE.update({
+    # The BQ25601 hand-solder footprint is 1.2 mm larger and its exposed pad is soldered from the
+    # back, so it leaves the holder floor for the holder-free right strip; the THT tact switches
+    # move to the left margin (x < 8) for the same reason.
+    "U_CHG": (90.0, 36.0, 0),
+    "J_USB1": (87.0, 23.0, 90),   # pulled in so the USB4085's silk clears the board edge
+    "SW_BOOT": (1.6, 48.0, 90), "SW_RST": (1.6, 60.0, 90),
+    "J_PWR1": (90.0, 70.5, 90), "J_KEY1": (90.0, 79.2, 90),
+    "C_MCU3": (59.0, 70.0, 0), "C_VDDA": (74.0, 66.5, 0),
+})
+for _i, _cy in enumerate(pack._CELL_Y, start=1):
+    # One INA228 per cell band, its IN+/IN- facing that cell's 10R Kelvin split.
+    PLACE[f"U_MON{_i}"] = (54.0, _cy, 0)
+    PLACE[f"C_MON{_i}"] = (54.0, _cy + 6.5, 0)
 REF_AT = dict(pack.REF_AT)
+REF_AT.pop("U_MON", None)
+REF_AT |= {f"U_MON{_i}": (54.0, _cy + 2.6, 0) for _i, _cy in enumerate(pack._CELL_Y, start=1)}
 _tags = pack._tags
 _cell = pack._cell
 
@@ -150,6 +170,59 @@ def _copy_blocks():
 
 
 BLOCKS = _copy_blocks()
+
+# --- T5.2 layout -------------------------------------------------------------------------------
+# The PAC1934's single monitor block becomes support only; each INA228 moves into the cell block
+# it senses, beside that cell's 10R Kelvin split. One fewer long sense route per cell, and the
+# four monitors spread over four blocks instead of crowding one.
+BLOCKS[1] = {
+    "title": "Diode-OR and 3V3 LDO", "at": (228.6, 12.7), "size": (114.3, 139.7),
+    "parts": {
+        "D_OR5": (25.4, 25.4, 0, None),
+        "U_LDO": (50.8, 25.4, 0, None),
+        "C_LDO1": (76.2, 25.4, 0, None),
+        "C_LDO2": (25.4, 50.8, 0, None),
+        "R_SCL_INT": (50.8, 50.8, 0, None),
+        "R_SDA_INT": (76.2, 50.8, 0, None),
+        "R_ALERT": (25.4, 76.2, 0, None),
+    },
+    "tags": _tags(["SCL_INT", "SDA_INT", "MON_ALERT", "SYS"], 12.7, 101.6, per_row=4),
+}
+# The L072 adds VDD (17) and VDDA (5) decoupling.
+BLOCKS[2]["size"] = (165.1, 190.5)
+BLOCKS[2]["parts"].update({
+    "U_MCU": (58.42, 55.88, 0, None),     # the L072 is 25.4 mm wide; move it clear of the left column
+    "C_MCU3": (30.48, 25.4, 0, None),
+    "C_VDDA": (43.18, 25.4, 0, None),
+    "TP_SWDIO": (95.25, 60.96, 0, None),
+    "R_LED_MCU": (95.25, 76.2, 0, None),
+    "LED_MCU": (105.41, 76.2, 90, None),
+    "TP_GND": (95.25, 91.44, 0, None),
+})
+BLOCKS[2]["tags"].pop("MON_PWRDN", None)
+# The L072's three +3V3 pins are adjacent on the top edge (2.54 mm apart), so they cannot each
+# take a power port: wire the rails and name them with tags, as the carrier amp block does.
+BLOCKS[2]["tags"]["+3V3"] = [(12.7, 186.69, "R")]
+BLOCKS[2]["tags"]["GND"] = [(33.02, 186.69, "R")]
+BLOCKS[2]["wired"] = {"+3V3", "GND"}
+# The synchronous MCP1640 needs no catch diode.
+del BLOCKS[3]["parts"]["D1"]
+
+for _i in range(1, 5):
+    _b = BLOCKS[3 + _i]
+    _b["title"] = f"Cell {_i} branch + INA228"
+    # The NTC bead and its divider resistor move down, clearing the INA228's right-hand pins.
+    _b["parts"].update({
+        f"U_MON{_i}": (63.5, 71.12, 0, None),
+        f"C_MON{_i}": (63.5, 44.45, 0, None),
+        f"TH{_i}": (83.82, 105.41, 0, None),
+        f"R_NTC{_i}": (83.82, 125.73, 0, None),
+    })
+    _b["tags"] = (_tags([f"CELL{_i}_F", f"CELL{_i}_S", f"CELL{_i}_RAW", f"CELL{_i}_SRC"],
+                         12.7, 152.4, per_row=4)
+                   | _tags(["SDA_INT", "SCL_INT", "MON_ALERT"], 12.7, 165.1, per_row=3)
+                   | {f"SNS_F{_i}": [(34.29, 68.58, "L")], f"SNS_S{_i}": [(40.64, 57.15, "L")],
+                      f"NTC{_i}": [(83.82, 144.78, "R")]})
 
 
 def check_branches():

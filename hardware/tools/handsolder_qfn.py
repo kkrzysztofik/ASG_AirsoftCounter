@@ -71,6 +71,14 @@ def _grow_courtyard(fp):
             setter(pcbnew.VECTOR2I(x, y))
 
 
+def _pin1_to_fab(fp):
+    """The source's pin-1 silk triangle lands on the extended pads; put it on F.Fab so the fab
+    print still shows orientation without a silk-over-mask DRC warning."""
+    for g in fp.GraphicalItems():
+        if g.GetLayer() == pcbnew.F_SilkS and g.GetShape() == pcbnew.SHAPE_T_POLY:
+            g.SetLayer(pcbnew.F_Fab)
+
+
 def build():
     fp = _load()
     numbered = [p for p in fp.Pads() if p.GetNumber().isdigit()]
@@ -80,6 +88,7 @@ def build():
             _extend(p)
     _through_hole(next(p for p in numbered if p.GetNumber() == "25"))
     _grow_courtyard(fp)
+    _pin1_to_fab(fp)
     fp.SetLibDescription(
         "QFN-24 4x4 mm 0.5 mm pitch, hand-solder variant: pads extended 0.6 mm outward for drag "
         "soldering, exposed pad as a 1.5 mm plated hole to fill from the back. Flux, drag the pad "
@@ -136,6 +145,9 @@ def check():
     assert ep.GetDrillSize() == pcbnew.VECTOR2I_MM(HOLE, HOLE), "exposed-pad drill is not 1.5 mm"
     assert ep.GetSize() == pcbnew.VECTOR2I_MM(EP, EP), "exposed pad is not 2.6 x 2.6 mm"
     assert not ep.IsOnLayer(pcbnew.F_Paste), "exposed pad still has paste"
+    silk_polys = [g for g in pcbnew.FootprintLoad(str(DEST), NAME).GraphicalItems()
+                  if g.GetLayer() == pcbnew.F_SilkS and g.GetShape() == pcbnew.SHAPE_T_POLY]
+    assert not silk_polys, "pin-1 silk marker still over the extended pads"
 
 
 if __name__ == "__main__":

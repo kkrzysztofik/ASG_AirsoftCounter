@@ -818,7 +818,8 @@ def project(root):
             "meta": {"version": 4},
             "classes": [
                 # KiCad 9 silently drops every class if "priority" is missing
-                {"name": "Default", "priority": 2147483647, "track_width": 0.25, "clearance": 0.2, **VIA},
+                {"name": "Default", "priority": 2147483647, "track_width": 0.25,
+                 "clearance": getattr(design, "DEFAULT_CLEARANCE", 0.2), **VIA},
                 # 0.2 mm, not 0.25: kept from the MAX98357A (TQFN, 0.25 mm pad gaps), where Freerouting could only neck
                 # a VBAT_SW track down into its VDD pads at the default clearance
                 {"name": "Power", "priority": 0, "track_width": 0.8, "clearance": 0.2, **VIA},
