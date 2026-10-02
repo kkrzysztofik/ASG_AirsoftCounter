@@ -246,6 +246,41 @@ MJF for the small parts, where the four bushings and the grille are about 15 cm3
 Do not skeletonise the tray further to chase cost. Its floor carries the posts, the saddles and the
 wall backings, and the remaining bulk is structure, not slack.
 
+## JLC3DP design guideline compliance
+
+Source: <https://jlc3dp.com/help/article/3d-printing-design-guideline>, read 2026-10-02. The MJF
+column applies. `check.py` asserts each rule, so a later tweak cannot quietly break one.
+
+| Rule | Guideline | This design |
+|---|---|---|
+| Build size | MJF max 380 x 284 x 380; min 5 x 5 x 5 or 10 x 2 x 2 | largest 188.4 x 138.4 x 67.6; smallest a 4 mm thick ring, which passes on the 10 x 2 x 2 form |
+| Wall thickness | 1.0 / 1.2 / 1.5 mm at 50 / 100 / 200 mm part size | every wall sized against its own part: floor field 1.6, sleeve 2.0, panel 2.5, mesh land 1.5, ring width 6.0 |
+| Assembly clearance | 0.2-0.4 mm per side | 0.4 mm per side |
+| Hole aperture vs depth | about 3x the diameter | pilot 2.7 x 5, clip groove 4.4 x 10, mesh 3.5 x 1.5 |
+| Small columns | D = 3 mm permits H = 3-6 mm | posts are 4:1, so each gets a 3 mm 45-degree base flare |
+| Escape holes | 2.5 mm minimum into any enclosed cavity | no part encloses a cavity; asserted by shell count |
+| Embossed detail | 0.8 mm deep and wide | none modelled yet; the NFC "tap here" mark will need it |
+| Threads | M6 minimum if printing threads | none printed; the posts take M3 self-tapping screws into a 2.7 mm pilot |
+
+Four real non-compliances turned up, all fixed:
+
+1. **Wall thickness.** The tray floor field was 1.2 mm where MJF wants 1.5 at this part size, and the
+   speaker mesh land was 1.0 mm where it wants 1.2. The floor field is now 1.6 mm and the mesh land
+   1.5 mm (2.7 holes became 3.5 mm at a 5.0 mm pitch, which still opens 42 %).
+2. **Assembly clearance.** An 0.4 mm total drop-in gap is 0.2 mm per side, but MJF's hole tolerance is
+   +/-0.3 mm *and* holes shrink, so the gap was inside the process noise and the tray could arrive
+   unable to go in. `FIT` is now 0.8 mm: 0.4 mm per side.
+3. **The bushings were degenerate.** Once the wall is drilled at the device's own size there is no
+   annulus left for a barrel: for the SMA, 6.5 mm hole against a 6.4 mm device gives a *negative*
+   wall. They are rings now, which is what a 3 mm PS/ABS wall around a 22 or 30 mm hole actually
+   needs, and the O-ring still seats on the ring.
+4. **The printed posts are 4:1 slender**, where the column table allows 2:1. They are attached at the
+   base rather than free-standing, but bead blasting is unkind, so each gets a 3 mm 45-degree flare
+   for about 2 cm3.
+
+One thing to raise with the shop before committing: the guideline says a large hollow structure is
+priced as a "special-shaped model" with a surcharge, and the tray and lid are exactly that.
+
 ## Verification
 
 1. **Self-check** (`python3 -c` importable without build123d): bounding box fits `BOX_IN` minus

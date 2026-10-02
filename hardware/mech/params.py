@@ -5,6 +5,22 @@ Coordinates: origin at the inner floor corner of the box, +X along 190, +Y along
 Sources are named per line; anything marked MEASURE is a placeholder until the box arrives.
 """
 
+# --- JLC3DP design guideline ------------------------------------------------------------------
+# Source: https://jlc3dp.com/help/article/3d-printing-design-guideline, read 2026-10-02. The MJF
+# column is the one that applies; the SLA/FDM figures are stricter or looser and we are not using
+# them. Everything below is asserted in check.py so a rule cannot be quietly broken by a tweak.
+GUIDE_SOURCE = "jlc3dp.com/help/article/3d-printing-design-guideline (MJF column)"
+# Wall thickness scales with part size. (largest part dimension mm, minimum wall mm)
+MJF_WALL_BY_SIZE = ((50.0, 1.0), (100.0, 1.2), (200.0, 1.5), (400.0, 2.0))
+MJF_MIN_CLEARANCE = 0.2       # per side, between parts that assemble together (range 0.2-0.4)
+MJF_HOLE_TOL = 0.3            # +/- mm, and holes shrink rather than grow
+MJF_MIN_ESCAPE_HOLE = 2.5     # any enclosed cavity needs one, two if it is under 3.0
+MJF_EMBOSS_MIN = 0.8          # embossed or engraved detail, deep and wide
+MJF_COLUMN_RATIO = 2.0        # H/D guidance for a printed column (D=3 -> H=3-6)
+MJF_MIN_BUILD = (10.0, 2.0, 2.0)   # the "10 x 2 x 2" alternative to 5 x 5 x 5
+MJF_MAX_BUILD = (380.0, 284.0, 380.0)
+
+
 # --- enclosure -----------------------------------------------------------------------------
 # Pawbol karta katalogowa, S-BOX 416_416B_416-P: the drawing note says A, B and C are INSIDE
 # dimensions, so the 70 is the base interior and the lid recess sits on top of it.
@@ -12,8 +28,11 @@ BOX_IN = (190.0, 140.0, 70.0)  # MEASURE (firm per drawing, confirm with a rule)
 WALL = 3.0                    # (196 - 190) / 2, confirmed by (146 - 140) / 2
 LID_T = 2.5                   # printed lid panel thickness (the transparent lid is what faces weather)
 LID_RECESS = 8.0              # MEASURE depth available above the base rim
-FIT = 0.4                     # drop-in clearance, whole part; tune on the coupon
+FIT = 0.8                     # drop-in clearance, whole part. Must be at least twice the MJF
+                              # hole tolerance (0.3), or the part arrives unable to go in.
 FLOOR_T = 2.4                 # tray floor thickness
+FLOOR_FIELD = 1.6             # floor left after the lightening pocket; the MJF floor is 1.5 at
+                              # this part size, so this is that plus a little
 
 # --- corner columns and screws --------------------------------------------------------------
 # The drawing dimensions 148 and (probably) 99 span the corner screw axes. Only 148 is certain.
@@ -36,6 +55,10 @@ CARRIER_HOLES = [(3.5, 3.5), (86.5, 3.5), (3.5, 56.5), (86.5, 56.5)]
 EXPECTED_HOLES = {"pack": PACK_HOLES, "carrier": CARRIER_HOLES}
 POST_R = 4.0                  # printed post radius under an M3 self-tapper
 POST_PILOT = 2.7              # M3 self-tapping pilot
+POST_FLARE = 3.0              # 45-degree flare at a post's base: H/D guidance makes a bare
+                              # column this tall too slender to survive bead blasting
+POST_FLARE_H = 6.0
+PILOT_DEPTH = 5.0             # hole depth for the M3 pilot; see the hole-aperture rule
 ARM_W = 8.0                   # width of the carrier bracket arms
 # A wall backing is a nut pocket, not a block. Thin and narrow also keeps it clear of the corner
 # columns, which reach 31 mm in from the wall and will silently swallow anything wider.
@@ -84,17 +107,22 @@ WALL_PARTS = {
 }
 # Cable tie points, inboard of the corner columns so a clip cannot end up inside one.
 CLIP_XY = [(148.0, 30.0), (148.0, 110.0)]
+CLIP_GROOVE_D = 4.4           # hole through a clip, for a small cable tie
 BACKING_H = 18.0               # half-height of a wall backing block
 SPEAKER_WALL = {"wall": "long", "u": 40.0, "z": 30.0}  # Ø50, own grille plate
-BUSHING_FLANGE = 4.0          # bushing flange thickness
-BUSHING_LIP = 2.0             # bushing lip past the wall's inner face
-BUSHING_FLANGE_D = 12.0       # extra flange diameter over the drilled hole
+BUSHING_FLANGE = 4.0          # ring thickness. A ring, not a barrel: the wall is 3 mm of
+                              # PS/ABS with a hole in it, and the ring is what stops it cracking
+                              # and what seats the O-ring. There is no room for a barrel because
+                              # the hole is drilled at the device's own size.
+BUSHING_FLANGE_D = 12.0       # extra ring diameter over the drilled hole
 ORING_GROOVE = (1.5, 1.0)     # (width, depth) of the face-seal groove
 
 # --- speaker mesh ---------------------------------------------------------------------------
 MESH_OPEN = 0.40              # minimum open area over the speaker face
-MESH_HOLE_D = 2.6             # round holes print stronger at this land width than slots
-MESH_PITCH = 3.6              # triangular pitch; land = pitch - hole = 1.0 mm
+MESH_HOLE_D = 3.5             # hole diameter; 3.5 mm is acoustically transparent well past
+                              # 10 kHz at 1.5 mm deep, and gives the land room below
+MESH_PITCH = 5.0              # triangular pitch; land 1.5 mm clears the 1.2 the MJF floor needs
+                              # at this part size, and 85 holes still opens 42 %
 GRILLE_RIM = 8.0              # grille plate radius over the speaker radius
 GRILLE_T = 4.0                # total plate thickness
 GRILLE_RECESS = 2.5           # inner counterbore, so each hole is only ~1.5 mm deep
@@ -227,6 +255,20 @@ def _gap(a, b):
     dx = max(a[0] - b[1], b[0] - a[1], 0.0)
     dy = max(a[2] - b[3], b[2] - a[3], 0.0)
     return (dx * dx + dy * dy) ** 0.5
+
+
+def mjf_min_wall(max_dim):
+    """Minimum wall an MJF part of this size may have, per the guideline table."""
+    wall = MJF_WALL_BY_SIZE[0][1]
+    for size, w in MJF_WALL_BY_SIZE:
+        if max_dim <= size:
+            return w
+        wall = w
+    return wall
+
+
+def mesh_land():
+    return MESH_PITCH - MESH_HOLE_D
 
 
 def mesh_open_area():

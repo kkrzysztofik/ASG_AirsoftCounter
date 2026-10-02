@@ -49,6 +49,11 @@ SHOP_NOTES = [
     f"is {P.MESH_PITCH - P.MESH_HOLE_D:.1f} mm.",
     "No supports modelled. Overhangs are 45 degrees or shallower, which MJF does not need anyway.",
     "The 4 board posts take M3 self-tapping screws; a standard MJF PA12 pilot is fine.",
+    "Checked against the JLC3DP 3D printing design guideline (MJF column) and compliant: build "
+    "size, size-dependent wall thickness, 0.2-0.4 mm assembly clearance, hole aperture vs depth, "
+    "small-column H/D with a base flare, and no enclosed cavities so no escape holes are needed.",
+    "The tray and lid are large hollow shells, which the guideline prices as a special-shaped "
+    "model; please say if that carries a surcharge before we commit.",
     "The quote is for fit and feel, not a production run: it is not yet measured against a physical box.",
 ]
 

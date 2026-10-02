@@ -169,6 +169,102 @@ def sleeve_walls_miss_the_column_bore():
     return ok("sleeve walls hug the columns without intruding on the bore")
 
 
+def jlc_wall_thickness():
+    """Guideline 2: the minimum wall depends on the part's own size, so size each one."""
+    big = max(params.BOX_IN[0], params.BOX_IN[1])
+    grille = params.SPEAKER_D + 2 * params.GRILLE_RIM
+    items = [
+        ("tray floor field", params.FLOOR_FIELD, big),
+        ("tray sleeve wall", params.SLEEVE_WALL, big),
+        ("tray saddle rail", params.SADDLE_T, big),
+        ("tray bracket arm", params.ARM_W, big),
+        ("lid panel", params.LID_T, big),
+        ("grille mesh land", params.mesh_land(), grille),
+        ("grille face under the holes", params.GRILLE_T - params.GRILLE_RECESS, grille),
+    ]
+    for name, wp in params.WALL_PARTS.items():
+        dia = wp["hole_d"] + params.BUSHING_FLANGE_D
+        items.append((f"{name} ring width", params.BUSHING_FLANGE_D / 2, dia))
+    for name, wall, size in items:
+        need = params.mjf_min_wall(size)
+        if wall + 1e-9 < need:
+            return fail(f"JLC wall: {name} is {wall:.2f} mm, MJF needs {need:.2f} at {size:.0f} mm")
+    return ok(f"JLC wall: all {len(items)} features meet the size-dependent MJF minimum")
+
+
+def jlc_clearance():
+    """Guideline 5 and 10: MJF needs 0.2-0.4 mm per side, and its hole tolerance is +-0.3 mm.
+
+    A nominal 0.2 mm gap is therefore inside the process noise, which is why FIT is what it is.
+    """
+    per_side = params.FIT / 2
+    if per_side < params.MJF_MIN_CLEARANCE:
+        return fail(f"JLC clearance: {per_side:.2f} mm per side, MJF needs {params.MJF_MIN_CLEARANCE}")
+    if per_side < params.MJF_HOLE_TOL:
+        return fail(
+            f"JLC clearance: {per_side:.2f} mm per side is inside the +-{params.MJF_HOLE_TOL} mm "
+            "MJF hole tolerance, so the part can arrive unable to go in"
+        )
+    return ok(f"JLC clearance: {per_side:.2f} mm per side clears both the 0.2 mm rule and the "
+              f"+-{params.MJF_HOLE_TOL} mm hole tolerance")
+
+
+def jlc_holes():
+    """Guideline 7: aperture against depth. The table runs to about 3x the diameter."""
+    holes = [
+        ("board post pilot", params.POST_PILOT, params.PILOT_DEPTH),
+        ("cable clip groove", params.CLIP_GROOVE_D, 10.0),
+        ("speaker mesh", params.MESH_HOLE_D, params.GRILLE_T - params.GRILLE_RECESS),
+    ]
+    for name, dia, depth in holes:
+        if dia < 1.5:
+            return fail(f"JLC holes: {name} is {dia:.1f} mm, MJF has no entry below 1.5 mm")
+        if depth > 3 * dia:
+            return fail(f"JLC holes: {name} is {dia:.1f} mm across and {depth:.1f} mm deep, "
+                        f"past the 3x guidance")
+    return ok(f"JLC holes: all {len(holes)} apertures are inside the depth guidance")
+
+
+def jlc_build_size():
+    """Guideline 1: the build envelope, and the 5x5x5 / 10x2x2 minimum.
+
+    The minimum accepts either a 5 mm cube or a 10 x 2 x 2 sliver, so a flat ring is fine.
+    """
+    big = (params.BOX_IN[0], params.BOX_IN[1], params.panel_z0())
+    for i, axis in enumerate("XYZ"):
+        if big[i] > params.MJF_MAX_BUILD[i]:
+            return fail(f"JLC build: {big[i]:.1f} mm on {axis} exceeds MJF's {params.MJF_MAX_BUILD[i]}")
+
+    rings = []
+    for name, wp in params.WALL_PARTS.items():
+        dia = wp["hole_d"] + params.BUSHING_FLANGE_D
+        rings.append((name, (dia, dia, params.BUSHING_FLANGE)))
+    for name, dims in rings:
+        cube = all(d >= 5.0 for d in dims)
+        sliver = max(dims) >= 10.0 and sorted(dims)[0] >= 2.0
+        if not (cube or sliver):
+            return fail(f"JLC build: {name} ring {dims} is under the minimum build size")
+    return ok(f"JLC build: largest part {big[0]:.0f} x {big[1]:.0f} x {big[2]:.0f} inside "
+              f"{params.MJF_MAX_BUILD[0]:.0f} x {params.MJF_MAX_BUILD[1]:.0f} x "
+              f"{params.MJF_MAX_BUILD[2]:.0f}; smallest is a {params.BUSHING_FLANGE:.0f} mm "
+              "thick ring, which passes on the 10 x 2 x 2 rule")
+
+
+def jlc_columns():
+    """Guideline 8: column diameter against height (D=3 mm -> H=3-6 mm).
+
+    The printed posts are taller than a bare column of their diameter should be, which is what
+    the 45-degree base flare is for.
+    """
+    for name, top in (("pack post", params.pack_z()), ("carrier post", params.carrier_z())):
+        ratio = top / (2 * params.POST_R)
+        if ratio > 4.0 and params.POST_FLARE <= 0:
+            return fail(f"JLC column: {name} is {ratio:.1f}:1 tall with no base flare")
+    return ok(f"JLC column: posts are up to "
+              f"{max(params.pack_z(), params.carrier_z()) / (2 * params.POST_R):.1f}:1 with a "
+              f"{params.POST_FLARE:.0f} mm flare at the base")
+
+
 def wall_parts_sane():
     for name, p in params.WALL_PARTS.items():
         if p["device_d"] >= p["hole_d"]:
@@ -192,6 +288,11 @@ CHECKS = [
     backings_clear_the_columns,
     clips_clear_the_columns,
     sleeve_walls_miss_the_column_bore,
+    jlc_wall_thickness,
+    jlc_clearance,
+    jlc_holes,
+    jlc_build_size,
+    jlc_columns,
     wall_parts_sane,
 ]
 

@@ -19,6 +19,7 @@ try:
     from build123d import (
         Box,
         Circle,
+        Cone,
         Cylinder,
         ExportSVG,
         Plane,
@@ -75,6 +76,19 @@ def tri_prism_x(y0, y1, z0, z1, x_centre, width):
     return Pos(x_centre - (bb.min.X + bb.max.X) / 2, 0, 0) * prism
 
 
+def post(x, y, z_top, pilot=True):
+    """A printed post: a straight column plus a 45-degree base flare.
+
+    The guideline's column table (D=3 mm -> H=3-6 mm) makes a bare 32 mm column of any sensible
+    diameter too slender to survive bead blasting. The flare is the cheap fix.
+    """
+    part = cyl_z(x, y, 0, z_top, P.POST_R)
+    part += Pos(x, y, P.POST_FLARE_H / 2) * Cone(P.POST_R + P.POST_FLARE, P.POST_R, P.POST_FLARE_H)
+    if pilot:
+        part -= cyl_z(x, y, z_top - P.PILOT_DEPTH, z_top + 1, P.POST_PILOT / 2)
+    return part
+
+
 # --- tray ------------------------------------------------------------------------------------
 
 
@@ -83,8 +97,8 @@ def make_tray():
     y0, y1 = P.FIT, P.BOX_IN[1] - P.FIT
 
     tray = box(x0, x1, y0, y1, 0, P.FLOOR_T)
-    # lighten the field, leaving a 12 mm border and 1.2 mm under the cells
-    tray -= box(x0 + 12, x1 - 12, y0 + 12, y1 - 12, P.FLOOR_T - 1.2, P.FLOOR_T + 1)
+    # lighten the field, leaving a 12 mm border and P.FLOOR_FIELD of floor in the middle
+    tray -= box(x0 + 12, x1 - 12, y0 + 12, y1 - 12, P.FLOOR_FIELD, P.FLOOR_T + 1)
 
     # corner sleeves: an L per corner, not a closed tube, at a third of the material
     bore_x = P.COLUMN_SIZE[0] + P.FIT
@@ -112,17 +126,12 @@ def make_tray():
     # pack board posts, flush with the board's underside, M3 self-tapping pilots
     pz = P.pack_z()
     for hx, hy in P.PACK_HOLES:
-        px, py = P.PACK_ORIGIN[0] + hx, P.PACK_ORIGIN[1] + hy
-        post = cyl_z(px, py, -0.1, pz, P.POST_R)
-        post -= cyl_z(px, py, pz - 6, pz + 1, P.POST_PILOT / 2)
-        tray += post
+        tray += post(P.PACK_ORIGIN[0] + hx, P.PACK_ORIGIN[1] + hy, pz)
 
     # carrier posts: in the margins, reaching in on gusseted arms
     cz = P.carrier_z()
     for (px, py), (hx, hy) in zip(P.carrier_post_xy(), P.carrier_hole_xy(), strict=True):
-        post = cyl_z(px, py, -0.1, cz, P.POST_R)
-        post -= cyl_z(px, py, cz - 6, cz + 1, P.POST_PILOT / 2)
-        tray += post
+        tray += post(px, py, cz)
         tray += tri_prism_x(py, hy, -0.1, cz, px, P.ARM_W)
         tray += cyl_z(hx, hy, cz - 4, cz, P.POST_R)
 
@@ -136,7 +145,7 @@ def _cable_clips():
     clips = None
     for cx, cy in P.CLIP_XY:
         clip = box(cx - 5, cx + 5, cy - 6, cy + 6, -0.1, P.FLOOR_T + 8)
-        clip -= cyl_x(cy, P.FLOOR_T + 5, cx - 6, cx + 6, 2.2)
+        clip -= cyl_x(cy, P.FLOOR_T + 5, cx - 6, cx + 6, P.CLIP_GROOVE_D / 2)
         clips = clip if clips is None else clips + clip
     return clips
 
@@ -207,19 +216,22 @@ def make_lid():
 
 
 def make_bushing(device):
-    """Flange outside, barrel through the wall, device bore down the middle. Axis is +Z."""
-    wp = P.WALL_PARTS[device]
-    fr = wp["hole_d"] / 2 + P.BUSHING_FLANGE_D / 2
-    br = wp["hole_d"] / 2 - 0.1
-    dr = wp["device_d"] / 2
-    gw, gd = P.ORING_GROOVE
-    top = P.WALL + P.BUSHING_LIP
+    """A reinforcement and O-ring ring around a drilled wall hole. Axis is +Z, sitting on the
+    wall's outside face.
 
-    part = cyl_z(0, 0, -P.BUSHING_FLANGE, 0, fr)
-    part += cyl_z(0, 0, 0, top, br)
-    part -= cyl_z(0, 0, -P.BUSHING_FLANGE - 1, top + 1, dr)
-    if dr < br - gw:
-        part -= cyl_z(0, 0, -gd, 0, dr + gw)
+    Not a barrel. The hole is drilled at the device's own size, so there is no annulus left for
+    a barrel wall: at 6.5 mm hole / 6.4 mm device the wall would be negative. What a bushing was
+    ever for here is stopping a 3 mm PS/ABS wall cracking around a 22 or 30 mm hole, and giving
+    the O-ring a flat seat, and a ring does both.
+    """
+    wp = P.WALL_PARTS[device]
+    outer = wp["hole_d"] / 2 + P.BUSHING_FLANGE_D / 2
+    bore = wp["device_d"] / 2
+    gw, gd = P.ORING_GROOVE
+    part = cyl_z(0, 0, -P.BUSHING_FLANGE, 0, outer)
+    part -= cyl_z(0, 0, -P.BUSHING_FLANGE - 1, 1, bore)
+    if outer - bore > gw + 1.0:
+        part -= cyl_z(0, 0, -gd, 0.01, bore + gw)
     return part
 
 
@@ -370,6 +382,12 @@ def check_part(name, part):
         raise SystemExit(f"FAIL {name}: {solids} solids, expected 1")
     if part.volume <= 0:
         raise SystemExit(f"FAIL {name}: empty")
+    shells = len(part.shells())
+    if shells != 1:
+        raise SystemExit(
+            f"FAIL {name}: {shells} shells, so it encloses a cavity; MJF needs a "
+            f"{P.MJF_MIN_ESCAPE_HOLE} mm escape hole into it"
+        )
     limit_x = P.BOX_IN[0] - 2 * P.FIT + 1e-6
     limit_y = P.BOX_IN[1] - 2 * P.FIT + 1e-6
     if name in ("tray", "lid"):
