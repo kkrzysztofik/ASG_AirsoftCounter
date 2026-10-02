@@ -53,7 +53,7 @@ GNSS = 29.0  # Quectel L76K hardware design: 29 mA acquisition and tracking, on 
 NFC_POLL = 20.0  # design doc: PN532 RF bursts ~50 ms on / 300 ms, average. Datasheet is ~91 mA
                  # field-on and ~20-30 mA idle, so one of the two is under-counted.
 NFC_IDLE = 3.0  # EST: module power LED + PN532 PowerDown command (45 uA). A chip left running
-                # idles ~20 mA, which makes the parked figure 12 days instead of 44.
+                # idles ~20 mA, which makes the parked figure ~19 days instead of ~47.
 LCD_ON_5V = 32.0  # Newhaven NHD-0420D3Z-FL-GBW-V3, LCD + backlight at level 8: 21/32/44 mA
                   # min/typ/max (datasheet). Its PIC PWMs the backlight (0xFE 0x53, levels 1-8).
 LCD_IDLE_5V = 5.0  # EST: PIC16F690 + ST7066U with the backlight at level 1 (off). Measure it
@@ -157,10 +157,10 @@ def main():
     budget = weekend_ma()
     print(f"\nWeekend ({DAYS} x {GAME_H} h game + {NIGHT_H} h parked, 0 C, cells at {AGED:.0%}): "
           f"game current must stay under {budget:.0f} mA")
-    for name, kw in (("today's firmware, backlight on", dict(backlight=1.0)),
-                     ("today's firmware, backlight on a timeout", dict(backlight=BACKLIGHT_DUTY)),
-                     ("optimized firmware, backlight on a timeout", dict(backlight=BACKLIGHT_DUTY, opt=True))):
-        total = sum(scenario(True, True, **kw).values())
+    for name, backlight, opt in (("today's firmware, backlight on", 1.0, False),
+                                 ("today's firmware, backlight on a timeout", BACKLIGHT_DUTY, False),
+                                 ("optimized firmware, backlight on a timeout", BACKLIGHT_DUTY, True)):
+        total = sum(scenario(True, True, backlight, opt=opt).values())
         print(f"  {name:44} {total:4.0f} mA  {'PASS' if total < budget else 'FAIL'}"
               f"  ({100 * (budget / total - 1):+.0f} % margin)")
 
