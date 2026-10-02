@@ -9,6 +9,9 @@ part on top (2026-10-01 rework; the first layout, 140 x 100 mm with Keystone 104
 placed parts under the holder floor). Re-check the holder against its drawing and the hole pattern
 against the ZP240.190 plate before ordering.
 
+This is **variant A** (pack MCU). Variant B, the same pack with no MCU and the Heltec as I2C master,
+is `2026-10-02-pack-board-variant-b-design.md` (design only); both are kept.
+
 ## Simplification delta (2026-10-02)
 
 The first quote was about $140 for 5 assembled boards, mostly Extended setup fees (15 types x ~$3) and
@@ -16,8 +19,8 @@ per-board chip cost. Changes, regenerated with `make BOARD=pack all` (ERC/DRC/ge
 
 - **No protector IC.** The four XB8089D (and their 1k/100nF) are gone; holder- goes straight to GND.
   Each job it did is covered elsewhere: short circuit by the per-cell 5 A fuse and the output PTC;
-  overcharge by the BQ25601 (CV 4.208 V plus its battery over-voltage cutoff, *unverified: check the
-  datasheet figure*); over-discharge by the default-off switches (a dead or reset MCU leaves every cell
+  overcharge by the BQ25601 (CV 4.208 V plus its battery over-voltage cutoff at 104 % of VREG,
+  103-105 %, verified 2026-10-02 in the datasheet's BATOVP table); over-discharge by the default-off switches (a dead or reset MCU leaves every cell
   open through `R_PD`) and the firmware UV limit; reversed cell by the crowbar and fuse, as before.
   Remaining gap: firmware that runs but keeps a switch closed below 2.5 V. The firmware must run the
   IWDG and host-test the UV disconnect in `asg-core`.
