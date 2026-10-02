@@ -80,6 +80,17 @@ LID_RECESS = 8.0              # MEASURE depth available above the base rim
 # The 1.33 is margin for a first-off part.
 FIT = round(2 * max(RULES["clear"], RULES["hole_tol"]) * 1.33, 1)
 FLOOR_T = 2.4                 # tray floor thickness
+# v2: the floor is a rim plus two mount bands, with the empty middle cut away. The mounts are
+# the posts, clips and sleeves at the two Y bands; everything between them only needs the two
+# saddle rails, so the windows stop exactly at the rail edges: a window boundary inside a rail
+# would leave a sliver of floor beside it. (x0, x1, y0, y1), asserted clear of every mount in
+# check.py.
+FLOOR_RIM = 12.0
+FLOOR_WINDOWS = [
+    (34.0, 70.0, 38.0, 102.0),
+    (76.0, 114.0, 38.0, 102.0),
+    (120.0, 176.0, 38.0, 102.0),
+]
 # Floor left under the lightening pocket. Sized off the rule rather than picked, because FDM
 # wants 2.0 mm where MJF wants 1.5 at this part size and the difference is not a free choice.
 FLOOR_FIELD = round(min_wall(max(BOX_IN[0], BOX_IN[1])) + 0.1, 2)
@@ -110,10 +121,6 @@ POST_FLARE = 3.0              # 45-degree flare at a post's base: H/D guidance m
 POST_FLARE_H = 6.0
 PILOT_DEPTH = 5.0             # hole depth for the M3 pilot; see the hole-aperture rule
 ARM_W = 8.0                   # width of the carrier bracket arms
-# A wall backing is a nut pocket, not a block. Thin and narrow also keeps it clear of the corner
-# columns, which reach 31 mm in from the wall and will silently swallow anything wider.
-BACKING = (20.0, 6.0)         # (width along the wall, depth into the box) per wall device
-BACKING_H = 15.0              # half-height of a wall backing
 
 PACK_ORIGIN = ((BOX_IN[0] - PACK[0]) / 2, (BOX_IN[1] - PACK[1]) / 2)          # (47, 25)
 CARRIER_ORIGIN = ((BOX_IN[0] - CARRIER[0]) / 2, (BOX_IN[1] - CARRIER[1]) / 2)  # (50, 40)
@@ -129,7 +136,7 @@ HOLDER_Y = [12.35, 34.01, 55.67, 77.33]  # pack.PLACE["BT1".."BT4"] y, board spa
 # puts the cell bottom this far above the tray floor. MEASURE on the coupon.
 CELL_BOTTOM_Z = 7.4
 PACK_OVERLAP = 3.5            # how far the cell protrudes past the holder's underside
-SADDLE_T = 8.0                # saddle rail thickness along X
+SADDLE_T = 6.0                # saddle rail thickness along X (v2: was 8, 6 is plenty)
 SADDLE_INSET = 22.0           # saddle rails sit this far either side of the cell centres
 SADDLE_CLEAR = 0.4
 LCD_DEPTH = 13.0              # MEASURE 20x4 + HW-61 backpack, hangs below the panel
@@ -147,6 +154,9 @@ NFC_CENTRE = (160.0, 25.0)    # bottom right: clear of the LCD frame and of the 
 NFC_SIZE = 45.0
 NFC_MIN_FROM_LCD = 20.0       # or the PN532 range dies
 # hole_d = hole drilled in the wall, device_d = the device's own mounting thread/body.
+# v2 dropped the tray's wall backing blocks: 23.3 cm3 of the old tray, a fifth of it, to hold a
+# nut while you tighten a panel device. A nyloc and a finger do the same job. The devices, their
+# hole sizes and their drill templates are unchanged.
 # u is measured along the wall from the corner: every one of these has to clear the corner
 # columns, whose footprints reach 31 mm in from each wall (asserted in check.py).
 WALL_PARTS = {
@@ -158,7 +168,6 @@ WALL_PARTS = {
 # Cable tie points, inboard of the corner columns so a clip cannot end up inside one.
 CLIP_XY = [(148.0, 30.0), (148.0, 110.0)]
 CLIP_GROOVE_D = 4.4           # hole through a clip, for a small cable tie
-BACKING_H = 18.0               # half-height of a wall backing block
 SPEAKER_WALL = {"wall": "long", "u": 40.0, "z": 30.0}  # Ø50, own grille plate
 BUSHING_FLANGE = 4.0          # ring thickness. A ring, not a barrel: the wall is 3 mm of
                               # PS/ABS with a hole in it, and the ring is what stops it cracking
@@ -181,16 +190,6 @@ GRILLE_BOLT_R = 32.0          # bolt circle for the grille screws
 
 def _span(a, b):
     return (a, b) if a < b else (b, a)
-
-
-def backing_box(wp):
-    """(x0, x1, y0, y1) of a wall backing, so the model and the checks cannot disagree."""
-    w, d = BACKING
-    if wp["wall"] == "long":
-        wall = BOX_IN[1] - FIT
-        return (wp["u"] - w / 2, wp["u"] + w / 2, wall - d, wall)
-    wall = BOX_IN[0] - FIT
-    return (wall - d, wall, wp["u"] - w / 2, wp["u"] + w / 2)
 
 
 def _boxes_overlap(a, b, clear=0.0):

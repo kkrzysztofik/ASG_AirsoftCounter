@@ -218,6 +218,46 @@ build123d without a venv or a requirements file. Verified 2026-10-02: build123d 
 5. Heltec V4 board-to-header-top height when seated in the carrier.
 6. Button body depth and thread length; USB-C barrel thread; SMA thread length.
 
+## v2 (2026-10-02): simplified tray
+
+v1's tray was 117.7 cm3, and a per-feature measurement showed where it went:
+
+| feature | v1 cm3 | share |
+|---|---|---|
+| floor plate | 44.5 | 35 % |
+| wall backings + stems | 23.3 | 18 % |
+| carrier posts + arms | 20.1 | 16 % |
+| cell saddle rails | 18.6 | 15 % |
+| corner L-sleeves | 12.3 | 10 % |
+| pack posts | 5.5 | 4 % |
+| cable clips | 2.2 | 2 % |
+
+v2 is three changes, none of which moves a single interface:
+
+1. **The floor's empty middle is cut away.** A rim and the two Y bands that actually carry the
+   posts, clips and sleeves; the windows stop exactly at the saddle rail edges, because a window
+   boundary inside a rail would leave a sliver of floor beside it. 32 % of the floor area goes.
+2. **The wall backings are gone** (−23.3 cm3). They existed to hold a nut while you tighten a
+   panel device in a 140 mm-deep tub. A nyloc and a finger do the same job. The devices, their
+   hole sizes and their drill templates are unchanged.
+3. **The saddle rails are 6 mm wide instead of 8** (−4.6 cm3).
+
+Tray 117.7 → **77.9 cm3** (MJF) / 80.6 (FDM). Everything 145.7 cm3, down from 185.4.
+
+### The carrier did not move, and that was decided by search
+
+Moving the carrier onto the lid panel was measured at 20.1 cm3, about $6. It was not taken,
+because it does not fit: an exhaustive search at 2 mm resolution over every legal panel position
+found **609 valid LCD+carrier pairs and zero valid LCD+carrier+NFC triples**. The panel is
+188.4 x 138.4; the LCD (98 x 60) and the carrier (90 x 60) already take two 60 mm bands, and the
+NFC needs a 45 x 45 patch that is also >= 20 mm from the LCD frame, while four corner reliefs
+punch the margins. Without the NFC it fits immediately (LCD at y 0.4–60.4, carrier at
+64.4–124.4, 4 mm apart, ~50,000 legal button positions), but that would have moved the player's
+tap from the top of the box to its side, for $6.
+
+So the carrier keeps its margin posts and gusseted arms. Nothing on the panel, in the assembly
+order or in the cable route changed between v1 and v2.
+
 ## Print cost
 
 MJF and SLA are priced per cm3 of solid material, and the first quote came back at about $100 for one
@@ -226,12 +266,17 @@ independent of the CAD) and puts a number on where that goes:
 
 | Part | cm3 | Share |
 |---|---|---|
-| Tray | 111.5 | 62 % |
-| Lid panel | 46.4 | 26 % |
-| Grille | 7.9 | 4 % |
-| Guide ring | 7.2 | 4 % |
-| 4 bushings | 7.3 | 4 % |
-| **Total** | **180.4** | |
+| Tray | 77.9 | 53 % |
+| Lid panel | 45.6 | 31 % |
+| Grille | 8.0 | 5 % |
+| Guide ring | 7.2 | 5 % |
+| 4 wall rings | 6.9 | 5 % |
+| **Total** | **145.7** | |
+
+v1 was 262 cm3 before the guideline pass and 185.4 after it; v2 is 145.7, so the two rounds together
+have taken 44 % off. The wall backings and the floor windows were the two features that were pure
+bulk; the corner sleeves, saddles and posts are structure and do not shrink further without
+giving something up.
 
 A first pass took this from 262 cm3 to 180 cm3 by cutting the two features that were pure bulk: the
 wall backings were 26 x 12 mm solid blocks (now a 20 x 6 mm nut pocket, which also stopped them

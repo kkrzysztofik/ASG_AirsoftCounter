@@ -1,7 +1,7 @@
 Item,Part,File,Qty,Volume cm3,Est cost @0.55/cm3,Material,Colour,Surface finish,Tolerance,Notes
-1,tray,01_tray.stl,1,124.2,68.32,FDM PETG,black,as-printed / standard,standard,"base tray: corner sleeves, cell saddles, board posts, cable clips, wall backings"
+1,tray,01_tray.stl,1,80.6,44.33,FDM PETG,black,as-printed / standard,standard,"base tray: corner sleeves, cell saddles, board posts, cable clips, wall backings"
 2,lid,02_lid.stl,1,45.6,25.08,FDM PETG,black,as-printed / standard,standard,"lid panel: LCD frame, button bosses, NFC opening, corner ears"
-,TOTAL,,2,169.8,93.40,FDM PETG,,,,Estimate from solid volume only; the shop prices its own build.
+,TOTAL,,2,126.2,69.41,FDM PETG,,,,Estimate from solid volume only; the shop prices its own build.
 ,NOTE,,,,,,,,,"Quoted process: FDM PETG, dyed. Thinnest wall 2.0 mm, thinnest feature 1.5 mm (the speaker mesh land): both inside MJF's minimum, so no feature needs thickening for the process."
 ,NOTE,,,,,,,,,"All dimensions millimetres. The box interior is 190 x 140 mm and the tray and lid are 187.4 x 137.4 mm, so they drop in with 0.4 mm all round: please hold that outside envelope and do not grow it."
 ,NOTE,,,,,,,,,Critical fit: the 4 corner sleeves are 21.3 x 21.3 mm bores; a few tenths either way decides whether the part goes in. Please keep that bore to the nominal and tell me the as-built figure.

@@ -1,5 +1,5 @@
 Item,Part,File,Qty,Volume cm3,Est cost @0.55/cm3,Material,Colour,Surface finish,Tolerance,Notes
-1,tray,01_tray.stl,1,117.7,64.72,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"base tray: corner sleeves, cell saddles, board posts, cable clips, wall backings"
+1,tray,01_tray.stl,1,77.9,42.86,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"base tray: corner sleeves, cell saddles, board posts, cable clips, wall backings"
 2,lid,02_lid.stl,1,45.6,25.09,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"lid panel: LCD frame, button bosses, NFC opening, corner ears"
 3,grille,03_grille.stl,1,8.0,4.41,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"speaker mesh, 40% open area, 50 mm"
 4,guide,04_guide.stl,1,7.2,3.96,"MJF PA12 (nylon), black",black,as-printed / standard,standard,drill guide ring for the 50 mm holesaw
@@ -7,7 +7,7 @@ Item,Part,File,Qty,Volume cm3,Est cost @0.55/cm3,Material,Colour,Surface finish,
 6,bushing_usbc,06_bushing_usbc.stl,1,1.3,0.73,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"wall bushing, 12.2 mm hole to 12.0 mm device"
 7,bushing_sma,07_bushing_sma.stl,1,0.9,0.50,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"wall bushing, 6.5 mm hole to 6.4 mm device"
 8,bushing_buzzer,08_bushing_buzzer.stl,1,2.6,1.45,"MJF PA12 (nylon), black",black,as-printed / standard,standard,"wall bushing, 30.0 mm hole to 29.6 mm device"
-,TOTAL,,8,185.4,101.99,"MJF PA12 (nylon), black",,,,Estimate from solid volume only; the shop prices its own build.
+,TOTAL,,8,145.7,80.13,"MJF PA12 (nylon), black",,,,Estimate from solid volume only; the shop prices its own build.
 ,NOTE,,,,,,,,,"Quoted process: MJF PA12 (nylon), black, dyed. Thinnest wall 2.0 mm, thinnest feature 1.5 mm (the speaker mesh land): both inside MJF's minimum, so no feature needs thickening for the process."
 ,NOTE,,,,,,,,,"All dimensions millimetres. The box interior is 190 x 140 mm and the tray and lid are 188.4 x 138.4 mm, so they drop in with 0.4 mm all round: please hold that outside envelope and do not grow it."
 ,NOTE,,,,,,,,,Critical fit: the 4 corner sleeves are 20.8 x 20.8 mm bores; a few tenths either way decides whether the part goes in. Please keep that bore to the nominal and tell me the as-built figure.

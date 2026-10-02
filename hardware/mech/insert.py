@@ -97,8 +97,11 @@ def make_tray():
     y0, y1 = P.FIT, P.BOX_IN[1] - P.FIT
 
     tray = box(x0, x1, y0, y1, 0, P.FLOOR_T)
-    # lighten the field, leaving a 12 mm border and P.FLOOR_FIELD of floor in the middle
+    # lighten the field, then cut the empty middle away: v2 leaves a rim and the two bands that
+    # actually carry the posts, clips and sleeves, instead of a plate over the whole box
     tray -= box(x0 + 12, x1 - 12, y0 + 12, y1 - 12, P.FLOOR_FIELD, P.FLOOR_T + 1)
+    for wx0, wx1, wy0, wy1 in P.FLOOR_WINDOWS:
+        tray -= box(wx0, wx1, wy0, wy1, -1, P.FLOOR_T + 1)
 
     # corner sleeves: an L per corner, not a closed tube, at a third of the material
     bore_x = P.COLUMN_SIZE[0] + P.FIT
@@ -135,9 +138,8 @@ def make_tray():
         tray += tri_prism_x(py, hy, -0.1, cz, px, P.ARM_W)
         tray += cyl_z(hx, hy, cz - 4, cz, P.POST_R)
 
-    # cable clips and wall backing blocks
+    # cable clips
     tray += _cable_clips()
-    tray += _wall_backings()
     return tray
 
 
@@ -148,29 +150,6 @@ def _cable_clips():
         clip -= cyl_x(cy, P.FLOOR_T + 5, cx - 6, cx + 6, P.CLIP_GROOVE_D / 2)
         clips = clip if clips is None else clips + clip
     return clips
-
-
-def _wall_backings():
-    """A nut pocket inside each wall device, so it can be tightened one-handed.
-
-    Thin and narrow on purpose: solid blocks here were the single biggest slice of the tray's
-    material, and at 26 x 12 mm they also ran into the corner columns.
-    """
-    h = P.BACKING_H
-    out = None
-    for wp in P.WALL_PARTS.values():
-        x0, x1, y0, y1 = P.backing_box(wp)
-        b = box(x0, x1, y0, y1, wp["z"] - h, wp["z"] + h)
-        # the stem is narrow along the wall and keeps the backing's depth, so it never grows
-        # past the wall it hangs from
-        if wp["wall"] == "long":
-            mid = (x0 + x1) / 2
-            stem = box(mid - 5, mid + 5, y0, y1, -0.1, wp["z"] - h + 1)
-        else:
-            mid = (y0 + y1) / 2
-            stem = box(x0, x1, mid - 5, mid + 5, -0.1, wp["z"] - h + 1)
-        out = b + stem if out is None else out + b + stem
-    return out
 
 
 # --- lid panel ---------------------------------------------------------------------------------

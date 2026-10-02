@@ -132,24 +132,35 @@ def nfc_clears_the_lcd_frame():
     return ok(f"NFC {gap:.1f} mm off the LCD frame")
 
 
-def tray_stays_below_the_panel():
-    """Every wall backing has to fit under the lid panel, which starts at panel_z0."""
-    top = params.panel_z0()
-    for name, wp in params.WALL_PARTS.items():
-        hi = wp["z"] + params.BACKING_H
-        if hi > top:
-            return fail(f"wall part {name} backing reaches z={hi:.1f}, the panel starts at {top:.1f}")
-    return ok(f"all {len(params.WALL_PARTS)} wall backings stay under the panel at z={top:.1f}")
+def floor_windows_clear_the_mounts():
+    """v2 cuts the empty middle out of the floor. A window under a post, a saddle or a clip
+    leaves that part standing on nothing."""
+    mounts = []
+    for cx, cy in params.column_centres():
+        for w in params.sleeve_walls(cx, cy):
+            mounts.append(("sleeve", w))
+    r = params.POST_R + params.POST_FLARE
+    for hx, hy in params.PACK_HOLES:
+        x, y = params.PACK_ORIGIN[0] + hx, params.PACK_ORIGIN[1] + hy
+        mounts.append(("pack post", (x - r, x + r, y - r, y + r)))
+    for x, y in params.carrier_post_xy():
+        mounts.append(("carrier post", (x - r, x + r, y - r, y + r)))
+    cell_x = params.PACK_ORIGIN[0] + params.PACK[0] / 2
+    ys = params.trough_centres_y()
+    for sx in (cell_x - params.SADDLE_INSET, cell_x + params.SADDLE_INSET):
+        mounts.append(("saddle rail", (sx - params.SADDLE_T / 2, sx + params.SADDLE_T / 2,
+                                        ys[0] - params.CELL_D, ys[-1] + params.CELL_D)))
+    for cx, cy in params.CLIP_XY:
+        mounts.append(("cable clip", (cx - 5, cx + 5, cy - 6, cy + 6)))
 
-
-def backings_clear_the_columns():
-    """A nut pocket inside a solid column is a part that cannot be assembled."""
-    for name, wp in params.WALL_PARTS.items():
-        b = params.backing_box(wp)
-        for cx, cy in params.column_centres():
-            if params._boxes_overlap(b, params.column_box(cx, cy), clear=1.0):
-                return fail(f"wall backing {name} at u={wp['u']} overlaps the column at ({cx}, {cy})")
-    return ok(f"all {len(params.WALL_PARTS)} wall backings clear the corner columns")
+    for w in params.FLOOR_WINDOWS:
+        for name, m in mounts:
+            if params._boxes_overlap(w, m):
+                return fail(f"floor window {w} cuts the {name} at {m}")
+    cut = sum((w[1] - w[0]) * (w[3] - w[2]) for w in params.FLOOR_WINDOWS)
+    plate = (params.BOX_IN[0] - 2 * params.FIT) * (params.BOX_IN[1] - 2 * params.FIT)
+    return ok(f"floor windows clear all {len(mounts)} mounts and cut {100 * cut / plate:.0f}% "
+              "of the floor area")
 
 
 def clips_clear_the_columns():
@@ -294,8 +305,7 @@ CHECKS = [
     margin_posts_clear_the_columns,
     margin_posts_clear_the_pack_board,
     mesh_open_enough,
-    tray_stays_below_the_panel,
-    backings_clear_the_columns,
+    floor_windows_clear_the_mounts,
     clips_clear_the_columns,
     sleeve_walls_miss_the_column_bore,
     jlc_wall_thickness,
