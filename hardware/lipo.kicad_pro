@@ -54,14 +54,6 @@
       {
         "netclass": "Power",
         "pattern": "+5V"
-      },
-      {
-        "netclass": "Power",
-        "pattern": "SW_A"
-      },
-      {
-        "netclass": "Power",
-        "pattern": "SW_B"
       }
     ]
   },

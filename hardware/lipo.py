@@ -166,8 +166,10 @@ for i in (1, 2, 3):
     NETS[f"TAP{i}_ADC"] = [top, f"R_TB{i}.1", f"C_TAP{i}.1", f"U_MCU.{6 + i}"]
 
 # --- schematic layout (read by gen_sch.py) -----------------------------------------------------
-# Input and the two switch nodes carry the wider Power class; LIPO_* covers LIPO_RAW and LIPO_F.
-NETCLASS_POWER = ("LIPO_*", "VIN", "VBAT_SW", "+5V", "SW_A", "SW_B")
+# Input and the wide rails carry the Power class. The two SW nodes stay Default: the TSOT-23-6
+# pads are 0.95 mm pitch, so a 0.8 mm track cannot leave the SW pin (L4.2, Freerouting left it
+# unrouted). LIPO_* covers LIPO_RAW and LIPO_F.
+NETCLASS_POWER = ("LIPO_*", "VIN", "VBAT_SW", "+5V")
 # Rails drawn as power ports: +3V3 has the LDO's power_out, the rest take a PWR_FLAG.
 RAILS = ("GND", "+3V3", "VIN", "VBAT_SW", "+5V")
 PORT_LIB = {"GND": "power:GND", "+3V3": "power:+3V3", "VIN": "power:VDC",
@@ -234,7 +236,7 @@ BLOCKS = [
 # dividers in the lower-left, away from the switch nodes.
 W, H, CORNER = 70.0, 50.0, 2.0
 NETCLASS_EXPECT = (("VIN", [0.8, 0.2]), ("VBAT_SW", [0.8, 0.2]), ("+5V", [0.8, 0.2]),
-                   ("SW_A", [0.8, 0.2]), ("GND", [0.25, 0.2]), ("SDA_EXT", [0.25, 0.2]))
+                   ("SW_A", [0.25, 0.2]), ("GND", [0.25, 0.2]), ("SDA_EXT", [0.25, 0.2]))
 DRC_RULES = {}
 BOTTOM = set()
 PLACE = {
