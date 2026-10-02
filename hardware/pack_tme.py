@@ -114,8 +114,10 @@ DRC_RULES = pack.DRC_RULES
 BOTTOM = pack.BOTTOM
 _CELL_X, _CELL_Y = pack._CELL_X, pack._CELL_Y
 _HOLDER_NPTH = pack._HOLDER_NPTH
-PTH_COMPONENT_MIN = pack.PTH_COMPONENT_MIN
-NPTH_EXPECT = pack.NPTH_EXPECT
+PTH_COMPONENT_MIN = 0.4   # the through-hole USB4085 signal pins drill 0.4 mm (was 0.6 for the SMD part's shell)
+NPTH_EXPECT = sorted([(x, y, 3.2) for x, y in pack.NPTH_XY]
+                     + [(_CELL_X + dx, cy + dy, size) for cy in _CELL_Y
+                        for dx, dy, size in _HOLDER_NPTH])   # the USB4085 adds no NPTH
 LABELS = pack.LABELS
 TEXTS = list(pack.TEXTS)
 GND_VIAS = list(pack.GND_VIAS)
