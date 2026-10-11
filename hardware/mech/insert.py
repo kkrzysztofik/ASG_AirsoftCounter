@@ -376,10 +376,9 @@ def board_step(name):
     The default origin is the board's top-left corner with Y flipped up, so the outline spans
     x 0..W, y -H..0 (gen_pcb draws Edge.Cuts from 0,0).
     """
-    hw = HERE.parent
-    pcb = next((p for p in (hw / "kicad" / f"{name}.kicad_pcb", hw / f"{name}.kicad_pcb") if p.exists()), None)
-    if pcb is None:
-        raise SystemExit(f"no {name}.kicad_pcb in hardware/kicad/ or hardware/")
+    pcb = HERE.parent / "kicad" / f"{name}.kicad_pcb"
+    if not pcb.exists():
+        raise SystemExit(f"no {name}.kicad_pcb in hardware/kicad/")
     step = OUT / "boards" / f"{name}.step"
     missing = 0
     if not step.exists() or step.stat().st_mtime < pcb.stat().st_mtime:
