@@ -78,6 +78,7 @@ boards:
 # PROC picks the print process everything is validated and priced against: mjf, fdm or sla.
 # PARTS limits a run to the parts that process will actually make, so an FDM run is not judged
 # against features belonging to the small flat parts it rejects.
+# The assembly (out/assembly.step) places every part with the boards and fails on any overlap.
 PROC ?= mjf
 PARTS ?= all
 export MECH_PROCESS = $(PROC)
@@ -86,6 +87,7 @@ export MECH_PARTS = $(PARTS)
 mech:
 	/usr/bin/python3 mech/check.py
 	uv run mech/insert.py --part $(PARTS) --check
+	uv run mech/insert.py --part assembly --check
 
 # Quote package for JLCPCB 3D printing: one model per part in a zip, plus the quote sheet.
 # MAT follows PROC unless overridden. Regenerate per process; the filenames carry the process
