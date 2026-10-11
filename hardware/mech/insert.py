@@ -142,9 +142,10 @@ def make_tray():
     cz = P.carrier_z()
     arm_low = P.pack_z() + P.BOARD_T + P.ARM_CLEAR
     for (px, py), (hx, hy) in zip(P.carrier_post_xy(), P.carrier_hole_xy(), strict=True):
-        tray += post(px, py, cz)
+        tray += post(px, py, cz, pilot=False)  # no screw here: the carrier's hole is over the boss
         tray += tri_prism_x(hy, py, cz, arm_low, px, P.ARM_W)
         tray += cyl_z(hx, hy, cz - 4, cz, P.POST_R)
+        tray -= cyl_z(hx, hy, cz - P.PILOT_DEPTH, cz + 1, P.POST_PILOT / 2)
 
     # cable clips
     tray += _cable_clips()
