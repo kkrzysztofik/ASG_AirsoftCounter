@@ -187,8 +187,8 @@ def make_lid():
         for sy in (-1, 1):
             px = P.LCD_CENTRE[0] + sx * P.LCD_HOLES[0] / 2
             py = P.LCD_CENTRE[1] + sy * P.LCD_HOLES[1] / 2
-            panel += cyl_z(px, py, z0 - 5, z0, 3.5)
-            panel -= cyl_z(px, py, z0 - 6, z0 + 1, 1.6)
+            panel += cyl_z(px, py, z0 - P.LCD_BOSS_H, z0, 3.5)
+            panel -= cyl_z(px, py, z0 - P.LCD_BOSS_H - 1, z0 + 1, 1.6)
     return panel
 
 
