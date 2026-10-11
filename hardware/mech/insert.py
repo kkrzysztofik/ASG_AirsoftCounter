@@ -70,8 +70,8 @@ def cyl_x(y, z, x0, x1, r):
 def tri_prism_x(y0, y1, z0, z1, x_centre, width):
     """A wedge in the YZ plane, extruded `width` along X: the bracket gusset.
 
-    Vertices run (y0, z0) -> (y1, z0) -> (y1, z1), so the sloped face is the one that has to
-    print unsupported; keep z1 - z0 <= y1 - y0 for a 45-degree-or-shallower overhang.
+    Vertices run (y0, z0) -> (y1, z0) -> (y1, z1): a right angle at (y1, z0), the slope from
+    (y0, z0) to (y1, z1). Pass the ends in either order to put the right angle where you want it.
 
     Recentred from the built shape's own bounds rather than assuming which way the extrusion
     ran, which is the difference between an arm that joins the post and one that floats.
@@ -137,11 +137,13 @@ def make_tray():
     for hx, hy in P.PACK_HOLES:
         tray += post(P.PACK_ORIGIN[0] + hx, P.PACK_ORIGIN[1] + hy, pz)
 
-    # carrier posts: in the margins, reaching in on gusseted arms
+    # carrier posts: in the margins, reaching in on gusseted arms. The gusset hangs from the arm,
+    # full depth at the post and nothing at the hole, so it stays above the pack board it crosses.
     cz = P.carrier_z()
+    arm_low = P.pack_z() + P.BOARD_T + P.ARM_CLEAR
     for (px, py), (hx, hy) in zip(P.carrier_post_xy(), P.carrier_hole_xy(), strict=True):
         tray += post(px, py, cz)
-        tray += tri_prism_x(py, hy, -0.1, cz, px, P.ARM_W)
+        tray += tri_prism_x(hy, py, cz, arm_low, px, P.ARM_W)
         tray += cyl_z(hx, hy, cz - 4, cz, P.POST_R)
 
     # cable clips
