@@ -315,7 +315,8 @@ def write_templates():
         for s in shapes:
             svg.add_shape(s, layer="cuts")
         svg.add_shape(Pos(0, bar_y, 0) * Rectangle(100, 2), layer="cuts")
-        svg.add_shape(Pos(0, bar_y - 8, 0) * Text(label, font_size=5), layer="label")
+        faces = (Pos(0, bar_y - 8, 0) * Text(label, font_size=5)).faces()
+        svg.add_shape(sorted(faces, key=lambda f: (round(f.center().X, 3), round(f.center().Y, 3))), layer="label")
         svg.write(str(path))
         _check_template_scale(path, re)
         written.append(path)
