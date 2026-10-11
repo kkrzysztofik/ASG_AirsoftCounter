@@ -6,7 +6,7 @@ fab/<board>/tme_bom.csv -> fab/tme_bom_all.csv  "TME symbol;qty" per line, no he
                                            plus spares for small passives (lost to the tweezers),
                                            rounded up to TME's minimum and order multiple.
 
-carrier/carrier_tme, pack/pack_b/pack_tme and lipo/lipo_tme are alternative builds of the same
+carrier/carrier_tme, pack/pack_tme and lipo/lipo_tme are alternative builds of the same
 board, so name one build per board; the default is the TME hand-build set. Budget variants
 (tme_bom_budget.csv) and the off-board lists (fab/offboard/) are left out: upload those separately.
 

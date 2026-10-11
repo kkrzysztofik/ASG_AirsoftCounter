@@ -88,7 +88,6 @@ OTHER = {
 HAND = {
     # TH_CHG: 10k B3435 NTC. TME has no 0805 one; the 0603 hand-solders onto the 0805 pads.
     "pack": [("NTCS0603E3103FLT", 1)],
-    "pack_b": [("NTCS0603E3103FLT", 1)],
 }
 
 
