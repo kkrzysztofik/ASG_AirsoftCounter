@@ -240,9 +240,11 @@ def make_grille():
     for i in range(4):
         a = math.radians(45 + 90 * i)
         part -= cyl_z(P.GRILLE_BOLT_R * math.cos(a), P.GRILLE_BOLT_R * math.sin(a), -1, P.GRILLE_T + 1, 1.6)
-    # the face-seal groove goes in the wall-facing side, z = 0, the side with the counterbore
+    # the face-seal groove is a ring 2 mm outside the hole edge, in the wall-facing side, z = 0,
+    # the side with the counterbore
     gw, gd = P.ORING_GROOVE
-    part -= cyl_z(0, 0, -0.01, gd, P.SPEAKER_D / 2 + 2 + gw)
+    r0 = P.SPEAKER_D / 2 + 2
+    part -= cyl_z(0, 0, -0.01, gd, r0 + gw) - cyl_z(0, 0, -0.02, gd + 0.01, r0)
     return part
 
 
@@ -384,8 +386,13 @@ def check_part(name, part):
             f"FAIL {name}: {dims[0]:.1f} x {dims[1]:.1f} x {dims[2]:.1f} exceeds "
             f"{P.RULES['name']}'s build envelope"
         )
-    if name == "grille" and part.is_inside(Vector(P.SPEAKER_D / 2 + 1, 0, P.ORING_GROOVE[1] / 2)):
-        raise SystemExit("FAIL grille: no O-ring groove in the wall-facing face")
+    if name == "grille":
+        r0 = P.SPEAKER_D / 2 + 2
+        gw, gd = P.ORING_GROOVE
+        if part.is_inside(Vector(r0 + gw / 2, 0, gd / 2)):
+            raise SystemExit("FAIL grille: no O-ring groove in the wall-facing face")
+        if not part.is_inside(Vector(r0 - 0.5, 0, gd / 2)):
+            raise SystemExit("FAIL grille: the O-ring groove has no inner wall")
     print(f"ok    {name}: {sx:.1f} x {sy:.1f} x {sz:.1f}, {part.volume / 1000:.1f} cm3, {solids} solid")
 
 def main(argv):
