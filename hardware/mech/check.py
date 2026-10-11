@@ -57,7 +57,8 @@ def stack_fits():
 
 
 def cradle_aligns_with_holders():
-    want = [params.PACK_ORIGIN[1] + y for y in params.HOLDER_Y]
+    # KiCad's Y runs down, so board y lands at PACK[1] - y in the tray's Y-up frame
+    want = sorted(params.PACK_ORIGIN[1] + params.PACK[1] - y for y in params.HOLDER_Y)
     got = params.trough_centres_y()
     if [round(v, 3) for v in got] != [round(v, 3) for v in want]:
         return fail(f"cradle {got} off the holders {want}")

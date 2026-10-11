@@ -260,8 +260,9 @@ def column_centres():
 
 
 def trough_centres_y():
-    """Cell centre lines, in tray coordinates."""
-    return [PACK_ORIGIN[1] + y for y in HOLDER_Y]
+    """Cell centre lines, in tray coordinates, ascending (the saddle rails span first to last)."""
+    # KiCad's Y runs down, so board y lands at PACK[1] - y in the tray's Y-up frame
+    return sorted(PACK_ORIGIN[1] + PACK[1] - y for y in HOLDER_Y)
 
 
 def carrier_post_xy():
