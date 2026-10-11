@@ -33,7 +33,7 @@ MATERIAL = MATERIAL_BY_PROCESS.get(P.PROCESS, MATERIAL_BY_PROCESS["mjf"])
 # (order, file stem, qty, note). Order is the row order on the sheet and the filename prefix,
 # so the quote lines up with the drawing.
 PARTS = [
-    ("tray", 1, "base tray: corner sleeves, cell saddles, board posts, cable clips, wall backings"),
+    ("tray", 1, "base tray: corner sleeves, cell saddles, board posts, carrier arms, cable clips"),
     ("lid", 1, "lid panel: LCD frame, button bosses, NFC opening, corner ears"),
     ("grille", 1, f"speaker mesh, {P.MESH_OPEN:.0%} open area, {P.SPEAKER_D:.0f} mm"),
     ("guide", 1, f"drill guide ring for the {P.SPEAKER_D:.0f} mm holesaw"),
@@ -68,8 +68,11 @@ SHOP_NOTES = [
     f"Critical fit: the 4 corner sleeves are {P.COLUMN_SIZE[0] + P.FIT:.1f} x "
     f"{P.COLUMN_SIZE[1] + P.FIT:.1f} mm bores; a few tenths either way decides whether the part goes in. "
     "Please keep that bore to the nominal and tell me the as-built figure.",
-    "No supports modelled. Overhangs are 45 degrees or shallower.",
-    "The 4 board posts take M3 self-tapping screws; a standard pilot in this material is fine.",
+    "No supports modelled. The carrier arms overhang: each gusset's underside slopes at about 14 "
+    "degrees and the arm bar is flat underneath near the screw boss. Fine on MJF (powder-supported), "
+    "but they need support on FDM.",
+    "The 4 pack board posts and the 4 carrier screw bosses at the ends of the arms take M3 "
+    "self-tapping screws; a standard pilot in this material is fine.",
     f"Checked against the JLC3DP 3D printing design guideline ({P.RULES['name']}) and compliant: build "
     "size, size-dependent wall thickness, assembly clearance, hole aperture vs depth, small-column "
     "H/D with a base flare, and no enclosed cavities so no escape holes are needed.",

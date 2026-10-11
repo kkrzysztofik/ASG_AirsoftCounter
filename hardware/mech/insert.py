@@ -137,14 +137,16 @@ def make_tray():
     for hx, hy in P.PACK_HOLES:
         tray += post(*P.board_xy(P.PACK_ORIGIN, P.PACK, hx, hy), pz)
 
-    # carrier posts: in the margins, reaching in on gusseted arms. The gusset hangs from the arm,
-    # full depth at the post and nothing at the hole, so it stays above the pack board it crosses.
+    # carrier posts: in the margins, reaching in on gusseted arms. Each arm is a bar of constant
+    # depth from post to screw boss; the gusset hangs under it, full depth at the post and nothing
+    # at the hole, so it stays above the pack board it crosses.
     cz = P.carrier_z()
     arm_low = P.pack_z() + P.BOARD_T + P.ARM_CLEAR
     for (px, py), (hx, hy) in zip(P.carrier_post_xy(), P.carrier_hole_xy(), strict=True):
         tray += post(px, py, cz, pilot=False)  # no screw here: the carrier's hole is over the boss
+        tray += box(px - P.ARM_W / 2, px + P.ARM_W / 2, *sorted((hy, py)), cz - P.CARRIER_BOSS_H, cz)
         tray += tri_prism_x(hy, py, cz, arm_low, px, P.ARM_W)
-        tray += cyl_z(hx, hy, cz - 4, cz, P.POST_R)
+        tray += cyl_z(hx, hy, cz - P.CARRIER_BOSS_H, cz, P.POST_R)
         tray -= cyl_z(hx, hy, cz - P.PILOT_DEPTH, cz + 1, P.POST_PILOT / 2)
 
     # cable clips

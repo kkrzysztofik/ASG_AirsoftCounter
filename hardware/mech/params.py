@@ -122,6 +122,7 @@ POST_FLARE_H = 6.0
 PILOT_DEPTH = 5.0             # hole depth for the M3 pilot; see the hole-aperture rule
 ARM_W = 8.0                   # width of the carrier bracket arms
 ARM_CLEAR = 2.0               # gap between a carrier arm's gusset and the pack board's top face
+CARRIER_BOSS_H = 4.0          # depth of the carrier arm and of the screw boss under the carrier hole
 
 PACK_ORIGIN = ((BOX_IN[0] - PACK[0]) / 2, (BOX_IN[1] - PACK[1]) / 2)          # (47, 25)
 CARRIER_ORIGIN = ((BOX_IN[0] - CARRIER[0]) / 2, (BOX_IN[1] - CARRIER[1]) / 2)  # (50, 40)

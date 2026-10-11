@@ -88,7 +88,11 @@ def margin_posts_clear_the_pack_board():
     for px, py in params.carrier_post_xy():
         if params.PACK_ORIGIN[1] - params.POST_R < py < params.PACK_ORIGIN[1] + params.PACK[1] + params.POST_R:
             return fail(f"carrier post ({px}, {py}) sits under the pack board")
-    return ok("carrier margin posts sit outside the pack board")
+    bar = params.carrier_z() - params.CARRIER_BOSS_H
+    need = params.pack_z() + params.BOARD_T + params.ARM_CLEAR
+    if bar < need:
+        return fail(f"carrier arm bar bottoms out at z={bar:.1f}, under the pack board's {need:.1f} clearance")
+    return ok(f"carrier margin posts sit outside the pack board; arm bar bottom z={bar:.1f} >= {need:.1f}")
 
 
 def mesh_open_enough():
@@ -213,6 +217,7 @@ def jlc_wall_thickness():
         ("tray sleeve wall", params.SLEEVE_WALL, big),
         ("tray saddle rail", params.SADDLE_T, big),
         ("tray bracket arm", params.ARM_W, big),
+        ("tray bracket arm depth", params.CARRIER_BOSS_H, big),
         ("lid panel", params.LID_T, big),
     ]
     if params.making("grille"):
