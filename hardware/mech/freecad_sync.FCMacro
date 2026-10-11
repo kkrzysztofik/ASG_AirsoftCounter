@@ -99,6 +99,120 @@ def selftest():
     return 0
 
 
+# --- FreeCAD ----------------------------------------------------------------------------------------
+
+
+def _uv():
+    for c in (shutil.which("uv"), os.path.expanduser("~/.local/bin/uv"), os.path.expanduser("~/.cargo/bin/uv")):
+        if c and os.path.exists(c):
+            return c
+    raise RuntimeError("uv not found. FreeCAD's PATH is:\n" + os.environ.get("PATH", ""))
+
+
+def _run_checks():
+    """(ok, output) for the full rebuild. check.py goes first: it is instant and writes nothing,
+    while insert.py rewrites out/ part by part."""
+    uv = _uv()
+    steps = [
+        [uv, "run", "check.py"],
+        [uv, "run", "insert.py", "--part", "all", "--check"],
+        [uv, "run", "insert.py", "--part", "assembly", "--check"],
+    ]
+    log = []
+    for cmd in steps:
+        r = subprocess.run(cmd, cwd=HERE, capture_output=True, text=True)
+        log.append(f"$ {' '.join(cmd[1:])}\n{r.stdout}{r.stderr}")
+        if r.returncode:
+            return False, "\n".join(log)
+    return True, "\n".join(log)
+
+
+def load():
+    import FreeCAD as App
+    import Import
+
+    if not ASSEMBLY.exists():
+        raise RuntimeError(f"{ASSEMBLY} is missing: run `uv run insert.py --part assembly` first")
+    Import.open(str(ASSEMBLY))
+    doc = App.ActiveDocument
+    text = PARAMS.read_text()
+    sheet = doc.addObject("Spreadsheet::Sheet", SHEET)
+    sheet.addProperty("App::PropertyString", "ParamsHash")
+    sheet.ParamsHash = digest(text)
+    sheet.set("A1", "name")
+    sheet.set("B1", "value")
+    sheet.set("C1", "params.py comment")
+    for row, (name, value, _l, _c, _e, comment) in enumerate(leaves(text), start=2):
+        sheet.set(f"A{row}", name)
+        sheet.set(f"B{row}", repr(value))
+        sheet.setAlias(f"B{row}", name)
+        sheet.set(f"C{row}", "'" + comment)
+        if "MEASURE" in comment:
+            sheet.setBackground(f"A{row}:C{row}", MEASURE_RGB)
+    doc.recompute()
+    return doc
+
+
+def sync(doc):
+    import FreeCAD as App
+
+    sheet = doc.getObject(SHEET)
+    text = PARAMS.read_text()
+    if digest(text) != sheet.ParamsHash:
+        return _say("params.py changed on disk since this sheet was loaded. Close this document "
+                    "and run the macro again to reload; nothing was written.")
+    changes = {}
+    for name, value, *_ in leaves(text):
+        v = sheet.get(name)
+        try:
+            v = float(getattr(v, "Value", v))
+        except (TypeError, ValueError):
+            return _say(f"{name}: {v!r} is not a number; nothing was written.")
+        if v != value:
+            changes[name] = v
+    if not changes:
+        return _say("No parameter changed.")
+    PARAMS.write_text(rewrite(text, changes))
+    try:
+        ok, log = _run_checks()
+    except Exception as exc:  # uv missing, or anything else: never leave params.py half-applied
+        ok, log = False, str(exc)
+    if not ok:
+        PARAMS.write_text(text)
+        # a failure midway leaves out/ half rebuilt with the rejected values; rebuild it
+        try:
+            rebuilt, _ = _run_checks()
+        except Exception:
+            rebuilt = False
+        note = "out/ rebuilt from it" if rebuilt else "REBUILD OF out/ FAILED, run `make mech`"
+        return _say(f"A check failed; params.py is restored, {note}, your edits stay in the sheet.\n\n"
+                    + log[-3000:])
+    App.closeDocument(doc.Name)
+    load()
+    _say("Updated " + ", ".join(f"{k} = {v:g}" for k, v in changes.items()))
+
+
+def _say(msg):
+    import FreeCAD as App
+
+    App.Console.PrintMessage(msg + "\n")
+    try:
+        from PySide import QtGui
+        QtGui.QMessageBox.information(None, "freecad_sync", msg)
+    except ImportError:
+        pass
+
+
+def main():
+    import FreeCAD as App
+
+    doc = App.ActiveDocument
+    if doc is not None and doc.getObject(SHEET) is not None:
+        sync(doc)
+    else:
+        load()
+
+
 if "--selftest" in sys.argv:
     sys.exit(selftest())
 else:
