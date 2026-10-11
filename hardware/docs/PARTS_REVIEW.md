@@ -5,7 +5,7 @@ values, not checked against the exact LCSC parts. JLCPCB stock/price was not che
 
 ## Changed
 
-- Driver gate resistors 100R -> 1k and gate pull-downs 100k -> 10k (`design.py`): removes two BOM
+- Driver gate resistors 100R -> 1k and gate pull-downs 100k -> 10k (`carrier.py`): removes two BOM
   lines (C17408, C149504); every 0805 resistor is now 10k, 1k, 4k7, 0R or the 75k feedback part.
   The gate divider sets the FET gate to about 3.0 V (3.3 V x 10k / 11k) instead of 3.3 V. That is
   still well above the BSS138 threshold for ~15 mA loads. Costs about 0.3 mA per active driver.

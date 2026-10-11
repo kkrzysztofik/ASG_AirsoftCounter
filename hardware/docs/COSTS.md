@@ -5,8 +5,8 @@ TME hides its exact price, so a TME figure is the high end of its schema price r
 gross price on the items cross-checked. Excludes the carrier PCB/PCBA (no quote yet), shipping, standoffs
 and wire (never priced). Player cards are ~3 zł each on top.
 
-Variants are defined in `hardware/design.py` (`MODULES`, `VARIANTS`); `make fab` writes
-`fab/jlc_bom.csv`/`jlc_cpl.csv` (deluxe) and `fab/jlc_bom_budget.csv`/`jlc_cpl_budget.csv`.
+Variants are defined in `hardware/carrier.py` (`MODULES`, `VARIANTS`); `make fab` writes
+`fab/carrier/jlc_bom.csv`/`jlc_cpl.csv` (deluxe) and `fab/carrier/jlc_bom_budget.csv`/`jlc_cpl_budget.csv`.
 
 ## Presets
 
@@ -30,7 +30,7 @@ Variants are defined in `hardware/design.py` (`MODULES`, `VARIANTS`); `make fab`
 
 ## Module mix
 
-Add or remove per module. Everything works on the same PCB; only the BOM changes (see `design.MODULES`).
+Add or remove per module. Everything works on the same PCB; only the BOM changes (see `carrier.MODULES`).
 
 | Module | Adds | Deluxe part | Budget part | On-board parts dropped when absent |
 |---|---|---|---|---|

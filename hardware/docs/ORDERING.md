@@ -1,6 +1,6 @@
 # Ordering the PCBs from JLCPCB (bare board or assembled)
 
-**Separate boards, separate orders.** The carrier is `fab/carrier_gerbers_jlcpcb.zip` (90 x 60 mm,
+**Separate boards, separate orders.** The carrier is `fab/carrier/carrier_gerbers_jlcpcb.zip` (90 x 60 mm,
 sections 1-6 below), the 4x18650 pack board is `fab/pack/pack_gerbers_jlcpcb.zip` (96 x 90 mm,
 section 7) and the 2S/3S LiPo board is `fab/lipo/lipo_gerbers_jlcpcb.zip` (70 x 50 mm, section 8).
 The hand-build TME variants are the same three outlines, ordered **bare** (section 9).
@@ -11,7 +11,7 @@ or the gerber check fails, for any board).
 
 ## 1. Upload
 
-Go to https://jlcpcb.com/, click "Order now" and upload **`fab/carrier_gerbers_jlcpcb.zip`** (9 Gerber layers + PTH/NPTH Excellon drill files).
+Go to https://jlcpcb.com/, click "Order now" and upload **`fab/carrier/carrier_gerbers_jlcpcb.zip`** (9 Gerber layers + PTH/NPTH Excellon drill files).
 JLC should detect **90 x 60 mm, 2 layers** on its own. If it shows a different size or layer count, stop and don't order.
 Check the Gerber viewer: the outline has rounded corners, there are 4 mounting holes 3.5 mm in from each edge, and both sides have a GND pour.
 
@@ -65,21 +65,21 @@ Leave the other fields at their defaults. Price and lead time follow from these 
 
 You can get a price quote now. **Don't pay until the 1:1 paper fit check has passed** with a real Heltec V4:
 
-1. Print `fab/print_1to1.pdf` at 100 % (no "fit to page"). Check the scale on the J2/J3 header holes: the centres of the first and last hole in a row are **43.2 mm** apart (17 x 2.54 mm), and the two header rows are **22.86 mm** apart. The board is plotted from the page's top-left corner, so the top and left board edges may not print. That is expected, so don't use the outline as the scale reference.
+1. Print `fab/carrier/print_1to1.pdf` at 100 % (no "fit to page"). Check the scale on the J2/J3 header holes: the centres of the first and last hole in a row are **43.2 mm** apart (17 x 2.54 mm), and the two header rows are **22.86 mm** apart. The board is plotted from the page's top-left corner, so the top and left board edges may not print. That is expected, so don't use the outline as the scale reference.
 2. Push the Heltec header pins through the paper at J2/J3. All 18 pins of each row should go straight through.
 3. Orientation: the Heltec's USB-C end goes at the **"USB"** label (the left end of the header rows, where pin 1 is the **square** pad in each row), and the antenna end points at **"ANT →"** and the right board edge. **J3 (GPIO1–7) is the top row**; the rows are labelled J3/J2 at the left and "Heltec_J3"/"Heltec_J2" at the right. A mirrored or reversed module would put GND/3V3 on GPIO pins.
 
 ## 5. Assembly (PCBA, optional)
 
-JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.csv` (parts with LCSC numbers) and `fab/jlc_cpl.csv` (placements). Both are written and checked by `make all` (`jlc.py`). The DNP pull-ups R_SDA5/R_SCL5 and the mounting holes are left out on purpose.
+JLC can assemble every on-board part, SMD and through-hole, from `fab/carrier/jlc_bom.csv` (parts with LCSC numbers) and `fab/carrier/jlc_cpl.csv` (placements). Both are written and checked by `make all` (`jlc.py`). The DNP pull-ups R_SDA5/R_SCL5 and the mounting holes are left out on purpose.
 
 **Service.** Use **Economic** PCBA. It solders through-hole parts by wave soldering and takes 2 to 50 boards (older JLC pages say 30). Standard PCBA needs a board of at least 70 x 70 mm, and at 90 x 60 mm this one only fits as a panel. Sources: https://jlcpcb.com/capabilities/pcb-assembly-capabilities and https://jlcpcb.com/help/article/pcb-assembly-faqs
 
 **Steps**
 
-1. Upload `fab/carrier_gerbers_jlcpcb.zip` and fill in the form as in section 2.
+1. Upload `fab/carrier/carrier_gerbers_jlcpcb.zip` and fill in the form as in section 2.
 2. Turn on "PCB Assembly". Choose **Economic**, assemble the **Top** side, and set how many boards to assemble (2 or all 5).
-3. Upload **`fab/jlc_bom.csv`** as the BOM and **`fab/jlc_cpl.csv`** as the CPL / pick-and-place file.
+3. Upload **`fab/carrier/jlc_bom.csv`** as the BOM and **`fab/carrier/jlc_cpl.csv`** as the CPL / pick-and-place file.
 4. Check the parts matching. There are 14 BOM lines, and each should match the LCSC number in its row with stock for your quantity. Nothing should be left unmatched or skipped.
 5. Open the 3D placement preview and do the checks below before you confirm.
 
@@ -109,13 +109,13 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/jlc_bom.cs
 | J_PWR1 (6-pin XH) | The latch/key side faces the board edge, and pin 1 is at the left (see the silkscreen "PACK" label: GND GND BAT 5V SDA SCL). |
 | JST-XH headers | The latch/key side faces the same way as the silkscreen outline, and each header's pin count matches its label (2-pin HELTEC_BAT/BUZ/SPK, 4-pin LCD/NFC/BTN_*). |
 
-If a part is wrong, fix its `Rotation` in `fab/jlc_cpl.csv` (degrees, counter-clockwise positive) and upload the file again. You can also leave it and note it in the order, because JLC's engineers follow the silkscreen polarity marks. Don't edit the CSVs by hand as a long-term fix: `make all` rewrites them.
+If a part is wrong, fix its `Rotation` in `fab/carrier/jlc_cpl.csv` (degrees, counter-clockwise positive) and upload the file again. You can also leave it and note it in the order, because JLC's engineers follow the silkscreen polarity marks. Don't edit the CSVs by hand as a long-term fix: `make all` rewrites them.
 
-**Stock.** The J2/J3 socket (about 2.8k in stock) and L1 (about 3.2k), as of 2026-09-29, are the parts most likely to run out. Verified backups: socket C2897381, JST-XH 4-pin clone C37815, BSS138 C82045 (check the 2-pin XH's own clone separately). (The old PTC backup C5358568 is a 1 A part and no longer fits F1.) To switch, change the number in `LCSC` in `design.py` and run `make all`. Check the new part's package and pinout on its LCSC page first.
+**Stock.** The J2/J3 socket (about 2.8k in stock) and L1 (about 3.2k), as of 2026-09-29, are the parts most likely to run out. Verified backups: socket C2897381, JST-XH 4-pin clone C37815, BSS138 C82045 (check the 2-pin XH's own clone separately). (The old PTC backup C5358568 is a 1 A part and no longer fits F1.) To switch, change the number in `LCSC` in `carrier.py` and run `make all`. Check the new part's package and pinout on its LCSC page first.
 
-**Budget variant.** The same board, assembled without the speaker and NFC modules (see `design.py` `VARIANTS`
-and `COSTS.md`). Order the same Gerber zip, then upload **`fab/jlc_bom_budget.csv`** and
-**`fab/jlc_cpl_budget.csv`** instead. Differences from the steps above:
+**Budget variant.** The same board, assembled without the speaker and NFC modules (see `carrier.py` `VARIANTS`
+and `COSTS.md`). Order the same Gerber zip, then upload **`fab/carrier/jlc_bom_budget.csv`** and
+**`fab/carrier/jlc_cpl_budget.csv`** instead. Differences from the steps above:
 
 - 13 BOM lines and 36 placements (Deluxe: 14 and 43). Nothing else in the form changes.
 - **1 SMD Extended type**, not 2: U3 (NS4168, C910588) is not fitted, so its setup fee is gone. The Preferred (1) and Basic (8) counts are unchanged.
@@ -124,7 +124,7 @@ and `COSTS.md`). Order the same Gerber zip, then upload **`fab/jlc_bom_budget.cs
 
 ## 6. Parts
 
-A bare board ships without parts. `fab/bom.csv` lists the on-board parts to buy separately, grouped by value and footprint. The DNP pull-ups R_SDA5/R_SCL5 are left out on purpose.
+A bare board ships without parts. `fab/carrier/bom.csv` lists the on-board parts to buy separately, grouped by value and footprint. The DNP pull-ups R_SDA5/R_SCL5 are left out on purpose.
 Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`, Parts 1–3 and 5):
 
 - Heltec WiFi LoRa 32 V4 (no display, EU868) and an L76K GNSS module
@@ -146,7 +146,7 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 
 **Speaker.** U3 (NS4168) drives J_SPK as a bridge-tied load (BTL): both pins switch, and neither is ground. Connect the speaker's two leads straight to J_SPK (pin 1 OUT-, pin 2 OUT+, as on the silkscreen) and **never connect either lead to GND, the enclosure or a shared return wire**: that shorts an output stage. Use an **8 Ω, 2 W** speaker (Visaton K 50; roughly 0.6 W into 8 Ω from a 1S cell, estimated from the datasheet's 1.2 W into 4 Ω at 3.6 V), plus an ePTFE acoustic vent in the enclosure wall if needed.
 
-Other files in `fab/`: `schematic.pdf`, `top.png`/`bottom.png` (3D renders), `gerbers/` (created by `make all` and not committed: the unzipped Gerbers plus drill maps and a Gerber job file, which are not in the zip).
+Other files in `fab/carrier/`: `schematic.pdf`, `top.png`/`bottom.png` (3D renders), `gerbers/` (created by `make all` and not committed: the unzipped Gerbers plus drill maps and a Gerber job file, which are not in the zip).
 
 ## 7. The pack board (4 x 18650)
 

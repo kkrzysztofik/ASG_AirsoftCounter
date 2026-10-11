@@ -42,7 +42,7 @@ PARTS = {
     "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x02", XH2),
     "J_SPK1": ("SPK", "Connector_Generic:Conn_01x02", XH2),
     # Cell protection in the negative lead (the Heltec V4 has no under-voltage cutoff, see
-    # fab/PARTS_REVIEW.md) now lives on the pack board: J_PWR1.3 already is the protected, switched
+    # docs/PARTS_REVIEW.md) now lives on the pack board: J_PWR1.3 already is the protected, switched
     # pack rail and board GND is the pack ground.
     # Power (bulk on the switched pack rail; the boost is on the pack board)
     "C_BULK1": ("47uF 10V", "Device:C", C1206),

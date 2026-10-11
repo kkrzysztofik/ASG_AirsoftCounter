@@ -9,7 +9,7 @@ Y negated (the board is Y-down with its origin at the top-left corner, the Gerbe
 board spans X 0..90, Y -60..0 mm in both and JLC lines them up. Mid X/Y is the centre of the F.CrtYd
 courtyard, not the footprint anchor: THT footprints (pin sockets, JST-XH, radial caps) are anchored
 on pin 1, which would put J2/J3 21.6 mm off in JLC's preview. Rotation is KiCad's, with no JLC
-correction (ORDERING.md lists the parts to check in the preview).
+correction (docs/ORDERING.md lists the parts to check in the preview).
 
 /usr/bin/python3 jlc.py   (after `make fab` has built the Gerber zip)
 """

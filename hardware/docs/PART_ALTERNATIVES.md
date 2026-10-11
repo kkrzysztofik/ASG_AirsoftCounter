@@ -29,7 +29,7 @@ pays off if the replacement is Basic or Preferred Extended (no fee), or is dropp
 | Option | Fit | Notes |
 |---|---|---|
 | NS4168 (Nsiway) | Cheaper I2S amp with integrated DAC, about 2.5 W (MAX98357A: about 3.2 W) | Not footprint-compatible. Gain and channel/enable pins differ, so `AMP_SD`, the gain strap and the amp block (`U3`, `C_AMP1`, `C_AMP2`, `R_SD1`) need redoing. LCSC number and Basic/Extended status not checked. |
-| No amp | Budget variant (`VARIANTS` in `design.py`) | Already drops `U3` and its setup fee. |
+| No amp | Budget variant (`VARIANTS` in `carrier.py`) | Already drops `U3` and its setup fee. |
 
 Into 8 ohm the board delivers about 1 W either way, so the NS4168 costs no real output.
 
