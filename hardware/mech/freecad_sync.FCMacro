@@ -213,11 +213,9 @@ def _say(msg):
     import FreeCAD as App
 
     App.Console.PrintMessage(msg + "\n")
-    try:
+    if App.GuiUp:  # headless (freecadcmd) has no QApplication; a dialog there aborts FreeCAD
         from PySide import QtGui
         QtGui.QMessageBox.information(None, "freecad_sync", msg)
-    except ImportError:
-        pass
 
 
 def main():
