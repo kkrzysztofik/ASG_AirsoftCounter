@@ -30,8 +30,8 @@ Writes `out/assembly.step`, one compound with named children:
 | box | thin shell from `BOX_IN` + `WALL`, 4 `COLUMN_SIZE` columns | origin |
 
 - `--boards pack,carrier` (default). The `_tme` variants share the outlines: `--boards pack_tme,carrier_tme`.
-- Board files are looked up in `hardware/kicad/` and then in `hardware/`, so the code works before and
-  after the hardware cleanup (`2026-10-11-hardware-cleanup-design.md`).
+- Board files come from `hardware/kicad/` (the hardware cleanup, `2026-10-11-hardware-cleanup-design.md`,
+  landed first).
 - Board STEPs are cached in `out/boards/` and only re-exported when the `.kicad_pcb` is newer.
 - The guide (drill jig) is left out because it is not part of the assembled insert.
 - `--check` adds a pairwise interference test: `a.intersect(b).volume > 0` fails. Flush contact
