@@ -383,10 +383,15 @@ def board_step(name):
     missing = 0
     if not step.exists() or step.stat().st_mtime < pcb.stat().st_mtime:
         step.parent.mkdir(exist_ok=True)
-        r = subprocess.run(["kicad-cli", "pcb", "export", "step", "-f", "-o", str(step), str(pcb)],
-                           capture_output=True, text=True)
+        tmp = step.with_suffix(".tmp")  # renamed into place only once complete, so a killed run can't be cached
+        try:
+            r = subprocess.run(["kicad-cli", "pcb", "export", "step", "-f", "-o", str(tmp), str(pcb)],
+                               capture_output=True, text=True)
+        except FileNotFoundError:
+            raise SystemExit("kicad-cli (KiCad 9) is not on PATH; the assembly needs it to export the boards") from None
         if r.returncode:
             raise SystemExit(f"kicad-cli failed on {pcb.name}:\n{r.stdout}{r.stderr}")
+        tmp.replace(step)
         missing = (r.stdout + r.stderr).count("Could not add 3D model")
     board = import_step(str(step))
     # every run, not just the export one: a cached bare plate hides the parts from the gate
