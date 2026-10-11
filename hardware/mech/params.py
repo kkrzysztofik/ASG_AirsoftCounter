@@ -263,10 +263,14 @@ def column_centres():
     return [(dx, dy), (BOX_IN[0] - dx, dy), (dx, BOX_IN[1] - dy), (BOX_IN[0] - dx, BOX_IN[1] - dy)]
 
 
+def board_xy(origin, size, x, y):
+    """A board point in tray coordinates. KiCad's Y runs down, so board y lands at size[1] - y."""
+    return origin[0] + x, origin[1] + size[1] - y
+
+
 def trough_centres_y():
     """Cell centre lines, in tray coordinates, ascending (the saddle rails span first to last)."""
-    # KiCad's Y runs down, so board y lands at PACK[1] - y in the tray's Y-up frame
-    return sorted(PACK_ORIGIN[1] + PACK[1] - y for y in HOLDER_Y)
+    return sorted(board_xy(PACK_ORIGIN, PACK, 0, y)[1] for y in HOLDER_Y)
 
 
 def carrier_post_xy():
@@ -276,15 +280,16 @@ def carrier_post_xy():
     from the floor; they stand in the Y margin either side of the pack board and reach in on
     arms at the carrier's height.
     """
-    xs = [CARRIER_ORIGIN[0] + h[0] for h in CARRIER_HOLES[:2]]
     y_lo = PACK_ORIGIN[1] - POST_R - 2.0
     y_hi = PACK_ORIGIN[1] + PACK[1] + POST_R + 2.0
-    return [(xs[0], y_lo), (xs[1], y_lo), (xs[0], y_hi), (xs[1], y_hi)]
+    mid = PACK_ORIGIN[1] + PACK[1] / 2
+    # one post per hole, in carrier_hole_xy's order, on the nearer margin: make_tray zips the two
+    return [(hx, y_lo if hy < mid else y_hi) for hx, hy in carrier_hole_xy()]
 
 
 def carrier_hole_xy():
     """Where the carrier's own M3 holes sit, in tray coordinates."""
-    return [(CARRIER_ORIGIN[0] + h[0], CARRIER_ORIGIN[1] + h[1]) for h in CARRIER_HOLES]
+    return [board_xy(CARRIER_ORIGIN, CARRIER, hx, hy) for hx, hy in CARRIER_HOLES]
 
 
 def _centre_box(centre, size):

@@ -135,7 +135,7 @@ def make_tray():
     # pack board posts, flush with the board's underside, M3 self-tapping pilots
     pz = P.pack_z()
     for hx, hy in P.PACK_HOLES:
-        tray += post(P.PACK_ORIGIN[0] + hx, P.PACK_ORIGIN[1] + hy, pz)
+        tray += post(*P.board_xy(P.PACK_ORIGIN, P.PACK, hx, hy), pz)
 
     # carrier posts: in the margins, reaching in on gusseted arms. The gusset hangs from the arm,
     # full depth at the post and nothing at the hole, so it stays above the pack board it crosses.

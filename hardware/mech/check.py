@@ -57,8 +57,7 @@ def stack_fits():
 
 
 def cradle_aligns_with_holders():
-    # KiCad's Y runs down, so board y lands at PACK[1] - y in the tray's Y-up frame
-    want = sorted(params.PACK_ORIGIN[1] + params.PACK[1] - y for y in params.HOLDER_Y)
+    want = sorted(params.board_xy(params.PACK_ORIGIN, params.PACK, 0, y)[1] for y in params.HOLDER_Y)
     got = params.trough_centres_y()
     if [round(v, 3) for v in got] != [round(v, 3) for v in want]:
         return fail(f"cradle {got} off the holders {want}")
@@ -142,7 +141,7 @@ def floor_windows_clear_the_mounts():
             mounts.append(("sleeve", w))
     r = params.POST_R + params.POST_FLARE
     for hx, hy in params.PACK_HOLES:
-        x, y = params.PACK_ORIGIN[0] + hx, params.PACK_ORIGIN[1] + hy
+        x, y = params.board_xy(params.PACK_ORIGIN, params.PACK, hx, hy)
         mounts.append(("pack post", (x - r, x + r, y - r, y + r)))
     for x, y in params.carrier_post_xy():
         mounts.append(("carrier post", (x - r, x + r, y - r, y + r)))
