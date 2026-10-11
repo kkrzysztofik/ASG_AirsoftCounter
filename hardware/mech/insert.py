@@ -85,8 +85,8 @@ def tri_prism_x(y0, y1, z0, z1, x_centre, width):
 def post(x, y, z_top, pilot=True):
     """A printed post: a straight column plus a 45-degree base flare.
 
-    The guideline's column table (D=3 mm -> H=3-6 mm) makes a bare 32 mm column of any sensible
-    diameter too slender to survive bead blasting. The flare is the cheap fix.
+    The guideline's column table (D=3 mm -> H=3-6 mm) makes a bare column as tall as the carrier
+    posts, at any sensible diameter, too slender to survive bead blasting. The flare is the cheap fix.
     """
     part = cyl_z(x, y, 0, z_top, P.POST_R)
     part += Pos(x, y, P.POST_FLARE_H / 2) * Cone(P.POST_R + P.POST_FLARE, P.POST_R, P.POST_FLARE_H)

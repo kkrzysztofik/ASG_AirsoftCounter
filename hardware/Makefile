@@ -79,6 +79,7 @@ boards:
 # PARTS limits a run to the parts that process will actually make, so an FDM run is not judged
 # against features belonging to the small flat parts it rejects.
 # The assembly (out/assembly.step) places every part with the boards and fails on any overlap.
+# It needs kicad-cli (KiCad 9) to export the boards; the exports are cached in the gitignored out/boards/.
 PROC ?= mjf
 PARTS ?= all
 export MECH_PROCESS = $(PROC)

@@ -66,8 +66,8 @@ No `.FCStd` in git, because the macro rebuilds the document from code.
   parse and rewrite logic runs on plain Python. The test changes 3 values in a copy of `params.py` and
   asserts that exactly 3 lines differ and the comments survive.
 - Phase 1: `--part assembly --check` passes on the current params.
-- Manual: in FreeCAD, change `WALL`, sync, and check that the tray updates. Then set a value that breaks
-  a rule and check that `params.py` is restored.
+- Manual: in FreeCAD, change `FLOOR_T` (the tray updates) or `WALL` (the bushings, grille and box shell
+  move), and sync. Then set a value that breaks a rule and check that `params.py` is restored.
 
 ## Prerequisite
 
@@ -88,6 +88,8 @@ FreeCAD is not installed here: `sudo apt install freecad` or the AppImage (versi
 - **Sync order.** The macro runs `check.py` first, through uv. It rebuilds `out/` after a failure only when
   insert.py had started writing. Edits are byte-exact (right to left within a line, ast-compatible line
   splitting, bytes I/O), and child processes drop the AppImage's PYTHONHOME, PYTHONPATH and LD_LIBRARY_PATH.
+- **Sync reloads.** After a passing sync the macro closes the document and reopens it from the new
+  `assembly.step` and `params.py`, instead of replacing an `Assembly` group in place.
 - **Generated outputs.** `mech/out/*.stl|step` (`assembly.step` included) are gitignored. Only the drill
   templates are tracked, and they regenerate byte-stable.
 

@@ -135,13 +135,13 @@ CELL_LEN = 65.0
 CELL_PITCH = 21.66            # MYOUNG holder pitch, pack design doc
 HOLDER_X = 46.5                          # pack.PLACE["BT1".."BT4"] x, board space
 HOLDER_Y = [12.35, 34.01, 55.67, 77.33]  # pack.PLACE["BT1".."BT4"] y, board space
-# The holder's own floor holds the cell about this far above the pack board's underside, which
-# puts the cell bottom this far above the tray floor. MEASURE on the coupon.
-CELL_BOTTOM_Z = 7.4
+# Cell bottom above the tray floor, where the saddles catch it; the pack board rests on the cell
+# tops (pack_z), so this sets the stack.
+CELL_BOTTOM_Z = 7.4           # MEASURE on the coupon
 # The holder (14.9 mm) is shorter than the cell (18.4), but the extra 3.5 mm sticks out of the
 # holder's open side, towards the floor, not through the board: through the holder's floor window
 # the cell's top reaches the board at most. MEASURE on the coupon with a real cell.
-PACK_OVERLAP = 0.0            # how far the cell's top rises past the pack board's underside
+PACK_OVERLAP = 0.0            # MEASURE how far the cell's top rises past the pack board's underside
 SADDLE_T = 6.0                # saddle rail thickness along X (v2: was 8, 6 is plenty)
 SADDLE_INSET = 22.0           # saddle rails sit this far either side of the cell centres
 SADDLE_CLEAR = 0.4
@@ -158,14 +158,13 @@ LCD_HOLES = (93.0, 55.0)      # M3 grid
 LCD_BOSS_H = 5.0              # lid bosses the LCD board hangs from
 LCD_CENTRE = (95.0, 105.0)    # pushed to the top edge, leaving the buttons a clear band below
 BUTTON_XY = [(56.0, 20.0), (96.0, 20.0)]    # below the carrier's footprint, so a 25 mm body fits
-NFC_CENTRE = (133.5, 27.0)    # between button 2's lid boss and the bottom-right column, 20+ mm off the LCD;
-                              # the lid webs either side are asserted printable in check.py
+NFC_CENTRE = (133.5, 27.0)    # between button 2's lid boss and the (x1, y0) corner column, 20+ mm off
+                              # the LCD; the lid webs either side are asserted printable in check.py
 NFC_SIZE = 45.0
 NFC_MIN_FROM_LCD = 20.0       # or the PN532 range dies
 # hole_d = hole drilled in the wall, device_d = the device's own mounting thread/body.
 # v2 dropped the tray's wall backing blocks: 23.3 cm3 of the old tray, a fifth of it, to hold a
-# nut while you tighten a panel device. A nyloc and a finger do the same job. The devices, their
-# hole sizes and their drill templates are unchanged.
+# nut while you tighten a panel device. A nyloc and a finger do the same job.
 # Which wall a device goes through: x0 / x1 are the 140 mm walls at x = 0 / 190, y0 / y1 the
 # 190 mm walls at y = 0 / 140. u runs along the wall from the box origin (along Y on an x wall,
 # along X on a y wall). Seen in portrait with x0 at the bottom: key and USB-C on the bottom wall,
