@@ -291,7 +291,7 @@ def template_sheets():
     for bx0, bx1, by0, by1 in P.button_boxes():
         lid.append(to_centre * (Pos((bx0 + bx1) / 2, (by0 + by1) / 2, 0) * Circle((bx1 - bx0) / 2)))
 
-    sheets = [("lid", lid, "LID, seen from inside", -cy - 15)]
+    sheets = [("lid", lid, "LID, seen from above - x0 wall (key, USB-C) on the left", -cy - 15)]
     side = {"x0": "bottom", "x1": "top", "y0": "right", "y1": "left"}  # in portrait, x0 at the bottom
     for wall, length in P.WALLS.items():
         holes = [(n, u, z, d) for n, w, u, z, d, _o in P.wall_holes() if w == wall]
