@@ -305,14 +305,18 @@ def wall_holes_clear():
                         f"{reach:.1f} mm reach along {wall} (u must be {reach + r:.1f}..{length - reach - r:.1f})")
         if not params.FLOOR_T + r <= z <= params.panel_z0() - r:
             return fail(f"wall hole {name}: z {z} puts the {d} mm hole into the tray floor or the lid panel")
-        if z - outer / 2 < -params.WALL - 1e-6 or u - outer / 2 < -params.WALL - 1e-6 \
-                or u + outer / 2 > length + params.WALL + 1e-6:
-            return fail(f"wall hole {name}: its {outer} mm outside part hangs off the {wall} wall face")
-    for i, a in enumerate(holes):
-        for b in holes[i + 1:]:
-            gap = ((a[2] - b[2]) ** 2 + (a[3] - b[3]) ** 2) ** 0.5 - (a[5] + b[5]) / 2
-            if a[1] == b[1] and gap < 0:
-                return fail(f"wall holes {a[0]} and {b[0]}: their outside parts overlap by {-gap:.1f} mm on {a[1]}")
+        # The column check above already keeps the outside part clear of the wall ends along u.
+        # -WALL assumes the base slab is as thick as the side wall (MEASURE with the box).
+        if z - outer / 2 < -params.WALL - 1e-6 or z + outer / 2 > params.BOX_IN[2] + 1e-6:
+            return fail(f"wall hole {name}: its {outer} mm outside part at z {z} leaves the {wall} wall face "
+                        f"(z must be {outer / 2 - params.WALL:.1f}..{params.BOX_IN[2] - outer / 2:.1f})")
+    for i, (na, wa, ua, za, _da, oa) in enumerate(holes):
+        for nb, wb, ub, zb, _db, ob in holes[i + 1:]:
+            if wa != wb:
+                continue
+            gap = ((ua - ub) ** 2 + (za - zb) ** 2) ** 0.5 - (oa + ob) / 2
+            if gap < 0:
+                return fail(f"wall holes {na} and {nb}: their outside parts overlap by {-gap:.1f} mm on {wa}")
     return ok(f"{len(holes)} wall holes clear the columns, floor, lid and each other")
 
 
