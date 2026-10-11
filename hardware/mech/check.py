@@ -143,7 +143,7 @@ def nfc_web_clears_the_column_reliefs():
     ry = params.COLUMN_SIZE[1] / 2 + params.FIT / 2
     webs = [("column relief", params._gap(nfc, (cx - rx, cx + rx, cy - ry, cy + ry)))
             for cx, cy in params.column_centres()]
-    r = params.BUTTON_D / 2 + 5  # the lid's button boss, as make_lid builds it
+    r = params.BUTTON_BOSS_R
     for i, (bx, by) in enumerate(params.BUTTON_XY):
         webs.append((f"button {i + 1} boss", params._gap(nfc, (bx, bx, by, by)) - r))
     name, web = min(webs, key=lambda w: w[1])

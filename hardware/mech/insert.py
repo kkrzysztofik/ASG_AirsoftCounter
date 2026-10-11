@@ -187,7 +187,7 @@ def make_lid():
     # button bosses: the lid's drilled hole lands on something that can clamp the button
     for bx0, bx1, by0, by1 in P.button_boxes():
         cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2
-        panel += cyl_z(cx, cy, z0 - P.button_boss_h(), z0, P.BUTTON_D / 2 + 5)
+        panel += cyl_z(cx, cy, z0 - P.button_boss_h(), z0, P.BUTTON_BOSS_R)
         panel -= cyl_z(cx, cy, z0 - P.button_boss_h() - 1, z0 + 1, P.BUTTON_D / 2 + 0.15)
 
     # LCD mounting bosses on the 93 x 55 grid

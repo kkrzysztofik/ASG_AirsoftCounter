@@ -150,6 +150,7 @@ NFC_DEPTH = 5.0               # PN532 module thickness
 
 # --- panel devices --------------------------------------------------------------------------
 BUTTON_D = 16.0               # budget generic 16 mm (Deluxe is 19)
+BUTTON_BOSS_R = BUTTON_D / 2 + 5  # lid boss that clamps the button
 SPEAKER_D = 50.0              # VISATON K 50
 LCD = (98.0, 60.0)            # 20x4 module
 LCD_HOLES = (93.0, 55.0)      # M3 grid
