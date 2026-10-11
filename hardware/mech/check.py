@@ -292,6 +292,30 @@ def wall_parts_sane():
     return ok(f"{len(params.WALL_PARTS)} wall devices each have a bushing")
 
 
+def wall_holes_clear():
+    """Each wall hole clears the corner columns, the tray floor and the lid panel, its outside
+    part stays on the wall face, and no two outside parts on one wall overlap."""
+    holes = params.wall_holes()
+    for name, wall, u, z, d, outer in holes:
+        if wall not in params.WALLS:
+            return fail(f"wall hole {name}: wall {wall!r} is not one of {', '.join(params.WALLS)}")
+        reach, length, r = params.column_reach(wall), params.WALLS[wall], d / 2
+        if not reach + r <= u <= length - reach - r:
+            return fail(f"wall hole {name}: u {u} puts the {d} mm hole inside a corner column's "
+                        f"{reach:.1f} mm reach along {wall} (u must be {reach + r:.1f}..{length - reach - r:.1f})")
+        if not params.FLOOR_T + r <= z <= params.panel_z0() - r:
+            return fail(f"wall hole {name}: z {z} puts the {d} mm hole into the tray floor or the lid panel")
+        if z - outer / 2 < -params.WALL - 1e-6 or u - outer / 2 < -params.WALL - 1e-6 \
+                or u + outer / 2 > length + params.WALL + 1e-6:
+            return fail(f"wall hole {name}: its {outer} mm outside part hangs off the {wall} wall face")
+    for i, a in enumerate(holes):
+        for b in holes[i + 1:]:
+            gap = ((a[2] - b[2]) ** 2 + (a[3] - b[3]) ** 2) ** 0.5 - (a[5] + b[5]) / 2
+            if a[1] == b[1] and gap < 0:
+                return fail(f"wall holes {a[0]} and {b[0]}: their outside parts overlap by {-gap:.1f} mm on {a[1]}")
+    return ok(f"{len(holes)} wall holes clear the columns, floor, lid and each other")
+
+
 CHECKS = [
     process_is_known,
     box_fits,
@@ -314,6 +338,7 @@ CHECKS = [
     jlc_build_size,
     jlc_columns,
     wall_parts_sane,
+    wall_holes_clear,
 ]
 
 

@@ -157,18 +157,22 @@ NFC_MIN_FROM_LCD = 20.0       # or the PN532 range dies
 # v2 dropped the tray's wall backing blocks: 23.3 cm3 of the old tray, a fifth of it, to hold a
 # nut while you tighten a panel device. A nyloc and a finger do the same job. The devices, their
 # hole sizes and their drill templates are unchanged.
-# u is measured along the wall from the corner: every one of these has to clear the corner
-# columns, whose footprints reach 31 mm in from each wall (asserted in check.py).
+# Which wall a device goes through: x0 / x1 are the 140 mm walls at x = 0 / 190, y0 / y1 the
+# 190 mm walls at y = 0 / 140. u runs along the wall from the box origin (along Y on an x wall,
+# along X on a y wall). Seen in portrait with x0 at the bottom: key and USB-C on the bottom wall,
+# SMA on the top, buzzer and speaker on the left long wall (y1, the LCD side). Every hole has to
+# clear the corner columns' reach along its wall, and its neighbours (asserted in check.py).
+WALLS = {"x0": BOX_IN[1], "x1": BOX_IN[1], "y0": BOX_IN[0], "y1": BOX_IN[0]}  # length along u
 WALL_PARTS = {
-    "key":   {"hole_d": 22.3, "device_d": 22.0, "wall": "long",  "u": 45.0, "z": 35.0},
-    "usbc":  {"hole_d": 12.2, "device_d": 12.0, "wall": "short", "u": 55.0, "z": 45.0},
-    "sma":   {"hole_d": 6.5,  "device_d": 6.4,  "wall": "long",  "u": 145.0, "z": 46.0},
-    "buzzer": {"hole_d": 30.0, "device_d": 29.6, "wall": "long", "u": 95.0, "z": 46.0},
+    "key":    {"hole_d": 22.3, "device_d": 22.0, "wall": "x0", "u": 50.0,  "z": 35.0},
+    "usbc":   {"hole_d": 12.2, "device_d": 12.0, "wall": "x0", "u": 90.0,  "z": 45.0},
+    "sma":    {"hole_d": 6.5,  "device_d": 6.4,  "wall": "x1", "u": 70.0,  "z": 46.0},
+    "buzzer": {"hole_d": 30.0, "device_d": 29.6, "wall": "y1", "u": 125.0, "z": 46.0},
 }
 # Cable tie points, inboard of the corner columns so a clip cannot end up inside one.
 CLIP_XY = [(148.0, 30.0), (148.0, 110.0)]
 CLIP_GROOVE_D = 4.4           # hole through a clip, for a small cable tie
-SPEAKER_WALL = {"wall": "long", "u": 40.0, "z": 30.0}  # Ø50, own grille plate
+SPEAKER_WALL = {"wall": "y1", "u": 65.0, "z": 30.0}  # Ø50, own grille plate
 BUSHING_FLANGE = 4.0          # ring thickness. A ring, not a barrel: the wall is 3 mm of
                               # PS/ABS with a hole in it, and the ring is what stops it cracking
                               # and what seats the O-ring. There is no room for a barrel because
@@ -345,3 +349,19 @@ def mesh_open_area():
                 j += 1
         k += 1
     return holes * math.pi * r ** 2 / (math.pi * R ** 2)
+
+
+def column_reach(wall):
+    """How far the corner columns' footprints reach along `wall`, from either end."""
+    i = 1 if wall[0] == "x" else 0  # u runs along Y on an x wall
+    return column_centres()[0][i] + COLUMN_SIZE[i] / 2
+
+
+def wall_holes():
+    """(name, wall, u, z, hole_d, outer_d) for every hole in a wall. outer_d is what sits on the
+    outside face: the bushing ring, or the speaker's grille plate."""
+    out = [(n, w["wall"], w["u"], w["z"], w["hole_d"], w["hole_d"] + BUSHING_FLANGE_D)
+           for n, w in WALL_PARTS.items()]
+    s = SPEAKER_WALL
+    out.append(("speaker", s["wall"], s["u"], s["z"], SPEAKER_D, SPEAKER_D + 2 * GRILLE_RIM))
+    return out
