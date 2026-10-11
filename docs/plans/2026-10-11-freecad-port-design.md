@@ -72,3 +72,50 @@ No `.FCStd` in git, because the macro rebuilds the document from code.
 ## Prerequisite
 
 FreeCAD is not installed here: `sudo apt install freecad` or the AppImage (version 1.0 or later).
+
+## Deviations and findings during implementation
+
+**The design as built differs from the design above in these ways:**
+- **STEP origin.** kicad-cli's default STEP origin is the board's top-left corner with Y flipped up, not the
+  board centre. Boards are placed at `(origin_x, origin_y + H, z)`.
+- **One board-to-tray mapping.** Every board point goes through `params.board_xy`, because KiCad's Y runs
+  down. The troughs, pack posts and carrier holes all use it, and each carrier post derives from its own hole.
+- **Gate details.** The clash threshold is 1 mm³ (`CLASH_MM3`, shared with the column check), not 0. The
+  bbox prefilter counts containment as overlap, because build123d's `BoundBox.overlaps` excludes it, which
+  had hidden 23 pairs.
+- **Placeholders.** On top of the Heltec and LCD there are cells, buttons and NFC. The boards export bare
+  (KiCad's 3D library is not installed), and the gate says so on every run.
+- **Sync order.** The macro runs `check.py` first, through uv. It rebuilds `out/` after a failure only when
+  insert.py had started writing. Edits are byte-exact (right to left within a line, ast-compatible line
+  splitting, bytes I/O), and child processes drop the AppImage's PYTHONHOME, PYTHONPATH and LD_LIBRARY_PATH.
+- **Generated outputs.** `mech/out/*.stl|step` (`assembly.step` included) are gitignored. Only the drill
+  templates are tracked, and they regenerate byte-stable.
+
+**Defects the 3D gate or the reviews found, now fixed:**
+- **Carrier arms:** the gussets cut through the pack board. They now hang from the arm, `ARM_CLEAR` above it.
+- **Cell height:** cells were modelled 3.5 mm through the pack board. `PACK_OVERLAP` is now 0, MEASURE. The
+  stack is 52.0 of 78 mm.
+- **Tray underside:** rails, clips and gussets started 0.1 mm below it, so the tray could not sit flat.
+- **Cell position:** cells sat 0.32 mm off in Y (board Y not mirrored) and 1.5 mm off in X (`PACK[0] / 2`
+  instead of the holders' x). Now `HOLDER_X`/`HOLDER_Y` are asserted against `pack.py`.
+- **NFC:** it sat on the bottom-right corner column. Buttons moved to x = 56/96 and the NFC to (133.5, 27),
+  and a check holds the lid webs at the process minimum wall.
+- **Wall holes:** the speaker hole overlapped a corner column. With the new wall layout (key and USB-C on
+  x0, SMA on x1, buzzer and speaker on y1), `wall_holes_clear` covers the columns, floor, lid, rim and
+  neighbours.
+- **Grille:** the O-ring groove was 0.01 mm deep, and a first fix cut it as a ledge. It is now a ring with
+  an inner wall, probed in `check_part`.
+- **Carrier screw bosses:** they had no pilot hole. The margin posts had one that nothing used.
+- **Drill sheets:** one per wall, seen from outside, with a text label and the outer-face outline (top
+  edge on the rim).
+
+**Still open (MEASURE or needs hardware):**
+- **Component clearances.** The boards are bare, so the gate cannot see components. J_KEY1, a vertical JST
+  XH, sits under a carrier gusset with about 6.4 mm of headroom. J_PWR1 sits under the 8 mm carrier
+  standoff. Install KiCad's 3D library and delete `out/boards/`.
+- **Speaker vs LCD.** The speaker hole top (z 55) is above the LCD bottom (z 54.5), and the LCD ends 5 mm
+  from the y1 wall. Device bodies are not modelled.
+- **Base slab.** The grille plate's bottom edge assumes the base slab is `WALL` thick (zero margin).
+- **Tight margins.** The FDM lid web at button 2's boss sits exactly at 2.0 mm. The LCD-to-Heltec gap is
+  2.5 mm against a 2.0 floor (`LCD_DEPTH` is MEASURE).
+- **Fab zips.** The quote zips in `fab/` predate these fixes.
