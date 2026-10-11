@@ -13,12 +13,14 @@ Every dimension comes from params.py; this file holds shapes only.
 
 import math
 import pathlib
+import subprocess
 import sys
 
 try:
     from build123d import (
         Box,
         Circle,
+        Compound,
         Cone,
         Cylinder,
         ExportSVG,
@@ -32,6 +34,7 @@ try:
         export_step,
         export_stl,
         extrude,
+        import_step,
     )
 except ModuleNotFoundError as exc:
     raise SystemExit(
@@ -46,6 +49,7 @@ sys.path.insert(0, str(HERE.parent))
 import params as P  # noqa: E402
 
 OUT = HERE / "out"
+CLASH_MM3 = 1.0  # overlap below this is boolean noise on touching faces, not a collision
 
 
 # --- primitives ------------------------------------------------------------------------------
@@ -335,6 +339,127 @@ def _check_template_scale(path, re):
     print(f"ok    {path.name}: 1:1, 1 unit = 1 mm, {w.group(1)} mm wide, 100 mm bar included")
 
 
+# --- assembly ----------------------------------------------------------------------------------
+
+# Where a wall's outside face meets (u, z), and the rotation that turns +Z into the inward normal.
+WALL_FRAMES = {
+    "x0": (lambda u, z: (-P.WALL, u, z), Rot(Y=90)),
+    "x1": (lambda u, z: (P.BOX_IN[0] + P.WALL, u, z), Rot(Y=-90)),
+    "y0": (lambda u, z: (u, -P.WALL, z), Rot(X=-90)),
+    "y1": (lambda u, z: (u, P.BOX_IN[1] + P.WALL, z), Rot(X=90)),
+}
+
+
+def wall_frame(wall, u, z):
+    at, rot = WALL_FRAMES[wall]
+    return Pos(*at(u, z)) * rot
+
+
+def box_shell():
+    """The S-BOX base as a stand-in to look against: walls, floor, corner columns, drilled holes."""
+    w = P.WALL
+    shell = box(-w, P.BOX_IN[0] + w, -w, P.BOX_IN[1] + w, -w, P.BOX_IN[2])
+    shell -= box(0, P.BOX_IN[0], 0, P.BOX_IN[1], 0, P.BOX_IN[2] + 1)
+    for cx, cy in P.column_centres():
+        shell += box(*P.column_box(cx, cy), 0, P.BOX_IN[2])
+    for _n, wall, u, z, d, _o in P.wall_holes():
+        shell -= wall_frame(wall, u, z) * cyl_z(0, 0, -1, w + 1, d / 2)
+    return shell
+
+
+def board_step(name):
+    """A board as KiCad exports it, cached in out/boards/ until its .kicad_pcb changes.
+
+    The default origin is the board's top-left corner with Y flipped up, so the outline spans
+    x 0..W, y -H..0 (gen_pcb draws Edge.Cuts from 0,0).
+    """
+    hw = HERE.parent
+    pcb = next((p for p in (hw / "kicad" / f"{name}.kicad_pcb", hw / f"{name}.kicad_pcb") if p.exists()), None)
+    if pcb is None:
+        raise SystemExit(f"no {name}.kicad_pcb in hardware/kicad/ or hardware/")
+    step = OUT / "boards" / f"{name}.step"
+    if not step.exists() or step.stat().st_mtime < pcb.stat().st_mtime:
+        step.parent.mkdir(exist_ok=True)
+        r = subprocess.run(["kicad-cli", "pcb", "export", "step", "-f", "-o", str(step), str(pcb)],
+                           capture_output=True, text=True)
+        if r.returncode:
+            raise SystemExit(f"kicad-cli failed on {pcb.name}:\n{r.stdout}{r.stderr}")
+        missing = (r.stdout + r.stderr).count("Could not add 3D model")
+        if missing:
+            print(f"note  {name}: {missing} footprints have no 3D model (install KiCad's 3D library)")
+    return import_step(str(step))
+
+
+def placeholders():
+    """Envelopes for what has no model: the cells, the Heltec stack, the panel devices."""
+    cell_x = P.PACK_ORIGIN[0] + P.PACK[0] / 2
+    cell_z = P.CELL_BOTTOM_Z + P.CELL_D / 2
+    z0 = P.panel_z0()
+    out = {}
+    for i, cy in enumerate(P.trough_centres_y()):
+        out[f"cell_{i + 1}"] = cyl_x(cy, cell_z,
+                                     cell_x - P.CELL_LEN / 2, cell_x + P.CELL_LEN / 2, P.CELL_D / 2)
+    out["heltec_envelope"] = box(*P.carrier_box(), P.carrier_z() + P.BOARD_T, P.heltec_top())
+    out["lcd"] = box(*P.lcd_box(), z0 - P.LCD_DEPTH, z0 - P.LCD_BOSS_H)
+    out["nfc"] = box(*P.nfc_box(), z0 - P.NFC_DEPTH, z0)
+    for i, (bx, by) in enumerate(P.BUTTON_XY):
+        out[f"button_{i + 1}"] = cyl_z(bx, by, z0 - P.BUTTON_DEPTH, z0 + P.LID_T, P.BUTTON_D / 2)
+    return out
+
+
+def make_assembly(boards):
+    """Everything in place, as {name: shape}. The drill guide is a tool, not part of the insert."""
+    pack, carrier = boards
+    parts = {"box": box_shell(), "tray": make_tray(), "lid": make_lid()}
+    parts["pack_board"] = Pos(P.PACK_ORIGIN[0], P.PACK_ORIGIN[1] + P.PACK[1], P.pack_z()) * board_step(pack)
+    parts["carrier_board"] = Pos(P.CARRIER_ORIGIN[0], P.CARRIER_ORIGIN[1] + P.CARRIER[1], P.carrier_z()) \
+        * board_step(carrier)
+    for name, wp in P.WALL_PARTS.items():
+        # a bushing's z = 0 face is the wall side and the ring stands out along -Z
+        parts[f"bushing_{name}"] = wall_frame(wp["wall"], wp["u"], wp["z"]) * make_bushing(name)
+    s = P.SPEAKER_WALL
+    # the grille's z = 0 face is the wall side too, but the plate stands out along +Z
+    parts["grille"] = wall_frame(s["wall"], s["u"], s["z"]) * Rot(X=180) * make_grille()
+    parts.update(placeholders())
+    return parts
+
+
+def _boxes_touch(a, b):
+    """Bounding boxes share interior; unlike BoundBox.overlaps, containment counts."""
+    return (a.min.X < b.max.X and b.min.X < a.max.X and a.min.Y < b.max.Y and b.min.Y < a.max.Y
+            and a.min.Z < b.max.Z and b.min.Z < a.max.Z)
+
+
+def check_assembly(parts):
+    names = list(parts)
+    boxes = {n: parts[n].bounding_box() for n in names}
+    clashes = []
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            if not _boxes_touch(boxes[a], boxes[b]):
+                continue
+            v = (parts[a] & parts[b]).volume
+            if v > CLASH_MM3:
+                clashes.append(f"FAIL  assembly: {a} and {b} share {v:.1f} mm3")
+    if clashes:
+        raise SystemExit("\n".join(clashes))
+    print(f"ok    assembly: {len(names)} parts, no interference")
+
+
+def write_assembly(boards, check):
+    parts = make_assembly(boards)
+    if check:
+        check_assembly(parts)
+    children = []
+    for name, shape in parts.items():
+        shape.label = name
+        children.append(shape)
+    asm = Compound(children=children)
+    asm.label = "insert_assembly"
+    export_step(asm, str(OUT / "assembly.step"))
+    print("wrote out/assembly.step")
+
+
 # --- driver --------------------------------------------------------------------------------------
 
 PARTS = {
@@ -377,7 +502,7 @@ def check_part(name, part):
         if sx > 220 or sy > 220:
             raise SystemExit(f"FAIL {name}: does not fit a 220 x 220 bed")
         clash = max((part & col).volume for col in column_solids())
-        if clash > 1.0:
+        if clash > CLASH_MM3:
             raise SystemExit(
                 f"FAIL {name}: {clash:.1f} mm3 of it sits inside a solid corner column; "
                 "the part cannot physically go into the box"
@@ -411,13 +536,17 @@ def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("--part", default="all")
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--boards", default="pack,carrier", help="pack and carrier board names")
     args = ap.parse_args(argv)
+
+    OUT.mkdir(exist_ok=True)
+    if args.part == "assembly":
+        write_assembly(args.boards.split(","), args.check)
+        return 0
 
     names = list(PARTS) + ["bus:" + d for d in P.WALL_PARTS]
     if args.part != "all":
         names = [n for n in args.part.split(",") if n]
-
-    OUT.mkdir(exist_ok=True)
     if args.part in ("all", "templates"):
         for path in write_templates():
             print(f"wrote {path.relative_to(HERE.parent)}")

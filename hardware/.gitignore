@@ -3,3 +3,4 @@ build/
 fab/*/gerbers/
 mech/out/*.step
 mech/out/*.stl
+mech/out/boards/
