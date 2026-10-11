@@ -150,8 +150,8 @@ LCD = (98.0, 60.0)            # 20x4 module
 LCD_HOLES = (93.0, 55.0)      # M3 grid
 LCD_BOSS_H = 5.0              # lid bosses the LCD board hangs from
 LCD_CENTRE = (95.0, 105.0)    # pushed to the top edge, leaving the buttons a clear band below
-BUTTON_XY = [(78.0, 20.0), (118.0, 20.0)]   # below the carrier's footprint, so a 25 mm body fits
-NFC_CENTRE = (160.0, 25.0)    # bottom right: clear of the LCD frame and of the carrier
+BUTTON_XY = [(58.0, 20.0), (98.0, 20.0)]    # below the carrier's footprint, so a 25 mm body fits
+NFC_CENTRE = (135.0, 27.0)    # between button 2's lid boss and the bottom-right column, 20+ mm off the LCD
 NFC_SIZE = 45.0
 NFC_MIN_FROM_LCD = 20.0       # or the PN532 range dies
 # hole_d = hole drilled in the wall, device_d = the device's own mounting thread/body.
