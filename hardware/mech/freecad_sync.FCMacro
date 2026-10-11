@@ -129,7 +129,11 @@ def _run_checks():
 
 def load():
     import FreeCAD as App
-    import Import
+
+    if App.GuiUp:
+        import ImportGui as Import  # keeps the STEP colours
+    else:
+        import Import
 
     if not ASSEMBLY.exists():
         raise RuntimeError(f"{ASSEMBLY} is missing: run `uv run insert.py --part assembly` first")
@@ -156,6 +160,7 @@ def load():
 def sync(doc):
     import FreeCAD as App
 
+    doc.recompute()  # a cell edit may not be recalculated yet
     sheet = doc.getObject(SHEET)
     text = PARAMS.read_text()
     if digest(text) != sheet.ParamsHash:
