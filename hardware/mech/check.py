@@ -134,6 +134,24 @@ def nfc_clears_the_lcd_frame():
     return ok(f"NFC {gap:.1f} mm off the LCD frame")
 
 
+def nfc_web_clears_the_column_reliefs():
+    """The lid strip left between the NFC cutout and a column relief or a button boss has to
+    be printable: at least the process's minimum wall for a part the lid's size."""
+    need = params.min_wall(max(params.BOX_IN[0], params.BOX_IN[1]))
+    nfc = params.nfc_box()
+    rx = params.COLUMN_SIZE[0] / 2 + params.FIT / 2
+    ry = params.COLUMN_SIZE[1] / 2 + params.FIT / 2
+    webs = [("column relief", params._gap(nfc, (cx - rx, cx + rx, cy - ry, cy + ry)))
+            for cx, cy in params.column_centres()]
+    r = params.BUTTON_D / 2 + 5  # the lid's button boss, as make_lid builds it
+    for i, (bx, by) in enumerate(params.BUTTON_XY):
+        webs.append((f"button {i + 1} boss", params._gap(nfc, (bx, bx, by, by)) - r))
+    name, web = min(webs, key=lambda w: w[1])
+    if web < need:
+        return fail(f"lid web between the NFC and the {name} is {web:.2f} mm, needs {need}")
+    return ok(f"lid web around the NFC is {web:.2f} mm at its thinnest ({name}), >= {need}")
+
+
 def floor_windows_clear_the_mounts():
     """v2 cuts the empty middle out of the floor. A window under a post, a saddle or a clip
     leaves that part standing on nothing."""
@@ -330,6 +348,7 @@ CHECKS = [
     lcd_clears_the_heltec,
     deep_panel_parts_miss_the_carrier,
     nfc_clears_the_lcd_frame,
+    nfc_web_clears_the_column_reliefs,
     cradle_aligns_with_holders,
     cradle_is_reachable,
     margin_posts_clear_the_columns,
