@@ -279,7 +279,7 @@ Expected: `ok    grille: 66.0 x 66.0 x 4.0, 7.2 cm3, 1 solid` (it was 8.0)
 **Step 5: Commit**
 
 ```bash
-git add mech/insert.py mech/out/grille.stl mech/out/grille.step
+git add mech/insert.py   # out/*.stl and out/*.step are gitignored build outputs
 git commit -m "mech: grille gets its O-ring groove (was cut 0.01 mm deep)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -323,7 +323,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 **Files:**
 - Modify: `hardware/mech/insert.py` (imports, `CLASH_MM3`, assembly section, `main`)
-- Modify: `.gitignore` (repo root): add `hardware/mech/out/boards/`
+- Modify: `hardware/.gitignore`: add `mech/out/boards/` (the existing `mech/out/*.step` rule does not reach the subfolder)
 
 Facts the code relies on (measured on 2026-10-11):
 - kicad-cli's default STEP origin is the board's **top-left corner, with Y flipped up**, so the outline spans
@@ -536,7 +536,7 @@ def main(argv):
     return 0
 ```
 
-**Step 4: Ignore the board cache.** Append `hardware/mech/out/boards/` to the repo-root `.gitignore`.
+**Step 4: Ignore the board cache.** Append `mech/out/boards/` to `hardware/.gitignore`.
 
 **Step 5: Run the gate and watch it find the two known defects**
 
@@ -556,7 +556,7 @@ Any other FAIL line means a placement bug in Step 2. Stop and debug it. Do not r
 **Step 6: Commit** (the gate isn't in `make mech` until Task 8, so the build stays green)
 
 ```bash
-git add mech/insert.py ../.gitignore
+git add mech/insert.py .gitignore
 git commit -m "mech: assembly STEP with boards and placeholders, pairwise interference gate
 
 Finds two existing defects, fixed next: the carrier arm gussets cut
@@ -681,10 +681,10 @@ Run: `make mech`
 Expected: `all 22 checks passed`, four template lines, eight part `ok` lines (tray about 71.9 cm3, grille 7.2),
 then `ok    assembly: 19 parts, no interference`.
 
-**Step 3: Commit the regenerated outputs**
+**Step 3: Commit** (STL/STEP outputs, assembly.step included, are gitignored; only the Makefile and SVG templates are tracked)
 ```bash
-git status --short mech/out   # expect tray, lid, grille and the bushings modified (or unchanged), and assembly.step new
-git add Makefile mech/out/*.stl mech/out/*.step mech/out/*.svg
+git status --short   # expect only Makefile modified
+git add Makefile
 git commit -m "mech: make mech runs the assembly gate; regenerate outputs
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
