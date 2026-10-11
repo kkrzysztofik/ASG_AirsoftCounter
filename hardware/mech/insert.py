@@ -380,6 +380,7 @@ def board_step(name):
     if pcb is None:
         raise SystemExit(f"no {name}.kicad_pcb in hardware/kicad/ or hardware/")
     step = OUT / "boards" / f"{name}.step"
+    missing = 0
     if not step.exists() or step.stat().st_mtime < pcb.stat().st_mtime:
         step.parent.mkdir(exist_ok=True)
         r = subprocess.run(["kicad-cli", "pcb", "export", "step", "-f", "-o", str(step), str(pcb)],
@@ -387,9 +388,14 @@ def board_step(name):
         if r.returncode:
             raise SystemExit(f"kicad-cli failed on {pcb.name}:\n{r.stdout}{r.stderr}")
         missing = (r.stdout + r.stderr).count("Could not add 3D model")
-        if missing:
-            print(f"note  {name}: {missing} footprints have no 3D model (install KiCad's 3D library)")
-    return import_step(str(step))
+    board = import_step(str(step))
+    # every run, not just the export one: a cached bare plate hides the parts from the gate
+    if len(board.solids()) == 1:
+        print(f"note  {name}: bare board, no component models; the gate cannot see parts on it "
+              "(install KiCad's 3D library, then delete out/boards/)")
+    elif missing:
+        print(f"note  {name}: {missing} footprints have no 3D model (install KiCad's 3D library)")
+    return board
 
 
 def placeholders():
