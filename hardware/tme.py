@@ -1,10 +1,12 @@
 """Write TME (tme.eu) Quick Buy lists from the JLCPCB BOMs, for buying a board's parts at TME.
 
-$FAB/jlc_bom[_<variant>].csv -> $FAB/tme_bom[_<variant>].csv    "TME symbol;qty" per line, no header:
-                                                                the format TME's Quick Buy > "Upload
-                                                                from file" takes (help/1753).
-                             -> $FAB/tme_other[_<variant>].csv  parts TME does not sell: LCSC number,
-                                                                maker part, qty. Buy those at LCSC.
+fab/<BOARD>/jlc_bom[_<variant>].csv -> fab/<BOARD>/tme_bom[_<variant>].csv    "TME symbol;qty" per line,
+                                                                              no header: the format
+                                                                              TME's Quick Buy > "Upload
+                                                                              from file" takes (help/1753).
+                                    -> fab/<BOARD>/tme_other[_<variant>].csv  parts TME does not sell:
+                                                                              LCSC number, maker part,
+                                                                              qty. Buy those at LCSC.
 
 Symbols were looked up in the TME catalogue on 2026-10-02 (stock was not checked). Where TME lacks
 the exact LCSC part, the comment names the substitute and why it fits the same footprint.
@@ -19,7 +21,7 @@ from pathlib import Path
 import board  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).parent
-FAB = HERE / os.environ.get("FAB", "fab")
+FAB = HERE / "fab" / board.NAME
 
 # LCSC number -> TME symbol. Same maker part unless a comment says otherwise.
 # Royalohm resistors use TME's cut-tape SMD0805-*/SMD1206-* symbols (0805S8F/1206S4J, 100 pcs): the

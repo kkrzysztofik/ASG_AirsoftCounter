@@ -1,6 +1,6 @@
 """AirsoftCounter v2 carrier, hand-build TME variant: iron-only, everything from TME.
 
-Derived from design.py by import and edit. The NS4168 I2S class-D amp is replaced by a PCM5100A
+Derived from carrier.py by import and edit. The NS4168 I2S class-D amp is replaced by a PCM5100A
 I2S DAC and a PAM8302A SO-8 class-D amp: the DAC runs on +3V3 with its PLL clocked from BCK (no
 MCLK), its L/R outputs are RC-filtered and driven in antiphase through 240k input resistors into
 the amp's differential input, and the expander's AMP_SD line enables the amp and unmutes the DAC.
@@ -10,24 +10,24 @@ it through board.py (`make BOARD=carrier_tme ...`). Run this file to self-check.
 Source of truth: docs/plans/2026-10-02-tme-hand-build-design.md.
 """
 import board
-import design
+import carrier
 import tme
 
 NAME = "carrier_tme"
 TITLE = "AirsoftCounter v2 carrier (hand-build)"
 
-HEADER_POWER = design.HEADER_POWER
-HEADER_NC = design.HEADER_NC
-HELTEC_GPIO = design.HELTEC_GPIO
-FORBIDDEN_GPIO = design.FORBIDDEN_GPIO
-EXPECTED_GPIO = design.EXPECTED_GPIO
+HEADER_POWER = carrier.HEADER_POWER
+HEADER_NC = carrier.HEADER_NC
+HELTEC_GPIO = carrier.HELTEC_GPIO
+FORBIDDEN_GPIO = carrier.FORBIDDEN_GPIO
+EXPECTED_GPIO = carrier.EXPECTED_GPIO
 
 TSSOP20 = "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm"
 SOIC8 = "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
-C0805, R0805 = design.C0805, design.R0805
+C0805, R0805 = carrier.C0805, carrier.R0805
 
 # Everything but the NS4168, plus the DAC, its caps, the output RC + input network and the amp.
-PARTS = {r: v for r, v in design.PARTS.items() if r != "U3"}
+PARTS = {r: v for r, v in carrier.PARTS.items() if r != "U3"}
 PARTS |= {
     "U_DAC": ("PCM5100APWR", "Audio:PCM5100A", TSSOP20),
     "C_DCP": ("2.2uF", *C0805),         # CAPP-CAPM charge-pump flying cap
@@ -42,7 +42,7 @@ PARTS |= {
     "U_AMP": ("PAM8302AADCR", "Amplifier_Audio:PAM8302AAD", SOIC8),
 }
 
-NETS = {n: [p for p in mem if not p.startswith("U3.")] for n, mem in design.NETS.items()}
+NETS = {n: [p for p in mem if not p.startswith("U3.")] for n, mem in carrier.NETS.items()}
 NETS["I2S_BCLK"] += ["U_DAC.13"]
 NETS["I2S_LRCLK"] += ["U_DAC.15"]
 NETS["I2S_DIN"] += ["U_DAC.14"]
@@ -64,15 +64,15 @@ NETS |= {
     "AMP_INP_C": ["C_INP.2", "R_INP.1"], "AMP_INN_C": ["C_INN.2", "R_INN.1"],
     "AMP_INP": ["R_INP.2", "U_AMP.3"], "AMP_INN": ["R_INN.2", "U_AMP.4"],
 }
-NC_PINS = set(design.NC_PINS) | {"U_AMP.2"}   # amp pin 2 is NC
+NC_PINS = set(carrier.NC_PINS) | {"U_AMP.2"}   # amp pin 2 is NC
 # U_DAC: TME has no PCM5100A in stock below a 70 pcs tube (2026-10-02); buy it at LCSC or Mouser.
 NOT_TME = {"U_DAC"}                            # the rest is bought at TME (J2/J3: ZL262-18SG)
-NC_PARTS = set(design.NC_PARTS)
-DNP = set(design.DNP)
+NC_PARTS = set(carrier.NC_PARTS)
+DNP = set(carrier.DNP)
 LCSC = {}
 _KEYS = {(v, fp) for r, (v, sym, fp) in PARTS.items()
          if sym != "Mechanical:MountingHole" and r not in DNP | NOT_TME}
-TME = tme.from_lcsc(design.LCSC, _KEYS)
+TME = tme.from_lcsc(carrier.LCSC, _KEYS)
 TME |= {
     ("PAM8302AADCR", SOIC8): "PAM8302AADCR",
     ("470R", R0805[1]): "SMD0805-470R-1%",
@@ -91,26 +91,26 @@ def assembled(variant="standard"):
 
 
 # --- layout: reused from the carrier by assignment; edited where the amp block needs it ---------
-W, H, CORNER = design.W, design.H, design.CORNER
-NETCLASS_POWER = design.NETCLASS_POWER
-NETCLASS_EXPECT = design.NETCLASS_EXPECT
-RAILS = design.RAILS
-PORT_LIB = design.PORT_LIB
-LABELS = design.LABELS
-TEXTS = list(design.TEXTS)
-GND_VIAS = list(design.GND_VIAS)
-HELTEC_PADS = design.HELTEC_PADS
-SIZE_MM = design.SIZE_MM
-NPTH_XY = design.NPTH_XY
-PLACE = dict(design.PLACE)
-REF_AT = {r: v for r, v in design.REF_AT.items() if r != "U3"}
+W, H, CORNER = carrier.W, carrier.H, carrier.CORNER
+NETCLASS_POWER = carrier.NETCLASS_POWER
+NETCLASS_EXPECT = carrier.NETCLASS_EXPECT
+RAILS = carrier.RAILS
+PORT_LIB = carrier.PORT_LIB
+LABELS = carrier.LABELS
+TEXTS = list(carrier.TEXTS)
+GND_VIAS = list(carrier.GND_VIAS)
+HELTEC_PADS = carrier.HELTEC_PADS
+SIZE_MM = carrier.SIZE_MM
+NPTH_XY = carrier.NPTH_XY
+PLACE = dict(carrier.PLACE)
+REF_AT = {r: v for r, v in carrier.REF_AT.items() if r != "U3"}
 REF_AT |= {"U_AMP": (10.5, 27.5, 0), "C_DCPV": (20, 42, 0), "C_INP": (25, 42, 0)}
-_driver = design._driver
+_driver = carrier._driver
 
 
 def _copy_blocks():
     out = []
-    for b in design.BLOCKS:
+    for b in carrier.BLOCKS:
         nb = dict(b)
         nb["parts"] = dict(b["parts"])
         if "tags" in b:
@@ -167,7 +167,7 @@ BLOCKS[1] = {
     "wired": {"+3V3", "GND"},
 }
 
-PLACE = {r: v for r, v in design.PLACE.items() if r != "U3"}
+PLACE = {r: v for r, v in carrier.PLACE.items() if r != "U3"}
 # The DAC/amp corner is dense; reference text there collides with neighbouring silk, so it is
 # hidden (the value stays, and the refs are on the fab print and in the schematic).
 HIDE_REF = ("U_DAC", "U_AMP", "C_DCP", "C_DNEG", "C_DLDO", "C_DVDD", "C_DAVDD", "C_DCPV",
@@ -188,7 +188,7 @@ PLACE |= {
 
 
 def check_header(m):
-    """The carrier's Heltec header checks (from design.check), reading module m."""
+    """The carrier's Heltec header checks (from carrier.check), reading module m."""
     pins = [p for members in m.NETS.values() for p in members]
     net_of = {p: net for net, mem in m.NETS.items() for p in mem}
     for p, net in HEADER_POWER.items():

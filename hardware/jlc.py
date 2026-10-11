@@ -1,7 +1,7 @@
-"""Write the JLCPCB assembly (PCBA) files from design.py and the routed board, and validate them.
+"""Write the JLCPCB assembly (PCBA) files from the board module and the routed board, and validate them.
 
-fab/jlc_bom.csv  (deluxe; other variants: jlc_bom_<variant>.csv) Comment,Designator,Footprint,LCSC Part #   one row per LCSC number
-fab/jlc_cpl.csv  Designator,Mid X,Mid Y,Layer,Rotation      one row per placed part (SMD and THT)
+fab/<BOARD>/jlc_bom.csv  (deluxe; other variants: jlc_bom_<variant>.csv) Comment,Designator,Footprint,LCSC Part #   one row per LCSC number
+fab/<BOARD>/jlc_cpl.csv  Designator,Mid X,Mid Y,Layer,Rotation      one row per placed part (SMD and THT)
 Placed parts are design.assembled(): no DNP parts, no mounting holes.
 
 Placements come from the board via pcbnew. Coordinates are in the Gerber convention: board X, board
@@ -14,7 +14,6 @@ correction (ORDERING.md lists the parts to check in the preview).
 /usr/bin/python3 jlc.py   (after `make fab` has built the Gerber zip)
 """
 import csv
-import os
 import re
 import sys
 import zipfile
@@ -25,8 +24,8 @@ import pcbnew  # pyright: ignore[reportMissingImports]
 from board import design  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).parent
-# Per-board output directory, exported by the Makefile (fab for the carrier, fab/pack for the pack).
-FAB = Path(os.environ.get("FAB", "fab"))
+# Per-board output directory.
+FAB = Path("fab") / design.NAME
 PCB = HERE / f"{design.NAME}.kicad_pcb"
 ZIP = HERE / FAB / f"{design.NAME}_gerbers_jlcpcb.zip"
 DEFAULT_VARIANT = next(iter(design.VARIANTS))  # carrier: deluxe; pack: standard

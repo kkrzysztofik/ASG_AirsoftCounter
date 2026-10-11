@@ -49,7 +49,7 @@ def order(symbol, n):
 
 def main():
     boards = sys.argv[1:] or DEFAULT
-    boms = [FAB / "tme_bom.csv" if b == "carrier" else FAB / b / "tme_bom.csv" for b in boards]
+    boms = [FAB / b / "tme_bom.csv" for b in boards]
     missing = [str(p) for p in boms if not p.is_file()]
     if missing:
         raise SystemExit(f"tme_all: missing {', '.join(missing)} (run `make boards` first)")

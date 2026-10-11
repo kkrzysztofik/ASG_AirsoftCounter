@@ -1,6 +1,6 @@
 """AirsoftCounter pack board: single source of truth for parts and nets.
 
-Same role as design.py for the carrier. gen_sch.py / gen_pcb.py read it through board.py
+Same role as carrier.py. gen_sch.py / gen_pcb.py read it through board.py
 (BOARD=pack), so run the generators with `make BOARD=pack ...`. Run this file to self-check
 (`/usr/bin/python3 pack.py`).
 
@@ -13,7 +13,7 @@ numbers are the P0 facts recorded there.
 NAME = "pack"
 TITLE = "AirsoftCounter v2 pack"
 
-# Footprints (and symbol + footprint pairs) shared with design.py
+# Footprints (and symbol + footprint pairs) shared with carrier.py
 R0805 = ("Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder")
 C0805 = ("Device:C", "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder")
 SOT23 = "Package_TO_SOT_SMD:SOT-23"
@@ -104,7 +104,7 @@ PARTS = {
     "TP_SWCLK": ("SWCLK/BOOT0", "Connector:TestPoint", TP),
     "TP_NRST": ("NRST", "Connector:TestPoint", TP),
     "TP_GND": ("GND", "Connector:TestPoint", TP),
-    # --- power out: key switch, 2 A PTC, boost (same parts as design.py), 6-pin XH to the carrier ---
+    # --- power out: key switch, 2 A PTC, boost (same parts as carrier.py), 6-pin XH to the carrier ---
     "J_KEY1": ("KEY", "Connector_Generic:Conn_01x02", XH2),
     "F_SYS1": ("2A PTC", "Device:Polyfuse", FUSE1206),
     "U1": ("MT3608", "Regulator_Switching:MT3608", SOT23_6),
@@ -118,7 +118,7 @@ PARTS = {
     "J_PWR1": ("PWR", "Connector_Generic:Conn_01x06", XH6),
 }
 
-# --- per-cell chain (x4), generated like design.py's DRIVERS ---
+# --- per-cell chain (x4), generated like carrier.py's DRIVERS ---
 # PAC1934 (SENSE+, SENSE-) per cell. SENSE+ is also the VBUS input, on the cell side of the shunt,
 # so each channel reads its own cell with the switch open.
 SENSE_IN = {1: ("11", "12"), 2: ("13", "14"), 3: ("8", "7"), 4: ("10", "9")}

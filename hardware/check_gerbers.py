@@ -6,7 +6,7 @@ design.PTH_COMPONENT_MIN (0.8 mm default); NPTH is the 4 x 3.2 mm mounting holes
 design.NPTH_EXPECT when the board's footprints add their own NPTH drills (holders, USB-C shell).
 Not checked: that the outline is closed (DRC upstream covers it).
 
-/usr/bin/python3 check_gerbers.py [fab/<BOARD>_gerbers_jlcpcb.zip]
+/usr/bin/python3 check_gerbers.py [fab/<BOARD>/<BOARD>_gerbers_jlcpcb.zip]
 """
 import re
 import sys
@@ -39,7 +39,7 @@ def npth_hits(text):
     return out
 
 
-def check(path=f"fab/{design.NAME}_gerbers_jlcpcb.zip"):
+def check(path=f"fab/{design.NAME}/{design.NAME}_gerbers_jlcpcb.zip"):
     """Return (errors, summary)."""
     errors = []
     with zipfile.ZipFile(path) as z:

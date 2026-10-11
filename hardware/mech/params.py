@@ -107,7 +107,7 @@ SLEEVE_WALL = 2.0             # printed sleeve wall around a column
 # stack entirely and the lid panel's feet hold it down.
 LEG_FLANGE_T = 0.0            # MEASURE; >0 only if the lid proves to have room
 
-# --- boards (read from hardware/design.py and hardware/pack.py, asserted in check.py) --------
+# --- boards (read from hardware/carrier.py and hardware/pack.py, asserted in check.py) --------
 BOARD_T = 1.6
 PACK = (96.0, 90.0)
 CARRIER = (90.0, 60.0)

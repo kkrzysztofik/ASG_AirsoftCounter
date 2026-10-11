@@ -1,7 +1,7 @@
 """AirsoftCounter v2 carrier board: single source of truth for parts and nets.
 
 gen_sch.py and gen_pcb.py read PARTS and NETS from here. Run this file to
-self-check the design (`python3 design.py`). Generators must call design.check()
+self-check the design (`python3 carrier.py`). Generators must call design.check()
 at startup.
 
 check() validates structure (unique pins, known parts, no single-pin nets, no

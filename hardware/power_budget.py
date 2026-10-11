@@ -2,7 +2,7 @@
 
 Every figure is battery-side mA at ~3.6 V (the 35E's nominal). Sources: Heltec V4 datasheet Rev 1.4
 table 3.4 (RX, TX, WiFi, sleep; measured on USB, and the V4's 3V3 is a CE6260B33M linear LDO, so
-battery current is about the same); game.rs (beep timing); design.py (two button LED rings, gate
+battery current is about the same); game.rs (beep timing); carrier.py (two button LED rings, gate
 divider); fab/PARTS_REVIEW.md (5.1 V rail); design doc (PN532 polling ~20 mA). Everything
 marked EST is a guess: replace it with a measurement once the board exists (USB meter or INA219 in
 the J_PWR1 lead). Measure LCD_IDLE_5V and HELTEC_RX first.
@@ -63,7 +63,7 @@ LCD_IDLE_5V = 5.0  # EST: PIC16F690 + ST7066U with the backlight at level 1 (off
                    # (fab/OFFBOARD_PARTS.md item 5).
 BACKLIGHT_DUTY = 0.05  # EST: firmware lights it for a button, card or game event, then times out.
                        # Transflective panel, so it reads in daylight with the backlight off.
-LED_RING_5V = 15.0  # one ONPOW 6 V ring run at 5 V; design.py's figure, ONPOW publishes none.
+LED_RING_5V = 15.0  # one ONPOW 6 V ring run at 5 V; carrier.py's figure, ONPOW publishes none.
                     # Two rings are fitted (LR + LB), so scenario() counts this twice (once with opt).
 BUZZER_5V = 8.0  # BZ-38: TME's spec page, piezo with generator, 3-28 V, 8 mA
 GATE_PD = 3.0 / 11e3 * 1e3  # 10k gate pull-down + 1k: 0.27 mA per driver that is on

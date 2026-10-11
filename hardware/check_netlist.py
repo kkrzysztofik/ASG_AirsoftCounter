@@ -1,4 +1,4 @@
-"""Assert the exported KiCad netlist matches design.py.
+"""Assert the exported KiCad netlist matches the board module.
 
 kicad-cli sch export netlist --format kicadxml -o build/<BOARD>.xml <BOARD>.kicad_sch
 /usr/bin/python3 check_netlist.py [build/<BOARD>.xml]
@@ -35,4 +35,4 @@ if __name__ == "__main__":
     errors = check(Path(sys.argv[1]) if len(sys.argv) > 1 else XML)
     if errors:
         sys.exit("netlist MISMATCH:\n  " + "\n  ".join(errors))
-    print("netlist matches design.py")
+    print(f"netlist matches {design.NAME}.py")

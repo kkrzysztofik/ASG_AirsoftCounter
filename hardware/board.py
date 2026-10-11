@@ -1,5 +1,5 @@
-"""Pick the board module the generators work on: BOARD=carrier (default, design.py), pack (pack.py),
-lipo (lipo.py, the 2S/3S LiPo power board), or the hand-built TME variants carrier_tme / pack_tme /
+"""Pick the board module the generators work on: BOARD=<name> loads <name>.py: carrier (default),
+pack, lipo (the 2S/3S LiPo power board), or the hand-built TME variants carrier_tme / pack_tme /
 lipo_tme (nothing machine-placed).
 
 Every generator imports the board as `from board import design`, so the same code
@@ -9,13 +9,11 @@ import importlib
 import os
 
 NAME = os.environ.get("BOARD", "carrier")
-design = importlib.import_module({"carrier": "design", "pack": "pack", "lipo": "lipo",
-                                "carrier_tme": "carrier_tme",
-                                "pack_tme": "pack_tme", "lipo_tme": "lipo_tme"}[NAME])
+design = importlib.import_module(NAME)
 
 
 def check_structure(m):
-    """Board-independent checks on a board module (design.py or pack.py): unique pins, known
+    """Board-independent checks on a board module (<board>.py): unique pins, known
     parts, no single-pin nets, known DNP, no unconnected non-mechanical part, complete and
     non-stale LCSC for m.assembled(), and MODULES/VARIANTS naming known parts/modules."""
     pins = [p for members in m.NETS.values() for p in members]

@@ -5,7 +5,7 @@ Block-structured, wired schematic. The board module's BLOCKS places every part b
 is drawn with orthogonal wires, routed by A* on the 1.27 mm grid. A net that spans blocks gets one
 global label per block. GND everywhere, and +3V3/+5V/VBAT_SW outside the blocks that draw them as
 wires, use power ports. Routing never joins two nets (no T or overlap on a foreign wire, no wire
-through a foreign pin), so ERC plus check_netlist.py prove the netlist is design.py's.
+through a foreign pin), so ERC plus check_netlist.py prove the netlist is the board module's.
 Symbol uuids are uid("sym/<ref>"), which gen_pcb.py uses to link footprints.
 Run: /usr/bin/python3 gen_sch.py
 """
@@ -518,7 +518,7 @@ def flag(sh, net, c, i):
 def name_label(sh, net, segs):
     """Name a one-block net with a global label laid on one of its straight wires.
 
-    A local label would name the net "/NET" and break PCB parity (gen_pcb.py uses design.py names),
+    A local label would name the net "/NET" and break PCB parity (gen_pcb.py uses the board module's names),
     so every net label is global; a single global label is fine for ERC."""
     n = round(glabel_len(net) / STEP)  # label length in cells
     for a, b in sorted(segs, key=lambda s: (s[0][1] != s[1][1], -abs(s[1][0] - s[0][0]) - abs(s[1][1] - s[0][1]), s)):

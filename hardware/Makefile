@@ -8,17 +8,9 @@ BOARD ?= carrier
 export BOARD
 PY = /usr/bin/python3
 GERBER_LAYERS = F.Cu,B.Cu,F.Mask,B.Mask,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,Edge.Cuts
-# Carrier keeps its committed fab/ paths; the pack writes under fab/pack/ (FAB is exported so
-# jlc.py and check_gerbers.py agree on where the zip and CSVs live). BOARD_PY is the board module
-# file: carrier's data module is design.py, the pack's is pack.py.
-ifeq ($(BOARD),carrier)
-FAB = fab
-BOARD_PY = design.py
-else
+# Every board writes under fab/<board>/; its data module is <board>.py.
 FAB = fab/$(BOARD)
 BOARD_PY = $(BOARD).py
-endif
-export FAB
 ZIP = $(FAB)/$(BOARD)_gerbers_jlcpcb.zip
 
 .PHONY: all sch pcb route check fab boards

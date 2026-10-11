@@ -13,7 +13,7 @@ import sys
 # to tell which params.py this resolves to.
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))         # hardware/mech: params.py
-sys.path.insert(0, str(HERE.parent))  # hardware:      design.py, pack.py
+sys.path.insert(0, str(HERE.parent))  # hardware:      carrier.py, pack.py
 import params  # noqa: E402
 
 
@@ -36,16 +36,16 @@ def box_fits():
 
 def rasters_match():
     """The tray posts must be where the boards actually put their holes."""
-    import design
+    import carrier
     import pack
     bad = []
-    for mod, tag in ((pack, "pack"), (design, "carrier")):
+    for mod, tag in ((pack, "pack"), (carrier, "carrier")):
         holes = [(float(mod.PLACE[f"H{i}"][0]), float(mod.PLACE[f"H{i}"][1])) for i in range(1, 5)]
         if holes != params.EXPECTED_HOLES[tag]:
             bad.append(f"{tag}: {holes} != {params.EXPECTED_HOLES[tag]}")
     if bad:
         return fail("board hole raster drifted - " + "; ".join(bad))
-    return ok("post rasters match design.py and pack.py")
+    return ok("post rasters match carrier.py and pack.py")
 
 
 def stack_fits():
