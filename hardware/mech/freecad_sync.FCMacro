@@ -4,6 +4,8 @@ Run it once (Macro > Macros..., or a toolbar button): it opens out/assembly.step
 Params sheet with every plain number in params.py. Edit values in the sheet, run it again: the
 changed numbers go into params.py, the parts are rebuilt and checked, and the assembly reloads.
 A failed check puts params.py back as it was and keeps your edits in the sheet.
+FreeCAD freezes while it rebuilds (a minute or so); choose Wait. If it was killed mid-sync:
+`git checkout mech/params.py && make mech`.
 
 Only scalars are editable; tuples, lists and derived values stay in params.py. Needs uv on the
 PATH FreeCAD sees. Test the non-GUI half on a plain Python:
@@ -13,6 +15,7 @@ PATH FreeCAD sees. Test the non-GUI half on a plain Python:
 
 import ast
 import hashlib
+import io
 import os
 import pathlib
 import shutil
@@ -43,7 +46,7 @@ def leaves(text):
 
     line is 1-based, col and end_col are UTF-8 byte offsets of the value, as ast gives them.
     """
-    lines = text.splitlines()
+    lines = io.StringIO(text, newline="").readlines()  # split where ast does: \n, \r\n, \r only
     out = []
     for node in ast.parse(text).body:
         if not (isinstance(node, ast.Assign) and len(node.targets) == 1
@@ -52,7 +55,7 @@ def leaves(text):
         value = _number(node.value)
         if value is None or node.value.lineno != node.value.end_lineno:
             continue
-        raw = lines[node.lineno - 1].encode()
+        raw = lines[node.value.lineno - 1].encode()
         rest = raw[node.value.end_col_offset:].decode()
         comment = rest.split("#", 1)[1].strip() if "#" in rest else ""
         out.append((node.targets[0].id, value, node.value.lineno,
@@ -62,8 +65,9 @@ def leaves(text):
 
 def rewrite(text, changes):
     """text with each changed value's span replaced; every other byte untouched."""
-    lines = text.splitlines(keepends=True)
-    for name, value, line, col, end, _c in leaves(text):
+    lines = io.StringIO(text, newline="").readlines()
+    # right to left, so an edit never shifts the offsets of one still to come on the same line
+    for name, value, line, col, end, _c in sorted(leaves(text), key=lambda leaf: (leaf[2], leaf[3]), reverse=True):
         if name not in changes:
             continue
         new = changes[name]
@@ -78,7 +82,7 @@ def digest(text):
 
 
 def selftest():
-    text = PARAMS.read_text()
+    text = PARAMS.read_bytes().decode()
     found = {leaf[0]: leaf for leaf in leaves(text)}
     assert {"WALL", "LID_T", "BUTTON_D"} <= set(found), sorted(found)
     assert "BOX_IN" not in found and "FIT" not in found, "tuples and derived values are not leaves"
@@ -95,6 +99,9 @@ def selftest():
     assert rewrite(text, {}) == text
     assert rewrite("N = 4  # int\n", {"N": 5.0}) == "N = 5  # int\n"
     assert rewrite("N = -1.5\n", {"N": -2.0}) == "N = -2.0\n"
+    assert rewrite("A = 1; B = 22\n", {"A": 1000, "B": 3}) == "A = 1000; B = 3\n"
+    assert rewrite("# a\x0cb\nX = 1\n", {"X": 5}) == "# a\x0cb\nX = 5\n"
+    assert rewrite(new, {k: found[k][1] for k in changes}) == text  # round trip
     print(f"ok    selftest: {len(found)} leaves, 3 edits touch exactly 3 lines, comments intact")
     return 0
 
@@ -110,21 +117,23 @@ def _uv():
 
 
 def _run_checks():
-    """(ok, output) for the full rebuild. check.py goes first: it is instant and writes nothing,
-    while insert.py rewrites out/ part by part."""
+    """(ok, output, index of the failed step or None) for the full rebuild. check.py goes first:
+    it is instant and writes nothing, while insert.py rewrites out/ part by part."""
     uv = _uv()
     steps = [
         [uv, "run", "check.py"],
         [uv, "run", "insert.py", "--part", "all", "--check"],
         [uv, "run", "insert.py", "--part", "assembly", "--check"],
     ]
+    # the FreeCAD AppImage exports these, and they break uv's Python
+    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONHOME", "PYTHONPATH", "LD_LIBRARY_PATH")}
     log = []
-    for cmd in steps:
-        r = subprocess.run(cmd, cwd=HERE, capture_output=True, text=True)
+    for i, cmd in enumerate(steps):
+        r = subprocess.run(cmd, cwd=HERE, capture_output=True, text=True, env=env)
         log.append(f"$ {' '.join(cmd[1:])}\n{r.stdout}{r.stderr}")
         if r.returncode:
-            return False, "\n".join(log)
-    return True, "\n".join(log)
+            return False, "\n".join(log), i
+    return True, "\n".join(log), None
 
 
 def load():
@@ -139,10 +148,9 @@ def load():
         raise RuntimeError(f"{ASSEMBLY} is missing: run `uv run insert.py --part assembly` first")
     Import.open(str(ASSEMBLY))
     doc = App.ActiveDocument
-    text = PARAMS.read_text()
+    text = PARAMS.read_bytes().decode()
     sheet = doc.addObject("Spreadsheet::Sheet", SHEET)
     sheet.addProperty("App::PropertyString", "ParamsHash")
-    sheet.ParamsHash = digest(text)
     sheet.set("A1", "name")
     sheet.set("B1", "value")
     sheet.set("C1", "params.py comment")
@@ -153,6 +161,7 @@ def load():
         sheet.set(f"C{row}", "'" + comment)
         if "MEASURE" in comment:
             sheet.setBackground(f"A{row}:C{row}", MEASURE_RGB)
+    sheet.ParamsHash = digest(text)  # last: a half-built sheet never matches params.py
     doc.recompute()
     return doc
 
@@ -162,7 +171,7 @@ def sync(doc):
 
     doc.recompute()  # a cell edit may not be recalculated yet
     sheet = doc.getObject(SHEET)
-    text = PARAMS.read_text()
+    text = PARAMS.read_bytes().decode()
     if digest(text) != sheet.ParamsHash:
         return _say("params.py changed on disk since this sheet was loaded. Close this document "
                     "and run the macro again to reload; nothing was written.")
@@ -177,24 +186,27 @@ def sync(doc):
             changes[name] = v
     if not changes:
         return _say("No parameter changed.")
-    PARAMS.write_text(rewrite(text, changes))
     try:
-        ok, log = _run_checks()
-    except Exception as exc:  # uv missing, or anything else: never leave params.py half-applied
-        ok, log = False, str(exc)
+        PARAMS.write_bytes(rewrite(text, changes).encode())
+        ok, log, failed = _run_checks()
+    except Exception as exc:  # uv missing, a failed write, anything: never leave params.py half-applied
+        ok, log, failed = False, str(exc), 0  # nothing got as far as insert.py
     if not ok:
-        PARAMS.write_text(text)
-        # a failure midway leaves out/ half rebuilt with the rejected values; rebuild it
-        try:
-            rebuilt, _ = _run_checks()
-        except Exception:
-            rebuilt = False
-        note = "out/ rebuilt from it" if rebuilt else "REBUILD OF out/ FAILED, run `make mech`"
+        PARAMS.write_bytes(text.encode())
+        if failed == 0:  # check.py writes nothing
+            note = "out/ untouched"
+        else:
+            # insert.py failed midway: out/ is half rebuilt with the rejected values; rebuild it
+            try:
+                rebuilt = _run_checks()[0]
+            except Exception:
+                rebuilt = False
+            note = "out/ rebuilt from it" if rebuilt else "REBUILD OF out/ FAILED, run `make mech`"
         return _say(f"A check failed; params.py is restored, {note}, your edits stay in the sheet.\n\n"
                     + log[-3000:])
     App.closeDocument(doc.Name)
     load()
-    _say("Updated " + ", ".join(f"{k} = {v:g}" for k, v in changes.items()))
+    _say("Updated " + ", ".join(f"{k} = {v!r}" for k, v in changes.items()))
 
 
 def _say(msg):
