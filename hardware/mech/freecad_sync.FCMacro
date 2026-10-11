@@ -129,7 +129,7 @@ def _run_checks():
     env = {k: v for k, v in os.environ.items() if k not in ("PYTHONHOME", "PYTHONPATH", "LD_LIBRARY_PATH")}
     log = []
     for i, cmd in enumerate(steps):
-        r = subprocess.run(cmd, cwd=HERE, capture_output=True, text=True, env=env)
+        r = subprocess.run(cmd, cwd=HERE, capture_output=True, encoding="utf-8", errors="replace", env=env)
         log.append(f"$ {' '.join(cmd[1:])}\n{r.stdout}{r.stderr}")
         if r.returncode:
             return False, "\n".join(log), i
