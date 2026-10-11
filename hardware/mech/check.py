@@ -63,6 +63,9 @@ def cradle_aligns_with_holders():
     got = (round(params.HOLDER_X, 3), [round(y, 3) for y in params.HOLDER_Y])
     if got != want:
         return fail(f"cell holders drifted - params {got} != pack.py {want}")
+    pitches = {round(b - a, 2) for a, b in zip(params.HOLDER_Y, params.HOLDER_Y[1:])}
+    if pitches != {round(params.CELL_PITCH, 2)}:
+        return fail(f"holder pitch {sorted(pitches)} != CELL_PITCH {params.CELL_PITCH}")
     return ok(f"cradle tracks pack.py's {len(got[1])} holders at x {got[0]}, {params.CELL_PITCH} pitch")
 
 

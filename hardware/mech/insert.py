@@ -105,7 +105,8 @@ def make_tray():
     tray = box(x0, x1, y0, y1, 0, P.FLOOR_T)
     # lighten the field, then cut the empty middle away: v2 leaves a rim and the two bands that
     # actually carry the posts, clips and sleeves, instead of a plate over the whole box
-    tray -= box(x0 + 12, x1 - 12, y0 + 12, y1 - 12, P.FLOOR_FIELD, P.FLOOR_T + 1)
+    r = P.FLOOR_RIM
+    tray -= box(x0 + r, x1 - r, y0 + r, y1 - r, P.FLOOR_FIELD, P.FLOOR_T + 1)
     for wx0, wx1, wy0, wy1 in P.FLOOR_WINDOWS:
         tray -= box(wx0, wx1, wy0, wy1, -1, P.FLOOR_T + 1)
 
