@@ -136,7 +136,10 @@ HOLDER_Y = [12.35, 34.01, 55.67, 77.33]  # pack.PLACE["BT1".."BT4"] y, board spa
 # The holder's own floor holds the cell about this far above the pack board's underside, which
 # puts the cell bottom this far above the tray floor. MEASURE on the coupon.
 CELL_BOTTOM_Z = 7.4
-PACK_OVERLAP = 3.5            # how far the cell protrudes past the holder's underside
+# The holder (14.9 mm) is shorter than the cell (18.4), but the extra 3.5 mm sticks out of the
+# holder's open side, towards the floor, not through the board: through the holder's floor window
+# the cell's top reaches the board at most. MEASURE on the coupon with a real cell.
+PACK_OVERLAP = 0.0            # how far the cell's top rises past the pack board's underside
 SADDLE_T = 6.0                # saddle rail thickness along X (v2: was 8, 6 is plenty)
 SADDLE_INSET = 22.0           # saddle rails sit this far either side of the cell centres
 SADDLE_CLEAR = 0.4
