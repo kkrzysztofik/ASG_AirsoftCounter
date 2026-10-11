@@ -1,0 +1,105 @@
+"""Edit the insert's dimensions in FreeCAD, with params.py staying the source of truth.
+
+Run it once (Macro > Macros..., or a toolbar button): it opens out/assembly.step and adds a
+Params sheet with every plain number in params.py. Edit values in the sheet, run it again: the
+changed numbers go into params.py, the parts are rebuilt and checked, and the assembly reloads.
+A failed check puts params.py back as it was and keeps your edits in the sheet.
+
+Only scalars are editable; tuples, lists and derived values stay in params.py. Needs uv on the
+PATH FreeCAD sees. Test the non-GUI half on a plain Python:
+
+    /usr/bin/python3 hardware/mech/freecad_sync.FCMacro --selftest
+"""
+
+import ast
+import hashlib
+import os
+import pathlib
+import shutil
+import subprocess
+import sys
+
+HERE = pathlib.Path(__file__).resolve().parent
+PARAMS = HERE / "params.py"
+ASSEMBLY = HERE / "out" / "assembly.step"
+SHEET = "Params"
+MEASURE_RGB = (1.0, 0.95, 0.6)
+
+
+# --- params.py, no FreeCAD ------------------------------------------------------------------------
+
+
+def _number(node):
+    if isinstance(node, ast.Constant) and type(node.value) in (int, float):
+        return node.value
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        inner = _number(node.operand)
+        return None if inner is None else -inner
+    return None
+
+
+def leaves(text):
+    """[(name, value, line, col, end_col, comment)] for every top-level `NAME = <number>`.
+
+    line is 1-based, col and end_col are UTF-8 byte offsets of the value, as ast gives them.
+    """
+    lines = text.splitlines()
+    out = []
+    for node in ast.parse(text).body:
+        if not (isinstance(node, ast.Assign) and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)):
+            continue
+        value = _number(node.value)
+        if value is None or node.value.lineno != node.value.end_lineno:
+            continue
+        raw = lines[node.lineno - 1].encode()
+        rest = raw[node.value.end_col_offset:].decode()
+        comment = rest.split("#", 1)[1].strip() if "#" in rest else ""
+        out.append((node.targets[0].id, value, node.value.lineno,
+                    node.value.col_offset, node.value.end_col_offset, comment))
+    return out
+
+
+def rewrite(text, changes):
+    """text with each changed value's span replaced; every other byte untouched."""
+    lines = text.splitlines(keepends=True)
+    for name, value, line, col, end, _c in leaves(text):
+        if name not in changes:
+            continue
+        new = changes[name]
+        lit = str(int(new)) if isinstance(value, int) and float(new).is_integer() else repr(float(new))
+        raw = lines[line - 1].encode()
+        lines[line - 1] = (raw[:col] + lit.encode() + raw[end:]).decode()
+    return "".join(lines)
+
+
+def digest(text):
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+def selftest():
+    text = PARAMS.read_text()
+    found = {leaf[0]: leaf for leaf in leaves(text)}
+    assert {"WALL", "LID_T", "BUTTON_D"} <= set(found), sorted(found)
+    assert "BOX_IN" not in found and "FIT" not in found, "tuples and derived values are not leaves"
+    changes = {"WALL": 3.25, "LID_T": 2.0, "BUTTON_D": 19.0}
+    new = rewrite(text, changes)
+    old_lines, new_lines = text.splitlines(), new.splitlines()
+    assert len(old_lines) == len(new_lines)
+    diff = [(a, b) for a, b in zip(old_lines, new_lines) if a != b]
+    assert len(diff) == 3, diff
+    for a, b in diff:
+        assert a.split("#", 1)[1:] == b.split("#", 1)[1:], (a, b)  # comment survives byte for byte
+    after = {leaf[0]: leaf[1] for leaf in leaves(new)}
+    assert all(after[k] == v for k, v in changes.items()), after
+    assert rewrite(text, {}) == text
+    assert rewrite("N = 4  # int\n", {"N": 5.0}) == "N = 5  # int\n"
+    assert rewrite("N = -1.5\n", {"N": -2.0}) == "N = -2.0\n"
+    print(f"ok    selftest: {len(found)} leaves, 3 edits touch exactly 3 lines, comments intact")
+    return 0
+
+
+if "--selftest" in sys.argv:
+    sys.exit(selftest())
+else:
+    main()
