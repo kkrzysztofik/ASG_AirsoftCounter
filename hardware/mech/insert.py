@@ -27,6 +27,7 @@ try:
         Pos,
         Rectangle,
         Rot,
+        Text,
         Vector,
         export_step,
         export_stl,
@@ -282,16 +283,23 @@ def template_sheets():
         lid.append(to_centre * (Pos((bx0 + bx1) / 2, (by0 + by1) / 2, 0) * Circle((bx1 - bx0) / 2)))
 
     sheets = [("lid", lid, "LID, seen from inside", -cy - 15)]
+    side = {"x0": "bottom", "x1": "top", "y0": "right", "y1": "left"}  # in portrait, x0 at the bottom
     for wall, length in P.WALLS.items():
-        holes = [(u, z, d) for _n, w, u, z, d, _o in P.wall_holes() if w == wall]
+        holes = [(n, u, z, d) for n, w, u, z, d, _o in P.wall_holes() if w == wall]
         if not holes:
             continue
-        shapes = [Rectangle(length, P.BOX_IN[2])]
-        for u, z, d in holes:
+        # The outer face: the sheet goes on the outside, top edge on the rim (z = BOX_IN[2]),
+        # bottom edge at z = -WALL (MEASURE: assumes the base slab is as thick as the side wall).
+        # Holes are drawn at z - BOX_IN[2] / 2, so the rim sits at +BOX_IN[2] / 2.
+        h = P.BOX_IN[2] + P.WALL
+        shapes = [Pos(0, P.BOX_IN[2] / 2 - h / 2, 0) * Rectangle(length + 2 * P.WALL, h)]
+        for _n, u, z, d in holes:
             # facing x0 or y1 from outside, u runs right to left
             x = length - u if wall in ("x0", "y1") else u
             shapes.append(Pos(x - length / 2, z - P.BOX_IN[2] / 2, 0) * Circle(d / 2))
-        sheets.append((f"wall_{wall}", shapes, f"WALL {wall}, seen from outside", -P.BOX_IN[2] / 2 - 15))
+        names = ", ".join(n for n, *_ in holes)
+        label = f"WALL {wall} ({side[wall]}: {names}) - seen from outside - top edge = box rim"
+        sheets.append((f"wall_{wall}", shapes, label, -P.BOX_IN[2] / 2 - 15))
     return sheets
 
 
@@ -299,13 +307,15 @@ def write_templates():
     import re
 
     written = []
-    for name, shapes, _label, bar_y in template_sheets():
+    for name, shapes, label, bar_y in template_sheets():
         path = OUT / f"template_{name}.svg"
         svg = ExportSVG(margin=8)
         svg.add_layer("cuts", line_weight=0.4)
+        svg.add_layer("label", line_weight=0.1)
         for s in shapes:
             svg.add_shape(s, layer="cuts")
         svg.add_shape(Pos(0, bar_y, 0) * Rectangle(100, 2), layer="cuts")
+        svg.add_shape(Pos(0, bar_y - 8, 0) * Text(label, font_size=5), layer="label")
         svg.write(str(path))
         _check_template_scale(path, re)
         written.append(path)
