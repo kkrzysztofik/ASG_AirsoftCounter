@@ -87,9 +87,9 @@ FLOOR_T = 2.4                 # tray floor thickness
 # check.py.
 FLOOR_RIM = 12.0
 FLOOR_WINDOWS = [
-    (34.0, 70.0, 38.0, 102.0),
-    (76.0, 114.0, 38.0, 102.0),
-    (120.0, 176.0, 38.0, 102.0),
+    (34.0, 68.5, 38.0, 102.0),
+    (74.5, 112.5, 38.0, 102.0),
+    (118.5, 176.0, 38.0, 102.0),
 ]
 # Floor left under the lightening pocket. Sized off the rule rather than picked, because FDM
 # wants 2.0 mm where MJF wants 1.5 at this part size and the difference is not a free choice.
@@ -132,6 +132,7 @@ HELTEC_H = 15.0               # Heltec in its 2x18 headers, above the carrier
 CELL_D = 18.4                 # 18650
 CELL_LEN = 65.0
 CELL_PITCH = 21.66            # MYOUNG holder pitch, pack design doc
+HOLDER_X = 46.5                          # pack.PLACE["BT1".."BT4"] x, board space
 HOLDER_Y = [12.35, 34.01, 55.67, 77.33]  # pack.PLACE["BT1".."BT4"] y, board space
 # The holder's own floor holds the cell about this far above the pack board's underside, which
 # puts the cell bottom this far above the tray floor. MEASURE on the coupon.
@@ -266,6 +267,11 @@ def column_centres():
 def board_xy(origin, size, x, y):
     """A board point in tray coordinates. KiCad's Y runs down, so board y lands at size[1] - y."""
     return origin[0] + x, origin[1] + size[1] - y
+
+
+def cell_centre_x():
+    """The cells' axis midpoint along X, in tray coordinates."""
+    return board_xy(PACK_ORIGIN, PACK, HOLDER_X, 0)[0]
 
 
 def trough_centres_y():

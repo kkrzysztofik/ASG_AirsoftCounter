@@ -57,11 +57,13 @@ def stack_fits():
 
 
 def cradle_aligns_with_holders():
-    want = sorted(params.board_xy(params.PACK_ORIGIN, params.PACK, 0, y)[1] for y in params.HOLDER_Y)
-    got = params.trough_centres_y()
-    if [round(v, 3) for v in got] != [round(v, 3) for v in want]:
-        return fail(f"cradle {got} off the holders {want}")
-    return ok(f"cradle tracks the {len(got)} holders at {params.CELL_PITCH} pitch")
+    """The saddles and cell placeholders sit where pack.py puts the holders."""
+    import pack
+    want = (round(float(pack._CELL_X), 3), [round(float(y), 3) for y in pack._CELL_Y])
+    got = (round(params.HOLDER_X, 3), [round(y, 3) for y in params.HOLDER_Y])
+    if got != want:
+        return fail(f"cell holders drifted - params {got} != pack.py {want}")
+    return ok(f"cradle tracks pack.py's {len(got[1])} holders at x {got[0]}, {params.CELL_PITCH} pitch")
 
 
 def cradle_is_reachable():
@@ -145,7 +147,7 @@ def floor_windows_clear_the_mounts():
         mounts.append(("pack post", (x - r, x + r, y - r, y + r)))
     for x, y in params.carrier_post_xy():
         mounts.append(("carrier post", (x - r, x + r, y - r, y + r)))
-    cell_x = params.PACK_ORIGIN[0] + params.PACK[0] / 2
+    cell_x = params.cell_centre_x()
     ys = params.trough_centres_y()
     for sx in (cell_x - params.SADDLE_INSET, cell_x + params.SADDLE_INSET):
         mounts.append(("saddle rail", (sx - params.SADDLE_T / 2, sx + params.SADDLE_T / 2,

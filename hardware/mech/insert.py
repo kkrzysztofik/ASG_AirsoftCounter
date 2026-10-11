@@ -121,7 +121,7 @@ def make_tray():
     # cell saddles: two rails, each scalloped for all four cells
     centres = P.trough_centres_y()
     scallop_z = P.CELL_BOTTOM_Z + P.CELL_D / 2 + P.SADDLE_CLEAR
-    cell_x = P.PACK_ORIGIN[0] + P.PACK[0] / 2
+    cell_x = P.cell_centre_x()
     for sx in (cell_x - P.SADDLE_INSET, cell_x + P.SADDLE_INSET):
         rail = box(
             sx - P.SADDLE_T / 2, sx + P.SADDLE_T / 2,
@@ -394,7 +394,7 @@ def board_step(name):
 
 def placeholders():
     """Envelopes for what has no model: the cells, the Heltec stack, the panel devices."""
-    cell_x = P.PACK_ORIGIN[0] + P.PACK[0] / 2
+    cell_x = P.cell_centre_x()
     cell_z = P.CELL_BOTTOM_Z + P.CELL_D / 2
     z0 = P.panel_z0()
     out = {}
