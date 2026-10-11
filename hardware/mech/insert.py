@@ -27,6 +27,7 @@ try:
         Pos,
         Rectangle,
         Rot,
+        Vector,
         export_step,
         export_stl,
         extrude,
@@ -239,8 +240,9 @@ def make_grille():
     for i in range(4):
         a = math.radians(45 + 90 * i)
         part -= cyl_z(P.GRILLE_BOLT_R * math.cos(a), P.GRILLE_BOLT_R * math.sin(a), -1, P.GRILLE_T + 1, 1.6)
+    # the face-seal groove goes in the wall-facing side, z = 0, the side with the counterbore
     gw, gd = P.ORING_GROOVE
-    part -= cyl_z(0, 0, -gd, 0.01, P.SPEAKER_D / 2 + 2 + gw)
+    part -= cyl_z(0, 0, -0.01, gd, P.SPEAKER_D / 2 + 2 + gw)
     return part
 
 
@@ -382,6 +384,8 @@ def check_part(name, part):
             f"FAIL {name}: {dims[0]:.1f} x {dims[1]:.1f} x {dims[2]:.1f} exceeds "
             f"{P.RULES['name']}'s build envelope"
         )
+    if name == "grille" and part.is_inside(Vector(P.SPEAKER_D / 2 + 1, 0, P.ORING_GROOVE[1] / 2)):
+        raise SystemExit("FAIL grille: no O-ring groove in the wall-facing face")
     print(f"ok    {name}: {sx:.1f} x {sy:.1f} x {sz:.1f}, {part.volume / 1000:.1f} cm3, {solids} solid")
 
 def main(argv):
