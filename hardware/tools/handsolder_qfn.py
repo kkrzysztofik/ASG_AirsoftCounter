@@ -1,4 +1,4 @@
-"""Generate local.pretty/QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm_HandSolder.kicad_mod from KiCad's
+"""Generate kicad/local.pretty/QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm_HandSolder.kicad_mod from KiCad's
 Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm.
 
 The BQ25601 is a 24-pin 0.5 mm QFN with an exposed pad: reflow-only as drawn. For an iron build the
@@ -16,7 +16,7 @@ HERE = Path(__file__).resolve().parent
 SRC_LIB = Path("/usr/share/kicad/footprints/Package_DFN_QFN.pretty")
 SRC = "QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm"
 NAME = "QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm_HandSolder"
-DEST = HERE.parent / "local.pretty"
+DEST = HERE.parent / "kicad" / "local.pretty"
 EXT = 0.6          # outward pad extension, mm
 HOLE = 1.5         # through-hole through the exposed pad, mm
 EP = 2.6           # exposed pad size, mm (2.6 x 2.6 mm per SLUSD90)

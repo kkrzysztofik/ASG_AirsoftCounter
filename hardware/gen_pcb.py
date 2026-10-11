@@ -1,4 +1,4 @@
-"""Generate <BOARD>.kicad_pcb (placed, unrouted) from the BOARD module (board.py).
+"""Generate kicad/<BOARD>.kicad_pcb (placed, unrouted) from the BOARD module (board.py).
 
 Origin top-left, X right, Y down, mm. Design rules and net classes live in
 <BOARD>.kicad_pro (written by gen_sch.py); the board is saved beside it without
@@ -13,7 +13,7 @@ import gen_sch
 from board import design  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).parent
-PCB = HERE / f"{design.NAME}.kicad_pcb"
+PCB = gen_sch.KICAD / f"{design.NAME}.kicad_pcb"
 FPDIR = Path("/usr/share/kicad/footprints")
 # GND pour pad connection; route.py (A6) reuses it for the F.Cu pour. Solid, not thermal
 # reliefs: reliefs starved J2.1/J3.1/XH GND pins. Cost: harder hand-soldering of THT GND pins.
@@ -47,7 +47,7 @@ def footprint(board, ref, nets):
     value, _, fpid = design.PARTS[ref]
     lib, name = fpid.split(":")
     # "local" is the project footprint library (fp-lib-table) for parts KiCad does not ship
-    fp = pcbnew.FootprintLoad(str(HERE / "local.pretty" if lib == "local" else FPDIR / f"{lib}.pretty"), name)
+    fp = pcbnew.FootprintLoad(str(gen_sch.KICAD / "local.pretty" if lib == "local" else FPDIR / f"{lib}.pretty"), name)
     if fp is None:
         raise SystemExit(f"{ref}: footprint {fpid} not found")
     fp.SetFPID(pcbnew.LIB_ID(lib, name))

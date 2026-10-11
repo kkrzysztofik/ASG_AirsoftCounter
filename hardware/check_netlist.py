@@ -1,6 +1,6 @@
 """Assert the exported KiCad netlist matches the board module.
 
-kicad-cli sch export netlist --format kicadxml -o build/<BOARD>.xml <BOARD>.kicad_sch
+kicad-cli sch export netlist --format kicadxml -o build/<BOARD>.xml kicad/<BOARD>.kicad_sch
 /usr/bin/python3 check_netlist.py [build/<BOARD>.xml]
 """
 import sys

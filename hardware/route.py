@@ -1,4 +1,4 @@
-"""Autoroute <BOARD>.kicad_pcb with Freerouting, add the F.Cu GND pour, fill zones, save in place.
+"""Autoroute kicad/<BOARD>.kicad_pcb with Freerouting, add the F.Cu GND pour, fill zones, save in place.
 
 Input must be the unrouted board straight from gen_pcb.py: a board that already has unlocked tracks
 or vias is refused (re-run gen_pcb.py first) rather than stripped, so a half-routed board never gets

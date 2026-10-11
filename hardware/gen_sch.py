@@ -1,4 +1,4 @@
-"""Generate <BOARD>.kicad_sch and <BOARD>.kicad_pro from the BOARD module (board.py).
+"""Generate kicad/<BOARD>.kicad_sch and kicad/<BOARD>.kicad_pro from the BOARD module (board.py).
 
 Block-structured, wired schematic. The board module's BLOCKS places every part by hand in a block
 (power, amp, Heltec headers, level shifter, expander + buttons, drivers). Inside a block each net
@@ -21,6 +21,7 @@ from pathlib import Path
 from board import design  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).parent
+KICAD = HERE / "kicad"  # the generated projects, their lib tables and the local libs
 SYMDIR = Path("/usr/share/kicad/symbols")
 # Parts a board module marks as hand-soldered/off-board: they stay out of the JLC BOM, and the
 # footprint must agree or DRC reports a footprint/symbol attribute mismatch.
@@ -92,7 +93,7 @@ _libs = {}
 def lib_symbols(lib):
     if lib not in _libs:
         # "local" is the project library (sym-lib-table) for parts KiCad does not ship
-        tree = parse(((HERE if lib == "local" else SYMDIR) / f"{lib}.kicad_sym").read_text())
+        tree = parse(((KICAD if lib == "local" else SYMDIR) / f"{lib}.kicad_sym").read_text())
         _libs[lib] = {unq(s[1]): s for s in kids(tree, "symbol")}
     return _libs[lib]
 
@@ -845,9 +846,9 @@ def main():
             first.setdefault(m.split(" at ")[0], m)
         raise SystemExit(f"layout problems (sheet in build/{design.NAME}_bad.kicad_sch):\n  "
                          + "\n  ".join(sorted(first.values())))
-    (HERE / f"{design.NAME}.kicad_sch").write_text(dump(sch) + "\n")
-    (HERE / f"{design.NAME}.kicad_pro").write_text(json.dumps(project(root), indent=2) + "\n")
-    print(f"wrote {design.NAME}.kicad_sch, {design.NAME}.kicad_pro")
+    (KICAD / f"{design.NAME}.kicad_sch").write_text(dump(sch) + "\n")
+    (KICAD / f"{design.NAME}.kicad_pro").write_text(json.dumps(project(root), indent=2) + "\n")
+    print(f"wrote kicad/{design.NAME}.kicad_sch, kicad/{design.NAME}.kicad_pro")
 
 
 if __name__ == "__main__":

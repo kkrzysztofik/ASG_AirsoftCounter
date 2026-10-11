@@ -21,7 +21,7 @@ sch:
 	mkdir -p build
 	$(PY) $(BOARD_PY)
 	$(PY) gen_sch.py
-	kicad-cli sch export netlist --format kicadxml -o build/$(BOARD).xml $(BOARD).kicad_sch
+	kicad-cli sch export netlist --format kicadxml -o build/$(BOARD).xml kicad/$(BOARD).kicad_sch
 	$(PY) check_netlist.py build/$(BOARD).xml
 
 pcb: sch
@@ -31,9 +31,9 @@ route: pcb
 	$(PY) route.py
 
 check: route
-	kicad-cli sch erc --severity-all --exit-code-violations -o build/$(BOARD)_erc.rpt $(BOARD).kicad_sch \
+	kicad-cli sch erc --severity-all --exit-code-violations -o build/$(BOARD)_erc.rpt kicad/$(BOARD).kicad_sch \
 		|| { echo "ERC failed: see build/$(BOARD)_erc.rpt"; exit 1; }
-	kicad-cli pcb drc --schematic-parity --severity-all --exit-code-violations -o build/$(BOARD)_drc.rpt $(BOARD).kicad_pcb \
+	kicad-cli pcb drc --schematic-parity --severity-all --exit-code-violations -o build/$(BOARD)_drc.rpt kicad/$(BOARD).kicad_pcb \
 		|| { echo "DRC failed: see build/$(BOARD)_drc.rpt"; exit 1; }
 
 # $(FAB)/gerbers/ is gitignored scratch; the zip built from it is the upload. A zip that fails
@@ -46,9 +46,9 @@ check: route
 fab: check
 	rm -rf $(FAB)/gerbers $(ZIP) $(FAB)/jlc_*.csv
 	mkdir -p $(FAB)/gerbers
-	kicad-cli pcb export gerbers -l $(GERBER_LAYERS) -o $(FAB)/gerbers/ $(BOARD).kicad_pcb
+	kicad-cli pcb export gerbers -l $(GERBER_LAYERS) -o $(FAB)/gerbers/ kicad/$(BOARD).kicad_pcb
 	kicad-cli pcb export drill --format excellon -u mm --excellon-separate-th \
-		--generate-map --map-format gerberx2 -o $(FAB)/gerbers/ $(BOARD).kicad_pcb
+		--generate-map --map-format gerberx2 -o $(FAB)/gerbers/ kicad/$(BOARD).kicad_pcb
 	zip -jqX $(ZIP) $(FAB)/gerbers/* -x '*drl_map*' '*.gbrjob'
 	$(PY) check_gerbers.py $(ZIP) || { rm -f $(ZIP); exit 1; }
 ifeq ($(filter %_tme,$(BOARD)),)
@@ -56,12 +56,12 @@ ifeq ($(filter %_tme,$(BOARD)),)
 endif
 	$(PY) tme.py
 	kicad-cli sch export bom --exclude-dnp --fields 'Reference,Value,Footprint,$${QUANTITY}' \
-		--labels 'Refs,Value,Footprint,Qty' --group-by Value,Footprint -o $(FAB)/bom.csv $(BOARD).kicad_sch
-	kicad-cli sch export pdf -o $(FAB)/schematic.pdf $(BOARD).kicad_sch
-	kicad-cli pcb render --side top -o $(FAB)/top.png $(BOARD).kicad_pcb
-	kicad-cli pcb render --side bottom -o $(FAB)/bottom.png $(BOARD).kicad_pcb
+		--labels 'Refs,Value,Footprint,Qty' --group-by Value,Footprint -o $(FAB)/bom.csv kicad/$(BOARD).kicad_sch
+	kicad-cli sch export pdf -o $(FAB)/schematic.pdf kicad/$(BOARD).kicad_sch
+	kicad-cli pcb render --side top -o $(FAB)/top.png kicad/$(BOARD).kicad_pcb
+	kicad-cli pcb render --side bottom -o $(FAB)/bottom.png kicad/$(BOARD).kicad_pcb
 	kicad-cli pcb export pdf --layers F.Fab,F.Silkscreen,Edge.Cuts --sketch-pads-on-fab-layers --mode-single \
-		--black-and-white --drill-shape-opt 2 -o $(FAB)/print_1to1.pdf $(BOARD).kicad_pcb
+		--black-and-white --drill-shape-opt 2 -o $(FAB)/print_1to1.pdf kicad/$(BOARD).kicad_pcb
 
 # Every board in one command (run before ordering).
 boards:

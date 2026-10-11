@@ -26,7 +26,7 @@ from board import design  # pyright: ignore[reportMissingImports]
 HERE = Path(__file__).parent
 # Per-board output directory.
 FAB = Path("fab") / design.NAME
-PCB = HERE / f"{design.NAME}.kicad_pcb"
+PCB = HERE / "kicad" / f"{design.NAME}.kicad_pcb"
 ZIP = HERE / FAB / f"{design.NAME}_gerbers_jlcpcb.zip"
 DEFAULT_VARIANT = next(iter(design.VARIANTS))  # carrier: deluxe; pack: standard
 
