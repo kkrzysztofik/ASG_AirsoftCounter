@@ -12,6 +12,7 @@ Every dimension comes from params.py; this file holds shapes only.
 """
 
 import math
+import os
 import pathlib
 import subprocess
 import sys
@@ -49,6 +50,7 @@ sys.path.insert(0, str(HERE.parent))
 import params as P  # noqa: E402
 
 OUT = HERE / "out"
+MODELS = HERE.parent / "kicad" / "3dmodels"  # filled by tools/fetch_3d_models.py (make models)
 CLASH_MM3 = 1.0  # overlap below this is boolean noise on touching faces, not a collision
 
 
@@ -382,14 +384,20 @@ def board_step(name):
     pcb = HERE.parent / "kicad" / f"{name}.kicad_pcb"
     if not pcb.exists():
         raise SystemExit(f"no {name}.kicad_pcb in hardware/kicad/")
-    step = OUT / "boards" / f"{name}.step"
+    # models fetched by tools/fetch_3d_models.py, unless KiCad's own library is configured
+    env = dict(os.environ)
+    if "KICAD9_3DMODEL_DIR" not in env and MODELS.is_dir():
+        env["KICAD9_3DMODEL_DIR"] = str(MODELS)
+    # a bare export is cached apart, or fetching the models later would leave it in use
+    step = OUT / "boards" / f"{name}{'' if 'KICAD9_3DMODEL_DIR' in env else '.bare'}.step"
+    newest = max([pcb.stat().st_mtime] + [m.stat().st_mtime for m in MODELS.rglob("*.step")])
     missing = 0
-    if not step.exists() or step.stat().st_mtime < pcb.stat().st_mtime:
+    if not step.exists() or step.stat().st_mtime < newest:
         step.parent.mkdir(exist_ok=True)
         tmp = step.with_suffix(".tmp")  # renamed into place only once complete, so a killed run can't be cached
         try:
             r = subprocess.run(["kicad-cli", "pcb", "export", "step", "-f", "-o", str(tmp), str(pcb)],
-                               capture_output=True, text=True)
+                               capture_output=True, text=True, env=env)
         except FileNotFoundError:
             raise SystemExit("kicad-cli (KiCad 9) is not on PATH; the assembly needs it to export the boards") from None
         if r.returncode:
@@ -400,10 +408,22 @@ def board_step(name):
     # every run, not just the export one: a cached bare plate hides the parts from the gate
     if len(board.solids()) == 1:
         print(f"note  {name}: bare board, no component models; the gate cannot see parts on it "
-              "(install KiCad's 3D library, then delete out/boards/)")
+              "(run `make models`)")
     elif missing:
-        print(f"note  {name}: {missing} footprints have no 3D model (install KiCad's 3D library)")
+        print(f"note  {name}: {missing} footprints have no 3D model, the gate cannot see those")
     return board
+
+
+def _placed(board, pos):
+    """A board moved into place component by component, names kept. Moving the compound alone
+    leaves its children where they were, and the gate reads the children. They move in place:
+    `pos * child` deep-copies the whole parent tree for every child (82 s for one board)."""
+    kids = list(board.children)
+    if not kids:
+        return pos * board
+    for k in kids:
+        k.move(pos)
+    return Compound(children=kids)
 
 
 def placeholders():
@@ -415,7 +435,8 @@ def placeholders():
     for i, cy in enumerate(P.trough_centres_y()):
         out[f"cell_{i + 1}"] = cyl_x(cy, cell_z,
                                      cell_x - P.CELL_LEN / 2, cell_x + P.CELL_LEN / 2, P.CELL_D / 2)
-    out["heltec_envelope"] = box(*P.carrier_box(), P.carrier_z() + P.BOARD_T, P.heltec_top())
+    # the Heltec rides on its header sockets; below them only the carrier's own parts
+    out["heltec_envelope"] = box(*P.carrier_box(), P.carrier_z() + P.BOARD_T + P.HELTEC_SOCKET_H, P.heltec_top())
     out["lcd"] = box(*P.lcd_box(), z0 - P.LCD_DEPTH, z0 - P.LCD_BOSS_H)
     out["nfc"] = box(*P.nfc_box(), z0 - P.NFC_DEPTH, z0)
     for i, (bx, by) in enumerate(P.BUTTON_XY):
@@ -427,9 +448,9 @@ def make_assembly(boards):
     """Everything in place, as {name: shape}. The drill guide is a tool, not part of the insert."""
     pack, carrier = boards
     parts = {"box": box_shell(), "tray": make_tray(), "lid": make_lid()}
-    parts["pack_board"] = Pos(P.PACK_ORIGIN[0], P.PACK_ORIGIN[1] + P.PACK[1], P.pack_z()) * board_step(pack)
-    parts["carrier_board"] = Pos(P.CARRIER_ORIGIN[0], P.CARRIER_ORIGIN[1] + P.CARRIER[1], P.carrier_z()) \
-        * board_step(carrier)
+    parts["pack_board"] = _placed(board_step(pack), Pos(P.PACK_ORIGIN[0], P.PACK_ORIGIN[1] + P.PACK[1], P.pack_z()))
+    parts["carrier_board"] = _placed(board_step(carrier),
+                                     Pos(P.CARRIER_ORIGIN[0], P.CARRIER_ORIGIN[1] + P.CARRIER[1], P.carrier_z()))
     for name, wp in P.WALL_PARTS.items():
         # a bushing's z = 0 face is the wall side and the ring stands out along -Z
         parts[f"bushing_{name}"] = wall_frame(wp["wall"], wp["u"], wp["z"]) * make_bushing(name)
@@ -446,17 +467,40 @@ def _boxes_touch(a, b):
             and a.min.Z < b.max.Z and b.min.Z < a.max.Z)
 
 
+def _solids(shape, label=""):
+    """(label, solid, bbox) for every solid; a board's label is its component's model name.
+    The gate works solid by solid: one boolean against a whole populated board runs out of memory."""
+    label = getattr(shape, "label", "") or label
+    kids = list(getattr(shape, "children", ()) or ())
+    if kids:
+        return [s for k in kids for s in _solids(k, label)]
+    return [(label, s, s.bounding_box()) for s in shape.solids()]
+
+
 def check_assembly(parts):
     names = list(parts)
     boxes = {n: parts[n].bounding_box() for n in names}
+    solids = {n: _solids(parts[n], n) for n in names}
     clashes = []
     for i, a in enumerate(names):
         for b in names[i + 1:]:
             if not _boxes_touch(boxes[a], boxes[b]):
                 continue
-            v = (parts[a] & parts[b]).volume
-            if v > CLASH_MM3:
-                clashes.append(f"FAIL  assembly: {a} and {b} share {v:.1f} mm3")
+            hits = {}  # (label a, label b) -> (volume, where)
+            for la, sa, ba in solids[a]:
+                for lb, sb, bb in solids[b]:
+                    if not _boxes_touch(ba, bb):
+                        continue
+                    common = sa & sb  # None when they do not meet
+                    if common is not None and common.volume > 0:
+                        v, at = hits.get((la, lb), (0.0, common.center()))
+                        hits[(la, lb)] = (v + common.volume, at)
+            for (la, lb), (v, at) in sorted(hits.items(), key=lambda kv: -kv[1][0]):
+                if v > CLASH_MM3:
+                    wa = a if la == a else f"{a}[{la}]"
+                    wb = b if lb == b else f"{b}[{lb}]"
+                    clashes.append(f"FAIL  assembly: {wa} and {wb} share {v:.1f} mm3 "
+                                   f"near ({at.X:.0f}, {at.Y:.0f}, {at.Z:.0f})")
     if clashes:
         raise SystemExit("\n".join(clashes))
     print(f"ok    assembly: {len(names)} parts, no interference")

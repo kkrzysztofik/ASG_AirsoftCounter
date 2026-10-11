@@ -4,3 +4,4 @@ fab/*/gerbers/
 mech/out/*.step
 mech/out/*.stl
 mech/out/boards/
+kicad/3dmodels/

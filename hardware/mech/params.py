@@ -128,6 +128,7 @@ PACK_ORIGIN = ((BOX_IN[0] - PACK[0]) / 2, (BOX_IN[1] - PACK[1]) / 2)          # 
 CARRIER_ORIGIN = ((BOX_IN[0] - CARRIER[0]) / 2, (BOX_IN[1] - CARRIER[1]) / 2)  # (50, 40)
 STANDOFF_H = 8.0              # pack board -> carrier
 HELTEC_H = 15.0               # Heltec in its 2x18 headers, above the carrier
+HELTEC_SOCKET_H = 8.5         # MEASURE the 2x18 female headers the Heltec plugs into (KiCad PinSocket body)
 
 # --- cells ----------------------------------------------------------------------------------
 CELL_D = 18.4                 # 18650

@@ -84,6 +84,12 @@ PROC ?= mjf
 PARTS ?= all
 export MECH_PROCESS = $(PROC)
 export MECH_PARTS = $(PARTS)
+# make models fetches the few KiCad 3D models the boards use (hardware/kicad/3dmodels/, gitignored),
+# so the assembly gate sees real components; without them the boards are bare plates.
+.PHONY: models
+models:
+	/usr/bin/python3 tools/fetch_3d_models.py
+
 .PHONY: mech
 mech:
 	/usr/bin/python3 mech/check.py
