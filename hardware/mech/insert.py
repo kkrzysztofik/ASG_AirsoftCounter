@@ -126,7 +126,7 @@ def make_tray():
         rail = box(
             sx - P.SADDLE_T / 2, sx + P.SADDLE_T / 2,
             centres[0] - P.CELL_D, centres[-1] + P.CELL_D,
-            -0.1, scallop_z,
+            0, scallop_z,
         )
         for cy in centres:
             rail -= cyl_x(cy, scallop_z, sx - P.SADDLE_T / 2 - 1, sx + P.SADDLE_T / 2 + 1, P.CELL_D / 2 + P.SADDLE_CLEAR)
@@ -152,7 +152,7 @@ def make_tray():
 def _cable_clips():
     clips = None
     for cx, cy in P.CLIP_XY:
-        clip = box(cx - 5, cx + 5, cy - 6, cy + 6, -0.1, P.FLOOR_T + 8)
+        clip = box(cx - 5, cx + 5, cy - 6, cy + 6, 0, P.FLOOR_T + 8)
         clip -= cyl_x(cy, P.FLOOR_T + 5, cx - 6, cx + 6, P.CLIP_GROOVE_D / 2)
         clips = clip if clips is None else clips + clip
     return clips
