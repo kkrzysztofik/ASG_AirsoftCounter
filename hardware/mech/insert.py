@@ -258,23 +258,13 @@ def make_guide():
 # --- templates ----------------------------------------------------------------------------------
 
 
-def template_shapes():
-    """(name, [edges], [labels]) in millimetres for the 1:1 drill sheets."""
-    lid_edges = []
-    for bx0, bx1, by0, by1 in P.button_boxes():
-        lid_edges.append(cyl_z((bx0 + bx1) / 2, (by0 + by1) / 2, 0, 0.1, (bx1 - bx0) / 2))
-    wall_edges = []
-    for wp in P.WALL_PARTS.values():
-        wall_edges.append(cyl_z(wp["u"], 0, 0, 0.1, wp["hole_d"] / 2))
-    wall_edges.append(cyl_z(P.SPEAKER_WALL["u"], 0, 0, 0.1, P.SPEAKER_D / 2))
-    return [("lid", lid_edges), ("walls", wall_edges)]
-
-
 def template_sheets():
     """(name, shapes, label, bar_y) per drill sheet, in millimetres and already centred.
 
     Each sheet carries a 100 mm calibration bar, because the one thing that ruins a paper
-    template is a printer quietly scaling it to 97 %.
+    template is a printer quietly scaling it to 97 %. One sheet per drilled wall, seen from
+    outside, floor edge towards the bar: two walls are 140 mm long and one sheet holding both
+    would put a hole on the wrong one.
     """
     cx, cy = P.BOX_IN[0] / 2, P.BOX_IN[1] / 2
     to_centre = Pos(-cx, -cy, 0)
@@ -287,21 +277,18 @@ def template_sheets():
     for bx0, bx1, by0, by1 in P.button_boxes():
         lid.append(to_centre * (Pos((bx0 + bx1) / 2, (by0 + by1) / 2, 0) * Circle((bx1 - bx0) / 2)))
 
-    # walls are drawn unfolded, stacked one above the other so the sheet fits a printer
-    long_y, short_y = P.BOX_IN[2] / 2 + 15, -P.BOX_IN[2] / 2 - 45
-    walls = [Pos(0, long_y, 0) * Rectangle(P.BOX_IN[0], P.BOX_IN[2])]
-    walls.append(Pos(0, short_y, 0) * Rectangle(P.BOX_IN[1], P.BOX_IN[2]))
-    for wp in P.WALL_PARTS.values():
-        if wp["wall"] == "long":
-            walls.append(Pos(wp["u"] - cx, long_y + wp["z"] - cy, 0) * Circle(wp["hole_d"] / 2))
-        else:
-            walls.append(Pos(wp["u"] - cx, short_y + wp["z"] - cy, 0) * Circle(wp["hole_d"] / 2))
-    walls.append(Pos(P.SPEAKER_WALL["u"] - cx, long_y + P.SPEAKER_WALL["z"] - cy, 0) * Circle(P.SPEAKER_D / 2))
-
-    return [
-        ("lid", lid, "LID, seen from inside", -cy - 15),
-        ("walls", walls, "WALLS, unfolded", short_y - 30),
-    ]
+    sheets = [("lid", lid, "LID, seen from inside", -cy - 15)]
+    for wall, length in P.WALLS.items():
+        holes = [(u, z, d) for _n, w, u, z, d, _o in P.wall_holes() if w == wall]
+        if not holes:
+            continue
+        shapes = [Rectangle(length, P.BOX_IN[2])]
+        for u, z, d in holes:
+            # facing x0 or y1 from outside, u runs right to left
+            x = length - u if wall in ("x0", "y1") else u
+            shapes.append(Pos(x - length / 2, z - P.BOX_IN[2] / 2, 0) * Circle(d / 2))
+        sheets.append((f"wall_{wall}", shapes, f"WALL {wall}, seen from outside", -P.BOX_IN[2] / 2 - 15))
+    return sheets
 
 
 def write_templates():
