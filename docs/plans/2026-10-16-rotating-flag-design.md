@@ -43,29 +43,42 @@ colour faces inward, shows one colour from every direction.
 - All four plates must turn **together, by the same angle and in the same direction**. Then they never
   cross: full-width plates would only touch at the corners (0° and 180°) and at the centre (90°).
 
-### Dimensions
+### Dimensions: A4 plates
+
+Each plate is **A4 portrait (210 x 297 mm)**, so the faces are standard printed or coloured A4
+sheets (decided 2026-10-16).
 
 | Item | Value |
 |---|---|
-| Square side (axle to axle across) | 360 mm (axles 180 mm from the centre) |
-| Plate | 320 x 500 mm, 4 mm thick |
-| Colour coverage per side when closed | 320 / 360 = 89 % |
-| Swing past each side | 160 mm (half a plate) |
-| Plate ends at 90° | 20 mm from the centre |
+| Square side (axle to axle across) | 236 mm (axles 118 mm from the centre) |
+| Plate | 210 x 297 mm (A4 portrait), 4 mm thick |
+| Colour coverage per side when closed | 210 / 236 = 89 % |
+| Face area | 624 cm² per side |
+| Swing past each side | 105 mm (half a plate) |
+| Plate ends at 90° | 13 mm from the centre |
 
-The plate width was chosen with a 2D clearance check (plates as 8 mm thick segments, 14 mm corner
-posts, 0.25° steps, computed):
+The box side was chosen with a 2D clearance check: plates as 4 mm thick segments, 12 mm corner posts,
+0.5° steps (computed). The table varies the plate width in a 236 mm box:
 
 | Plate width | Min. gap, plates in step | Gap to corner post | Max. step error before plates touch |
 |---|---|---|---|
-| 330 mm | 13.2 mm | 4.0 mm | 6.5° |
-| **320 mm** | **20.3 mm** | **9.0 mm** | **10.5°** |
-| 300 mm | 34.4 mm | 19.0 mm | 20.5° |
+| 200 mm | 21.5 mm | 10.0 mm | 19.0° |
+| **210 mm (A4)** | **14.4 mm** | **5.0 mm** | **11.5°** |
+| 216 mm (A4 laminating pouch, untrimmed) | 10.1 mm | 2.0 mm | 7.5° |
 
-320 mm tolerates a step error of 10.5°, which is more than one tooth (9°) on the 40T pulleys of Part 2.
-So a single skipped tooth cannot make the plates collide.
+- **A4 tolerates a step error of 11.5°.** That is more than one tooth (9°) on the 40T pulleys of
+  Part 2, so a single skipped tooth cannot make the plates collide.
+- **Faces must be trimmed to exactly 210 x 297.** An untrimmed laminating pouch (216 x 303) drops the
+  tolerance below one tooth.
 
-**No centre mast.** At 90° the plate ends come within 20 mm of the centre, so nothing can pass
+**Visibility trade-off.** An A4 face has 39 % of the area of the 320 x 500 mm plate first sketched.
+Seen from 50 m, it looks as big as that plate would from about 80 m. That is enough in woods and on
+small fields.
+
+**Upgrade path:** A3 portrait plates (297 x 420, two A4 sheets) in a 329 mm box (11.0° tolerance,
+computed) keep the same drive, base unit and firmware.
+
+**No centre mast.** At 90° the plate ends come within 13 mm of the centre, so nothing can pass
 through the middle of the head. The head sits on top of the pole on its drive deck, and four corner
 posts carry the top cap.
 
@@ -80,14 +93,16 @@ posts carry the top cap.
 - **Pulleys: 40T GT2** (25.46 mm pitch diameter). Each pulley has 90° of belt wrap, so 10 teeth are in
   mesh.
 - **Belt: GT2, 6 mm, glass-fibre core, open length joined into a loop.** The pitch length is
-  4 x 254.6 mm (the straight runs between pulleys) + one pulley circumference (80.0 mm) = 1098 mm, or
-  549 teeth.
-  - A 180° turn moves the belt only **40 mm**, so a clamped joint in one 254 mm straight run never
-    reaches a pulley.
+  4 x 166.9 mm (the straight runs between pulleys) + one pulley circumference (80.0 mm) = 748 mm, or
+  about 374 teeth.
+  - A 180° turn moves the belt only **40 mm**, so a clamped joint (about 30 mm long) in one 167 mm
+    straight run never reaches a pulley.
   - The joint clamp doubles as the tensioner (turnbuckle). No closed loop of this exact length needs
     to be found.
-- **Servo:** a 20-25 kg·cm metal-gear digital servo with **270°** travel, PWM 500-2500 µs, 6 V (for
-  example the DS3218MG 270°; check waterproofing). At 1:1, a 180° plate turn uses 2/3 of its range.
+- **Servo:** a metal-gear digital servo of **10 kg·cm or more** with **270°** travel, PWM 500-2500 µs,
+  6 V (for example the DS3218MG 270°, which is over-specified but common; check waterproofing).
+  - Avoid nominal-180° servos such as the MG996R: their real travel often falls short of 180°.
+  - At 1:1, a 180° plate turn uses 2/3 of a 270° servo's range.
   The pulse widths for 0°, 90° and 180° are calibrated per unit and stored in config.
 - **Speed:** firmware ramps the pulse so that 180° takes about 1 s. That gives a gentler current peak
   and less belt load. Full servo speed would be about 0.5 s.
@@ -103,10 +118,13 @@ posts carry the top cap.
   - At 90°, the servo stays powered: the "+" catches more wind.
 - **Re-assert:** while the servo is unpowered, firmware powers it for 0.5 s every 60 s at the current
   pulse, to undo a gust. The interval is configurable; 0 turns it off.
-- **Wind estimate** (not measured): at 10 m/s, mid-turn, about 0.5 N·m per plate and 1-2 N·m total,
-  which is 10-20 kg·cm. Closed, the torque is near zero (the face-on plate is pushed square, the
-  edge-on plates see no load). A 20-25 kg·cm servo covers the forest case; open fields with strong
-  gusts need the field test (Open items).
+- **Wind estimate** (not measured):
+  - Wind torque scales with plate area times plate width. For A4 that is about a quarter of the
+    320 x 500 mm plate's.
+  - At 10 m/s, mid-turn, that gives about 0.25-0.5 N·m total (2.5-5 kg·cm).
+  - Closed, the torque is near zero: the face-on plate is pushed square, and the edge-on plates see no
+    load.
+  - A 10 kg·cm servo leaves about 2x margin. The field test confirms it (Open items).
 
 ### No position feedback
 
@@ -119,19 +137,23 @@ possible later addition (Open items).
 
 ```
    top cap  ─────────────────  608 bearings (4), corner posts screw in
-   plates   ║  ║  ║  ║          4 x 320 x 500 mm, slotted hubs top and bottom
-   deck     ═════════════════  420 x 420 mm, 608 bearings (4), servo on plate 1
+   plates   ║  ║  ║  ║          4 x A4 (210 x 297 mm), slotted hubs top and bottom
+   deck     ═════════════════  290 x 290 mm, 608 bearings (4), servo on plate 1
    belt     (under the deck)   40T pulleys, GT2 loop, detent, cover tray
    pole     │                  head socket onto the tube, cable inside or clipped
 ```
 
-- **Plates:** 4 mm corrugated PP (coroplast), with the flutes vertical. Use a red sheet with blue
-  vinyl on the other face, or two 2 mm sheets glued back to back. About 105 g each.
+- **Plates:** a 3-4 mm corrugated PP (coroplast) core cut to 210 x 297 mm, with the flutes vertical.
+  - **Faces:** a red A4 sheet on one side and a blue one on the other, laminated or printed on
+    waterproof media and trimmed flush to the core (see the pouch row in Part 1).
+  - Instead of plain colour, the faces can carry a team logo or a point letter. Swapping a face means
+    swapping a sheet.
+  - Each plate weighs about 50 g.
 - **Hubs instead of a through-axle:** 3D-printed slotted hubs clamp the centre of each plate at the
   top and bottom edges, with 8 mm stub shafts in sealed 608-2RS bearings. A rod cannot pass through
   4 mm flutes, and the light plates carry the small torque from bottom to top on their own.
-- **Drive deck:** a 420 x 420 mm plate (8 mm HDPE or marine plywood, too large to 3D-print in one
-  piece) with printed bearing blocks.
+- **Drive deck:** a 290 x 290 mm plate with printed bearing blocks. It is cut from 8 mm HDPE or marine
+  plywood, or printed in two halves: it is larger than a 256 mm print bed.
   - The belt, pulleys, detent and servo horn coupling sit under the deck in a shallow cover tray.
   - The servo hangs under plate 1's axle.
   - The deck sheds rain. Only the servo needs to be weatherproof (Open items).
@@ -140,8 +162,8 @@ possible later addition (Open items).
 - **Mounting:** a pole socket under the deck slides onto the tube and is locked with a bolt.
   - Pole: 2 m to the deck, in two 1 m sections with a joiner for transport.
   - Anchoring: ground spike plus three guy lines, or straps to a tree.
-  - Plate tops end about 2.6 m above the ground.
-- **Mass:** about 0.4 kg of plates plus 0.6-0.8 kg of deck, cap and servo, so 1.0-1.2 kg on the pole top.
+  - Plate tops end about 2.4 m above the ground.
+- **Mass:** about 0.2 kg of plates plus 0.4-0.5 kg of deck, cap and servo, so 0.6-0.7 kg on the pole top.
 - **Assembly indexing:** mark each plate and each pulley. Fit the belt with all four plates at 0°
   (red out), then calibrate.
 
@@ -272,16 +294,18 @@ place), position feedback, a second head driven by one base unit.
 
 ## Open items
 
-- Servo: a 270° 20-25 kg·cm model that is waterproof, or a cover for it under the deck. Check the
-  real pulse range and the travel at 500-2500 µs.
+- Servo: a 270° model of 10 kg·cm or more that is waterproof, or a cover for it under the deck. Check
+  the real pulse range and the travel at 500-2500 µs.
 - Boost module: pick a type with an EN pin, ≥ 2 A at 6 V from 3.0 V input, and low quiescent current
   when off.
 - The pack's 2 A path (PTC on the pack board) with a servo peak plus LoRa TX plus audio.
 - Wind torque against the servo and detent: measure in F0/F5. Decide whether 90° needs the servo
   powered all the time.
 - How strong the magnetic detent should be (magnet size) without stalling a ramped move.
-- Mass and stiffness of the 2 m pole with 1.2 kg on top; the guy-line layout.
+- Mass and stiffness of the 2 m pole with 0.7 kg on top; the guy-line layout.
 - PCA9685 module pass-through header order against the PN532 cable (`J_NFC1`: GND, 3V3, SDA, SCL).
-- Visibility of an 89 %-covered face at 100 m, and whether the corner gaps need cover strips.
+- How far an A4 face reads as red or blue (check at 30 / 50 / 80 m in F0), and whether the 13 mm
+  corner gaps need cover strips. If A4 is too small in the field, use the A3 upgrade path (Part 1).
+- Face material: laminated paper against printed PP or vinyl, for rain and UV over a season.
 - Hall sensor on plate 1 for position feedback: needs an input, and none is free on this carrier
   revision.
