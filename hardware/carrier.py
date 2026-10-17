@@ -21,6 +21,9 @@ ESOP8 = "Package_SO:HSOP-8-1EP_3.9x4.9mm_P1.27mm_EP2.3x2.3mm_ThermalVias"  # NS4
 XH2 = "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"
 XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 XH6 = "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical"
+HDR3 = "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+HDR4 = "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
+TP = "TestPoint:TestPoint_Pad_D1.5mm"
 SOCKET18 = "Connector_PinSocket_2.54mm:PinSocket_1x18_P2.54mm_Vertical"
 SOIC8EP = "Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.41x3.3mm"
 
@@ -41,6 +44,15 @@ PARTS = {
     "J_BTN_B1": ("BTN_B", "Connector_Generic:Conn_01x04", XH4),
     "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x02", XH2),
     "J_SPK1": ("SPK", "Connector_Generic:Conn_01x02", XH2),
+    # Bring-up aids, all hand-soldered (NOT_ASSEMBLED): ESP32 UART0 (GND, Heltec TX, Heltec RX), the
+    # I2C bus and rail test pads. No ammeter jumper: J_HBAT1 and J_PWR1 are pluggable, so current is
+    # measured by putting the meter in the cable.
+    "J_UART1": ("UART", "Connector_Generic:Conn_01x03", HDR3),
+    "J_I2C1": ("I2C", "Connector_Generic:Conn_01x04", HDR4),
+    "TP_3V3": ("3V3", "Connector:TestPoint", TP),
+    "TP_5V": ("5V", "Connector:TestPoint", TP),
+    "TP_VSW": ("VBAT_SW", "Connector:TestPoint", TP),
+    "TP_GND": ("GND", "Connector:TestPoint", TP),
     # Cell protection in the negative lead (the Heltec V4 has no under-voltage cutoff, see
     # docs/PARTS_REVIEW.md) now lives on the pack board: J_PWR1.3 already is the protected, switched
     # pack rail and board GND is the pack ground.
@@ -65,6 +77,8 @@ PARTS = {
 }
 # Do not populate: the LCD backpack has its own 5V-side pull-ups.
 DNP = {"R_SDA5", "R_SCL5"}
+# Hand-soldered: not in the JLCPCB BOM/CPL, so no LCSC number.
+NOT_ASSEMBLED = {"J_UART1", "J_I2C1", "TP_3V3", "TP_5V", "TP_VSW", "TP_GND"}
 
 
 # Low-side drivers (loads are ~15 mA LED rings and an ~8 mA buzzer, well inside a BSS138): name -> load resistor value or None. The ONPOW LAS1-AGQ-11E/x/6V button LEDs
@@ -124,16 +138,19 @@ NETS = {
     "GND": ["J2.1", "J3.1", "J_HBAT1.2", "J_LCD1.1", "J_NFC1.1", "J_BTN_R1.2", "J_BTN_B1.2",
             "J_PWR1.1", "J_PWR1.2", "C_BULK1.2", "C_BULK2.2", "C_NFC1.2",
             "Q_LR1.2", "Q_LB1.2", "Q_BZ1.2", "R_PDLR1.2", "R_PDLB1.2", "R_PDBZ1.2", "C_BR1.2", "C_BB1.2",
+            "J_UART1.1", "J_I2C1.1", "TP_GND.1",
             "U2.1", "U2.2", "U2.3", "U2.8", "C_EXP1.2",  # A0-A2 low: address 0x20
             "U3.7", "U3.9", "C_AMP1.2", "C_AMP2.2", "R_SDPD1.2"],
     "+3V3": ["J3.2", "J3.3", "J_NFC1.2", "C_NFC1.1", "Q_SDA1.1", "Q_SCL1.1", "R_SDA3.1", "R_SCL3.1", "R_PUR1.1", "R_PUB1.1",
-             "U2.16", "C_EXP1.1", "R_INT1.1"],
-    "VBAT_SW": ["J_HBAT1.1", "C_BULK1.1", "C_BULK2.1", "U3.6", "C_AMP1.1", "C_AMP2.1", "J_PWR1.3"],
-    "+5V": ["J_PWR1.4", "J_LCD1.2", "J_BTN_R1.3", "J_BTN_B1.3", "J_BUZ1.1",
+             "U2.16", "C_EXP1.1", "R_INT1.1", "J_I2C1.2", "TP_3V3.1"],
+    "VBAT_SW": ["J_HBAT1.1", "C_BULK1.1", "C_BULK2.1", "U3.6", "C_AMP1.1", "C_AMP2.1", "J_PWR1.3", "TP_VSW.1"],
+    "UART_TX": ["J2.6", "J_UART1.2"],           # GPIO43, U0TXD
+    "UART_RX": ["J2.5", "J_UART1.3"],           # GPIO44, U0RXD
+    "+5V": ["J_PWR1.4", "J_LCD1.2", "TP_5V.1", "J_BTN_R1.3", "J_BTN_B1.3", "J_BUZ1.1",
             "D_FLY1.1", "R_SDA5.1", "R_SCL5.1"],
     # I2C
-    "SDA_3V3": ["J3.15", "Q_SDA1.2", "R_SDA3.2", "J_NFC1.3", "U2.15", "J_PWR1.5"],
-    "SCL_3V3": ["J3.14", "Q_SCL1.2", "R_SCL3.2", "J_NFC1.4", "U2.14", "J_PWR1.6"],
+    "SDA_3V3": ["J3.15", "Q_SDA1.2", "R_SDA3.2", "J_NFC1.3", "U2.15", "J_PWR1.5", "J_I2C1.3"],
+    "SCL_3V3": ["J3.14", "Q_SCL1.2", "R_SCL3.2", "J_NFC1.4", "U2.14", "J_PWR1.6", "J_I2C1.4"],
     "EXP_INT": ["J3.17", "U2.13", "R_INT1.2"],  # open drain, active low
     # I2S to the amp; CTRL from the expander (high = right slot, low = shutdown)
     "I2S_BCLK": ["J2.13", "U3.3"], "I2S_LRCLK": ["J2.14", "U3.2"], "I2S_DIN": ["J2.16", "U3.4"],
@@ -165,7 +182,7 @@ HELTEC_GPIO = {
 # efuse is burned. With default efuses it is safe for SCL, so it is not forbidden.
 FORBIDDEN_GPIO = {0, 1, 2, 5, 7, 19, 20, 26, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 45, 46, None}
 EXPECTED_GPIO = {"SCL_3V3": 3, "SDA_3V3": 4, "EXP_INT": 6,
-                 "I2S_BCLK": 47, "I2S_LRCLK": 48, "I2S_DIN": 21}
+                 "I2S_BCLK": 47, "I2S_LRCLK": 48, "I2S_DIN": 21, "UART_TX": 43, "UART_RX": 44}
 HEADER_POWER = {"J2.1": "GND", "J3.1": "GND", "J3.2": "+3V3", "J3.3": "+3V3"}
 HEADER_NC = {"J2.2", "J2.3", "J2.4"}  # 5V charger input, Vext x2: must stay unconnected
 
@@ -190,7 +207,7 @@ def assembled(variant="deluxe"):
     """Refs JLCPCB places: everything except DNP parts, mounting holes and modules the variant drops."""
     dropped = set().union(*(MODULES[m] for m in MODULES.keys() - VARIANTS[variant]))
     return [r for r, (_, sym, _) in PARTS.items()
-            if r not in DNP | dropped and sym != "Mechanical:MountingHole"]
+            if r not in DNP | NOT_ASSEMBLED | dropped and sym != "Mechanical:MountingHole"]
 
 
 
@@ -263,6 +280,15 @@ BLOCKS = [
                "D_FLY1": (165.1, 20.32, 270, None), "J_BUZ1": (182.88, 25.4, 0, None)},
      "tags": {"LED_R_G": [(12.7, 38.1, "L")], "LED_B_G": [(71.12, 38.1, "L")], "BUZ_G": [(129.54, 38.1, "L")],
               "BTN_R_LEDK": [(50.8, 10.16, "R")], "BTN_B_LEDK": [(109.22, 10.16, "R")]}},
+    {"title": "Debug: UART, I2C, test pads", "at": (261.62, 162.56), "size": (114.3, 88.9),
+     "parts": {"J_UART1": (38.1, 12.7, 0, None), "J_I2C1": (38.1, 50.8, 0, None),
+               "TP_3V3": (63.5, 38.1, 0, None), "TP_5V": (63.5, 50.8, 0, None),
+               "TP_VSW": (88.9, 38.1, 0, None), "TP_GND": (88.9, 50.8, 0, None)},
+     # Tagged, not auto-labelled: the GND port under pin 1 of a header would sit on pin 2's label.
+     "tags": {"UART_TX": [(25.4, 20.32, "L")], "UART_RX": [(25.4, 25.4, "L")],
+              "SDA_3V3": [(25.4, 60.96, "L")], "SCL_3V3": [(25.4, 66.04, "L")]},
+     "fields": {r: {"Reference": (5.08, -2.54, "left"), "Value": (5.08, 2.54, "left")}
+                for r in ("TP_3V3", "TP_5V", "TP_VSW", "TP_GND")}},
     {"title": "Mounting holes", "at": (208.28, 162.56), "size": (50.8, 25.4),
      "parts": {"H1": (7.62, 15.24, 0, None), "H2": (17.78, 15.24, 0, None),
                "H3": (27.94, 15.24, 0, None), "H4": (38.1, 15.24, 0, None)}},
@@ -299,6 +325,10 @@ PLACE = {
     "R_GBZ1": (24, 29, 0), "R_PDBZ1": (24, 32, 180), "Q_BZ1": (24, 35.5, 270),
     "R_GLR1": (32, 29, 0), "R_PDLR1": (32, 32, 180), "Q_LR1": (32, 35.5, 270), "R_LLR1": (32, 39.5, 270),
     "D_FLY1": (15, 45, 0),
+    # Bring-up aids: header strip below the Heltec's J2 row (the module ends above it), test pads at
+    # the right end. Headers lie along X (rot 90, pin 1 left).
+    "J_UART1": (47, 55.5, 90), "J_I2C1": (56, 55.5, 90),
+    "TP_3V3": (68, 55.5, 0), "TP_5V": (70.5, 55.5, 0), "TP_VSW": (73, 55.5, 0), "TP_GND": (75.5, 55.5, 0),
     # Button RC: BTN_B near its connector, BTN_R near J_BTN_R1 and the expander
     "R_PUB1": (20, 49, 0), "C_BB1": (20, 52.5, 0), "R_SB1": (25, 50.75, 0),
     "R_PUR1": (66, 15.5, 0), "C_BR1": (66, 19, 0), "R_SR1": (71, 17.25, 0),
@@ -319,9 +349,13 @@ LABELS = {
     "J_BTN_R1": ("BTN_R", "SW GND L+ L-"), "J_BTN_B1": ("BTN_B", "SW GND L+ L-"), "J_BUZ1": ("BUZ", "+  -"),
     "J_SPK1": ("SPK (BTL, not GND)", "OUT- OUT+"),
 }
+HIDE_REF = ("TP_3V3", "TP_5V", "TP_VSW", "TP_GND", "J_UART1", "J_I2C1")
 # free text: (text, x, y, rot, size, left-justified)
 TEXTS = [
     ("AirsoftCounter v2 carrier", 9, 56.5, 0, 1.0, True), ("2026-09", 9, 58.3, 0, 1.0, True),
+    ("UART\nGND TX RX", 49.5, 58.4, 0, 0.8, False), ("I2C\nGND 3V3 SDA SCL", 61.5, 58.4, 0, 0.8, False),
+    ("3V3", 68, 58.6, 90, 0.8, False), ("5V", 70.5, 58.4, 90, 0.8, False),
+    ("VSW", 73, 58.6, 90, 0.8, False), ("GND", 75.5, 58.6, 90, 0.8, False),
     ("USB", 40.5, 38.43, 90, 1.0, False), ("ANT →", 84, 38.43, 0, 1.0, False),
 ]
 

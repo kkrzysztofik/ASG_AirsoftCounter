@@ -66,9 +66,11 @@ NETS |= {
 }
 NC_PINS = set(carrier.NC_PINS) | {"U_AMP.2"}   # amp pin 2 is NC
 # U_DAC: TME has no PCM5100A in stock below a 70 pcs tube (2026-10-02); buy it at LCSC or Mouser.
-NOT_TME = {"U_DAC"}                            # the rest is bought at TME (J2/J3: ZL262-18SG)
+NOT_TME = {"U_DAC"} | carrier.NOT_ASSEMBLED                            # the rest is bought at TME (J2/J3: ZL262-18SG)
 NC_PARTS = set(carrier.NC_PARTS)
 DNP = set(carrier.DNP)
+NOT_ASSEMBLED = set(carrier.NOT_ASSEMBLED)
+HIDE_REF = carrier.HIDE_REF
 LCSC = {}
 _KEYS = {(v, fp) for r, (v, sym, fp) in PARTS.items()
          if sym != "Mechanical:MountingHole" and r not in DNP | NOT_TME}
@@ -171,7 +173,7 @@ PLACE = {r: v for r, v in carrier.PLACE.items() if r != "U3"}
 # The DAC/amp corner is dense; reference text there collides with neighbouring silk, so it is
 # hidden (the value stays, and the refs are on the fab print and in the schematic).
 HIDE_REF = ("U_DAC", "U_AMP", "C_DCP", "C_DNEG", "C_DLDO", "C_DVDD", "C_DAVDD", "C_DCPV",
-            "C_DBULK", "R_OL", "C_OL", "R_OR", "C_OR", "C_INP", "R_INP", "C_INN", "R_INN")
+            "C_DBULK", "R_OL", "C_OL", "R_OR", "C_OR", "C_INP", "R_INP", "C_INN", "R_INN") + carrier.HIDE_REF
 PLACE |= {
     # DAC + amp replace the NS4168 in the J_SPK1 corner. U_AMP takes the U3 spot; the DAC and
     # its passives come from a courtyard-free-space search on the JLC board (the corner is dense,

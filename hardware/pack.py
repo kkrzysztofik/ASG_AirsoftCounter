@@ -36,6 +36,7 @@ LRN6045 = "Inductor_SMD:L_Bourns_SRN6045TA"
 LED0805 = "LED_SMD:LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder"
 XH2 = "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"
 XH6 = "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical"
+HDR3 = "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
 USBC = "Connector_USB:USB_C_Receptacle_HCTL_HC-TYPE-C-16P-01A"
 HOLDER = "local:BatteryHolder_MYOUNG_BH-18650-A6AJ012"   # THT, mounted on the bottom side
 NTC_BEAD = "local:NTC_Bead_P2.54mm"                       # bottom side, in the holder floor window
@@ -104,6 +105,10 @@ PARTS = {
     "TP_SWCLK": ("SWCLK/BOOT0", "Connector:TestPoint", TP),
     "TP_NRST": ("NRST", "Connector:TestPoint", TP),
     "TP_GND": ("GND", "Connector:TestPoint", TP),
+    "J_UART1": ("UART", "Connector_Generic:Conn_01x03", HDR3),   # 1 GND, 2 MCU TX, 3 MCU RX; hand-soldered
+    # Bring-up test pads on the 3.3 V I2C pair that J_PWR1 carries (SDA_EXT/SCL_EXT, slave 0x30). The
+    # rails need none: J_PWR1 pins 3/4 are VBAT_SW and +5V, J_KEY1.1 is SYS, C_MCU1 is 3V3.
+    "TP_SDA": ("SDA", "Connector:TestPoint", TP), "TP_SCL": ("SCL", "Connector:TestPoint", TP),
     # --- power out: key switch, 2 A PTC, boost (same parts as carrier.py), 6-pin XH to the carrier ---
     "J_KEY1": ("KEY", "Connector_Generic:Conn_01x02", XH2),
     "F_SYS1": ("2A PTC", "Device:Polyfuse", FUSE1206),
@@ -151,14 +156,17 @@ for i in range(1, 5):
 for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", MH)
 
+# Hand-soldered bring-up aids (never in a BOM): UART header and the rail / I2C test pads.
+TP_DEBUG = ("TP_SDA", "TP_SCL")
+DEBUG = ("J_UART1",) + TP_DEBUG
 # Bring-up 0R bypasses, off by default. Cell holders, cell NTC beads and bare test-point pads are
 # populated by hand, so they are not in the JLCPCB BOM/CPL (NOT_ASSEMBLED) and need no LCSC number.
 DNP = {f"R_BYP{i}" for i in range(1, 5)}
 NOT_ASSEMBLED = ({f"BT{i}" for i in range(1, 5)} | {f"TH{i}" for i in range(1, 5)}
-                 | {"TH_CHG", "TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND"})
+                 | {"TH_CHG", "TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND"} | set(DEBUG))
 # Pins with no connection: charger NC pins and unused control outputs, unused MCU pins, boost NC.
 NC_PINS = {"U_CHG.3", "U_CHG.8", "U_CHG.10", "U_CHG.12",
-           "U_MCU.1", "U_MCU.2", "U_MCU.3", "U_MCU.19", "U_MCU.20", "U_MCU.21", "U_MCU.32",
+           "U_MCU.1", "U_MCU.2", "U_MCU.3", "U_MCU.20", "U_MCU.32",
            "U1.6"}
 NC_PARTS = set()
 
@@ -244,11 +252,13 @@ NETS = {
     "NRST": ["U_MCU.6", "C_NRST.1", "SW_RST.1", "TP_NRST.1"],
     "BOOT0": ["U_MCU.25", "R_BOOT.1", "SW_BOOT.1", "TP_SWCLK.1"],
     "SWDIO": ["U_MCU.24", "TP_SWDIO.1"],
+    "UART_TX": ["U_MCU.19", "J_UART1.2"],     # PA9, USART1_TX
+    "UART_RX": ["U_MCU.21", "J_UART1.3"],     # PA10, USART1_RX
     "LED_MCU_DRV": ["U_MCU.26", "R_LED_MCU.1"],
     "LED_MCU_A": ["R_LED_MCU.2", "LED_MCU.2"],
     # external I2C (slave 0x30) to the carrier: no pull-ups here
-    "SDA_EXT": ["U_MCU.13", "J_PWR1.5"],
-    "SCL_EXT": ["U_MCU.14", "J_PWR1.6"],
+    "SDA_EXT": ["U_MCU.13", "J_PWR1.5", "TP_SDA.1"],
+    "SCL_EXT": ["U_MCU.14", "J_PWR1.6", "TP_SCL.1"],
     # NTC divider supply (PA4), switched off between samples
     "NTC_PWR": ["U_MCU.11", *(f"TH{i}.1" for i in range(1, 5))],
     # ground: holder- (no protector IC), crowbar anodes, gate drive, charger, MCU, earth
@@ -266,7 +276,7 @@ NETS = {
             "U_MCU.5", "C_MCU1.2", "C_MCU2.2", "C_NRST.2", "SW_RST.2", "R_BOOT.2",
             "LED_MCU.1", "R_CE.2",
             "U1.2", "C_IN1.2", "C_OUT1.2", "C_OUT2.2", "R_FB2.2",
-            "J_PWR1.1", "J_PWR1.2", "TP_GND.1"],
+            "J_PWR1.1", "J_PWR1.2", "TP_GND.1", "J_UART1.1"],
 }
 
 for i in range(1, 5):
@@ -377,6 +387,7 @@ def _blocks():
             "TP_NRST": (12.7, 111.76, 0, None), "TP_SWCLK": (12.7, 119.38, 0, None),
             "TP_SWDIO": (74.93, 76.2, 0, None), "TP_GND": (68.58, 119.38, 0, None),
             "R_LED_MCU": (68.58, 90.17, 0, None), "LED_MCU": (81.28, 90.17, 90, None),
+            "J_UART1": (106.68, 50.8, 0, None),
         },
         # Bare test-pad symbols carry their text over the pad; move it aside, or the pad cannot route.
         "fields": {r: {"Reference": (5.08, -2.54, "left"), "Value": (5.08, 2.54, "left")}
@@ -384,7 +395,7 @@ def _blocks():
         "tags": _tags(["SW1_DRV", "SW2_DRV", "SW3_DRV", "SW4_DRV", "USB_DP", "USB_DM",
                        "NTC1", "NTC2", "NTC3", "NTC4", "NTC_PWR", "CHG_CE", "SDA_EXT", "SCL_EXT",
                        "CHG_INT", "MON_ALERT", "MON_PWRDN", "SCL_INT", "SDA_INT",
-                       "LED_MCU_A", "LED_MCU_DRV", "SWDIO"],
+                       "LED_MCU_A", "LED_MCU_DRV", "SWDIO", "UART_TX", "UART_RX"],
                       12.7, 135.89, per_row=6),
     })
     # Power out: key switch, 2 A PTC, 5 V boost and the 6-pin XH to the carrier.
@@ -398,7 +409,10 @@ def _blocks():
             "R_FB1": (99.06, 55.88, 0, None), "R_FB2": (99.06, 71.12, 0, None),
             "C_IN1": (50.8, 71.12, 0, None), "C_OUT1": (83.82, 55.88, 0, None),
             "C_OUT2": (83.82, 74.93, 0, None), "J_PWR1": (124.46, 45.72, 0, None),
+            "TP_SDA": (12.7, 45.72, 0, None), "TP_SCL": (12.7, 58.42, 0, None),
         },
+        "fields": {r: {"Reference": (5.08, -2.54, "left"), "Value": (5.08, 2.54, "left")}
+                   for r in ("TP_SDA", "TP_SCL")},
         "tags": _tags(["SDA_EXT", "SCL_EXT", "GND", "SYS"], 12.7, 95.25), "wired": {"GND"},
     })
     # One identical block per cell branch.
@@ -476,7 +490,8 @@ _STRIP = {
     # bottom edge row: buttons, test pads, status LED, NRST/BOOT0 parts
     "SW_BOOT": (16, 87.4, 0), "SW_RST": (23, 87.4, 0),
     "TP_SWDIO": (28.5, 87.4, 0), "TP_SWCLK": (31.5, 87.4, 0), "TP_NRST": (34.5, 87.4, 0),
-    "TP_GND": (37.5, 87.4, 0), "LED_MCU": (42.5, 87.4, 0), "R_LED_MCU": (49, 87.4, 0),
+    "TP_GND": (37.5, 87.4, 0), "J_UART1": (77.6, 85.3, 90),
+    **{r: (66.5 + 2.6 * i, 87.2, 0) for i, r in enumerate(TP_DEBUG)}, "LED_MCU": (42.5, 87.4, 0), "R_LED_MCU": (49, 87.4, 0),
     "R_BOOT": (55, 87.4, 0), "C_NRST": (61, 87.4, 0),
     # board-edge connectors (openings face +x)
     "J_USB1": (90, 23, 90), "J_PWR1": (90, 55, 90), "J_KEY1": (90, 78, 90),
@@ -528,12 +543,14 @@ def _ref_at():
 
 REF_AT = _ref_at()
 # Test pads are identified by their value text.
-HIDE_REF = ("TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND")
+HIDE_REF = ("TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND", "J_UART1", *TP_DEBUG)
 LABELS = {}
 TEXTS = [
     ("AirsoftCounter v2 pack", 24, 1.8, 0, 1.0, True), ("2026-10", 24, 3.6, 0, 1.0, True),
     ("USB", 85.5, 32, 90, 0.8, False), ("PACK", 85.5, 62, 90, 0.8, False),
-    ("KEY", 85.5, 84, 90, 0.8, False),
+    ("KEY", 85.5, 81.8, 90, 0.8, False),
+    ("GND TX RX", 80.14, 83.3, 0, 0.8, False),
+    *((n, 66.5 + 2.6 * i, 85.0, 0, 0.8, False) for i, n in enumerate(("SDA", "SCL"))),
 ]
 GND_VIAS = []
 HELTEC_PADS = {}

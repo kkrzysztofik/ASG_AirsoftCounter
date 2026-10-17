@@ -15,6 +15,7 @@ TITLE = "AirsoftCounter v2 LiPo"
 R0805, C0805, SOT23, SOD123 = pack.R0805, pack.C0805, pack.SOT23, pack.SOD123
 C1206, FUSE1206, LRN6045, LQFP32 = pack.C1206, pack.FUSE1206, pack.LRN6045, pack.LQFP32
 XH2, XH6, MH, TP = pack.XH2, pack.XH6, pack.MH, pack.TP
+HDR3 = pack.HDR3
 XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 TSOT23_6 = "Package_TO_SOT_SMD:TSOT-23-6"
 SOT89 = "Package_TO_SOT_SMD:SOT-89-3"
@@ -73,6 +74,7 @@ PARTS = {
     "TP_NRST": ("NRST", "Connector:TestPoint", TP),
     "TP_3V3": ("3V3", "Connector:TestPoint", TP),
     "TP_GND": ("GND", "Connector:TestPoint", TP),
+    "J_UART1": ("UART", "Connector_Generic:Conn_01x03", HDR3),   # 1 GND, 2 MCU TX, 3 MCU RX; hand-soldered
     # --- balance lead: one 4-pin XH takes a 2S (3-pin) plug in pins 1-3; tap 3 then reads 0 V ---
     "J_BAL1": ("BAL", "Connector_Generic:Conn_01x04", XH4),
     "R_TT1": ("470k", *R0805), "R_TB1": ("1M", *R0805),        # x0.680
@@ -87,9 +89,9 @@ for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", MH)
 
 DNP = set()
-NOT_ASSEMBLED = {"J_IN1", "TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_3V3", "TP_GND"}
+NOT_ASSEMBLED = {"J_IN1", "TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_3V3", "TP_GND", "J_UART1"}
 # Unused MCU pins (all but supply, NRST, 3 ADC, I2C slave, kill, SWD).
-NC_PINS = {f"U_MCU.{p}" for p in (1, 2, 3, 10, 11, 12, *range(16, 24), *range(26, 33))}
+NC_PINS = {f"U_MCU.{p}" for p in (1, 2, 3, 10, 11, 12, 16, 17, 18, 20, 22, 23, *range(26, 33))}
 NC_PARTS = set()
 
 LCSC = {
@@ -146,13 +148,15 @@ NETS = {
     "NRST": ["U_MCU.6", "C_NRST.1", "TP_NRST.1"],
     "BOOT0": ["U_MCU.25", "R_BOOT.1", "TP_SWCLK.1"],
     "SWDIO": ["U_MCU.24", "TP_SWDIO.1"],
+    "UART_TX": ["U_MCU.19", "J_UART1.2"],     # PA9, USART1_TX
+    "UART_RX": ["U_MCU.21", "J_UART1.3"],     # PA10, USART1_RX
     "SDA_EXT": ["U_MCU.13", "J_PWR1.5"],     # slave 0x30, pull-ups on the carrier
     "SCL_EXT": ["U_MCU.14", "J_PWR1.6"],
     "GND": ["J_IN1.2", "R_REV1.2", "D_TVS1.2", "C_VIN1.2", "C_VIN2.2", "C_VIN3.2", "C_VIN4.2",
             "U_BA.1", "U_BB.1", "R_FBA2.2", "R_FBB2.2", "C_OA1.2", "C_OA2.2", "C_OB1.2", "C_OB2.2",
             "R_EN2.2", "Q_KILL.2", "R_GK.1",
             "U_LDO.1", "C_LDO1.2", "C_LDO2.2",
-            "U_MCU.5", "C_MCU1.2", "C_MCU2.2", "C_NRST.2", "R_BOOT.2", "TP_GND.1",
+            "U_MCU.5", "C_MCU1.2", "C_MCU2.2", "C_NRST.2", "R_BOOT.2", "TP_GND.1", "J_UART1.1",
             "J_BAL1.1", "R_TB1.2", "R_TB2.2", "R_TB3.2", "C_TAP1.2", "C_TAP2.2", "C_TAP3.2",
             "J_PWR1.1", "J_PWR1.2"],
 }
@@ -209,11 +213,11 @@ BLOCKS = [
                "C_NRST": (17.78, 93.98, 0, None), "R_BOOT": (17.78, 111.76, 0, None),
                "TP_NRST": (106.68, 50.8, 0, None), "TP_SWCLK": (106.68, 60.96, 0, None),
                "TP_SWDIO": (106.68, 71.12, 0, None), "TP_3V3": (106.68, 81.28, 0, None),
-               "TP_GND": (106.68, 91.44, 0, None)},
+               "TP_GND": (106.68, 91.44, 0, None), "J_UART1": (106.68, 111.76, 0, None)},
      "fields": {r: {"Reference": (5.08, -2.54, "left"), "Value": (5.08, 2.54, "left")}
                 for r in ("TP_NRST", "TP_SWCLK", "TP_SWDIO", "TP_3V3", "TP_GND")},
      "tags": _tags(["TAP1_ADC", "TAP2_ADC", "TAP3_ADC", "KILL_DRV", "SDA_EXT", "SCL_EXT",
-                    "NRST", "BOOT0", "SWDIO"], 12.7, 127.0, per_row=5)},
+                    "NRST", "BOOT0", "SWDIO", "UART_TX", "UART_RX"], 12.7, 127.0, per_row=6)},
     {"title": "Balance lead dividers", "at": (152.4, 165.1), "size": (152.4, 76.2),
      "parts": {"J_BAL1": (22.86, 20.32, 180, None),
                "R_TT1": (40.64, 20.32, 0, None), "R_TB1": (40.64, 40.64, 0, None),
@@ -269,14 +273,14 @@ PLACE = {
     "U_MCU": (22, 44, 0), "C_MCU1": (14.5, 36, 0), "C_MCU2": (20, 36, 0),
     "C_NRST": (25.5, 36, 0), "R_BOOT": (30, 33, 0),
     "TP_SWDIO": (9.4, 44, 0), "TP_SWCLK": (12.1, 44, 0), "TP_NRST": (14.8, 44, 0),
-    "TP_3V3": (9.4, 47, 0), "TP_GND": (12.1, 47, 0),
+    "TP_3V3": (9.4, 47, 0), "TP_GND": (12.1, 47, 0), "J_UART1": (29.3, 40.5, 0),
     "H1": (4.5, 4.5, 0), "H2": (65.5, 4.5, 0), "H3": (4.5, 45.5, 0), "H4": (65.5, 45.5, 0),
 }
 REF_AT = {"D_GZ1": (17.5, 24.5, 0), "D_TVS1": (24, 21.5, 0),
           "J_PWR1": (61, 33, 90), "J_KEY1": (61.5, 8, 90),
           "R_FBB2": (34, 48, 0),
           "C_LDO1": (9, 42.5, 0), "C_LDO2": (13.5, 42.5, 0),
-          "C_NRST": (25.5, 38.2, 0), "U_MCU": (22, 44, 0)}
+          "C_NRST": (25.5, 38.2, 0), "U_MCU": (22, 44, 0), "J_UART1": (29.3, 47.9, 0)}
 HIDE_REF = ("TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_3V3", "TP_GND")
 LABELS = {}
 TEXTS = [("AirsoftCounter v2 LiPo", 10, 2.5, 0, 1.0, True), ("2026-10", 10, 4.5, 0, 1.0, True),

@@ -46,11 +46,11 @@ DNP = set(pack.DNP)   # R_BYP1..4 bring-up bypasses stay DNP
 # Holders and bead NTCs come from LCSC (see fab/offboard), and the test pads are copper only. TH_CHG
 # is now bought at TME, so unlike variant A it stays in the BOM.
 NOT_TME = ({f"BT{i}" for i in range(1, 5)} | {f"TH{i}" for i in range(1, 5)}
-           | {"TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND"})
+           | {"TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_GND"} | set(pack.DEBUG))
 NOT_ASSEMBLED = set(pack.NOT_ASSEMBLED) - {"TH_CHG"}
 NC_PARTS = set()
 NC_PINS = ({p for p in pack.NC_PINS if not p.startswith(("U_MCU.", "U1."))}
-           | {f"U_MCU.{p}" for p in (2, 3, 19, 20)})
+           | {f"U_MCU.{p}" for p in (2, 3)})
 LCSC = {}
 _KEYS = {(v, fp) for r, (v, sym, fp) in PARTS.items()
          if sym != "Mechanical:MountingHole" and r not in DNP | NOT_TME}
@@ -81,7 +81,7 @@ del NETS["MON_PWRDN"]
 
 MCU = {"+3V3": [1, 5, 17], "GND": [16, 32], "NRST": [4], "BOOT0": [31], "SWDIO": [23],
        "SWCLK": [24], "USB_DM": [21], "USB_DP": [22], "SCL_INT": [18], "SDA_INT": [27],
-       "SCL_EXT": [29], "SDA_EXT": [30], "NTC_PWR": [10], "CHG_CE": [15], "CHG_INT": [26],
+       "SCL_EXT": [29], "SDA_EXT": [30], "UART_TX": [19], "UART_RX": [20], "NTC_PWR": [10], "CHG_CE": [15], "CHG_INT": [26],
        "MON_ALERT": [28], "LED_MCU_DRV": [25],
        "NTC1": [6], "NTC2": [7], "NTC3": [8], "NTC4": [9],
        "SW1_DRV": [11], "SW2_DRV": [12], "SW3_DRV": [13], "SW4_DRV": [14]}
@@ -123,7 +123,9 @@ NPTH_EXPECT = sorted([(x, y, 3.2) for x, y in pack.NPTH_XY]
                      + [(_CELL_X + dx, cy + dy, size) for cy in _CELL_Y
                         for dx, dy, size in _HOLDER_NPTH])   # the USB4085 adds no NPTH
 LABELS = pack.LABELS
-TEXTS = list(pack.TEXTS)
+# The UART header stands upright beside the MCU's pins 19/20 here: along the bottom edge it blocks the
+# USB pair's way up the right strip.
+TEXTS = [t for t in pack.TEXTS if t[0] != "GND TX RX"] + [("GND TX RX", 80.4, 82.0, 90, 0.8, False)]
 GND_VIAS = list(pack.GND_VIAS)
 HELTEC_PADS = {}
 SIZE_MM = pack.SIZE_MM
@@ -134,6 +136,8 @@ PLACE = dict(pack.PLACE)
 for _gone in ("U_MON", "R_PWRDN", "D1"):   # replaced / dropped by the TME build
     del PLACE[_gone]
 PLACE.update({
+    "J_UART1": (78.4, 79.0, 0),
+    "TP_SDA": (66.0, 87.4, 0), "TP_SCL": (68.8, 87.4, 0),
     # The BQ25601 hand-solder footprint is 1.2 mm larger and its exposed pad is soldered from the
     # back, so it leaves the holder floor for the holder-free right strip; the THT tact switches
     # move to the left margin (x < 8) for the same reason.

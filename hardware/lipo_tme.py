@@ -48,18 +48,20 @@ NETS["SWCLK"] = ["U_MCU.24", "TP_SWCLK.1"]
 NETS["SWDIO"] = ["U_MCU.23", "TP_SWDIO.1"]
 NETS["SCL_EXT"] = ["U_MCU.29", "J_PWR1.6"]                   # I2C1, the bootloader port
 NETS["SDA_EXT"] = ["U_MCU.30", "J_PWR1.5"]
+NETS["UART_TX"] += ["U_MCU.19"]                              # PA9, USART1_TX
+NETS["UART_RX"] += ["U_MCU.20"]                              # PA10, USART1_RX
 NETS["KILL_DRV"] = ["R_KILL.1", "U_MCU.14"]                  # PB0
 for i in (1, 2, 3):
     NETS[f"TAP{i}_ADC"] += [TAP_ADC_PIN[i]]
 # Unused L072 pins: PC14/15, PA0/PA4-7, PB1, PA8-12, PA15, PB3-5.
-NC_PINS = {f"U_MCU.{p}" for p in (2, 3, 6, 10, 11, 12, 13, 15, 18, 19, 20, 21, 22, 25, 26, 27, 28)}
+NC_PINS = {f"U_MCU.{p}" for p in (2, 3, 6, 10, 11, 12, 13, 15, 18, 21, 22, 25, 26, 27, 28)}
 
 DNP, NC_PARTS = set(lipo.DNP), set()
 # Test pads and the input pigtail are copper only (not bought, not in the BOM export), same as the
 # JLC board: gen_sch marks them in_bom=no and gen_pcb must agree or DRC flags a parity mismatch.
 NOT_ASSEMBLED = set(lipo.NOT_ASSEMBLED) | {"TP_BOOT0"}
 # Not bought at TME: test pads and the input pigtail's pads are copper only.
-NOT_TME = {"J_IN1", "TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_3V3", "TP_GND", "TP_BOOT0"}
+NOT_TME = {"J_IN1", "TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_3V3", "TP_GND", "TP_BOOT0", "J_UART1"}
 LCSC = {}
 _KEYS = {(v, fp) for r, (v, _, fp) in PARTS.items() if r not in NOT_TME and fp != lipo.MH}
 TME = tme.from_lcsc(lipo.LCSC, _KEYS)
