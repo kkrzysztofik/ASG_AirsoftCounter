@@ -3,6 +3,8 @@
 Date: 2026-10-16
 Status: concept approved (3D preview reviewed), not started. Numbers marked "computed" come from the
 clearance script described in Part 1; everything under "Open items" is unverified.
+Updated 2026-10-17: the PWM servo and PCA9685 were replaced by a Feetech STS3215 serial bus servo
+(position and load feedback) on an SC16IS750 I2C-to-UART bridge, so GPS keeps UART1.
 
 3D preview (animated, private artifact): https://claude.ai/artifact/L14upVzvEwPNHU4F415VkW
 
@@ -15,7 +17,7 @@ where players capture the point with buttons or player cards.
 - The head shows **red, blue or neutral** to everybody at once: no direction may see a different colour.
 - It is **passive**: it reads in full sun and holds its colour without power, unlike LEDs.
 - The base unit is an **AirsoftCounter** (same carrier, pack board, LCD, buttons, PN532, speaker,
-  LoRa, firmware core) with one servo driver module added. No carrier respin.
+  LoRa, GPS, firmware core) with an I2C-to-UART bridge added for the servo. No carrier respin.
 - One actuator: **one servo and one belt**.
 
 ## Part 1: Mechanism
@@ -99,39 +101,55 @@ posts carry the top cap.
     straight run never reaches a pulley.
   - The joint clamp doubles as the tensioner (turnbuckle). No closed loop of this exact length needs
     to be found.
-- **Servo:** a metal-gear digital servo of **10 kg·cm or more** with **270°** travel, PWM 500-2500 µs,
-  6 V (for example the DS3218MG 270°, which is over-specified but common; check waterproofing).
-  - Avoid nominal-180° servos such as the MG996R: their real travel often falls short of 180°.
-  - At 1:1, a 180° plate turn uses 2/3 of a 270° servo's range.
-  The pulse widths for 0°, 90° and 180° are calibrated per unit and stored in config.
-- **Speed:** firmware ramps the pulse so that 180° takes about 1 s. That gives a gentler current peak
-  and less belt load. Full servo speed would be about 0.5 s.
+- **Servo: Feetech STS3215, 7.4 V version** (also sold as Waveshare ST3215). It is a serial bus servo:
+  - About 19 kg·cm at 7.4 V, so about 4x the A4 wind estimate.
+  - Magnetic encoder, 4096 counts per turn, 360° position range.
+  - Half-duplex TTL UART on one data wire. It reports position, speed, load, voltage and temperature.
+- **Calibration:** at 1:1 a 180° plate turn is 2048 counts.
+  - Put plate 0° at about count 1024, so that 180° falls at about 3072, well away from the
+    0/4095 wrap.
+  - The counts for 0°, 90° and 180° are calibrated per unit and stored in config.
+- **Speed:** firmware sets the servo's goal speed and acceleration so that 180° takes about 1 s. That
+  gives a gentler current peak and less belt load.
+- **Torque limit:** the servo's own torque-limit register caps the current. A4 plates need little
+  torque, so the limit starts at about 50 % and is tuned in F1.
 
 ### Holding position
 
 - **Magnetic detent on plate 1's pulley.** A magnet in the pulley face sits over steel screw heads
-  in the deck at 0°, 90° and 180°. Because of the belt, it holds all four plates when the servo is
-  unpowered. The servo easily overcomes it.
+  in the deck at 0°, 90° and 180°. Because of the belt, it holds all four plates while the servo's
+  torque is off. The servo easily overcomes it.
 - **Holding policy (configurable):**
-  - At 0° and 180°, the default is to switch the servo off after the move. The detent and the closed
-    box (stable in wind) hold the plates.
-  - At 90°, the servo stays powered: the "+" catches more wind.
-- **Re-assert:** while the servo is unpowered, firmware powers it for 0.5 s every 60 s at the current
-  pulse, to undo a gust. The interval is configurable; 0 turns it off.
+  - At 0° and 180°, the default is torque off after the move. The detent and the closed box (stable
+    in wind) hold the plates.
+  - At 90°, torque stays on: the "+" catches more wind.
+- **Watch:** while a game runs, the servo stays powered (torque off is fine) and firmware reads its
+  position once a second.
+  - If a gust or a hand moves the plates more than 5° off target, torque goes on and the servo moves
+    them back.
+  - This replaces blind periodic re-positioning.
+  - A low-power mode checks every 30 s instead, and switches the servo supply off in between.
 - **Wind estimate** (not measured):
   - Wind torque scales with plate area times plate width. For A4 that is about a quarter of the
     320 x 500 mm plate's.
   - At 10 m/s, mid-turn, that gives about 0.25-0.5 N·m total (2.5-5 kg·cm).
   - Closed, the torque is near zero: the face-on plate is pushed square, and the edge-on plates see no
     load.
-  - A 10 kg·cm servo leaves about 2x margin. The field test confirms it (Open items).
+  - The STS3215 (about 19 kg·cm) leaves about 4x margin, even with the torque limit at 50 %. The
+    field test confirms it (Open items).
 
-### No position feedback
+### Position feedback
 
-A hobby servo reports nothing back. Firmware tracks the last commanded position and stores it in
-flash, so a reboot does not sweep the plates. If someone turns the plates by hand while the servo is
-off, the next power-up moves them back at full speed. Accepted for v1. A hall sensor on plate 1 is a
-possible later addition (Open items).
+- **At boot,** firmware reads the real position, so nothing is stored in flash. Plates turned by hand
+  are noticed, and the first move starts from where they actually are, at the ramped speed.
+- **Jam detection:** firmware reads the servo's load during a move. If it stays above the limit for
+  200 ms (a hand, a branch, ice), firmware stops the servo where it is, switches torque off and
+  reports `JAM` to the LCD and HQ. It retries once after 2 s.
+  - The servo's built-in overload protection is a second layer behind this.
+- **Belt slip on plates 2-4 is not visible.** The encoder sees only plate 1. A skipped tooth leaves
+  the plates crooked but cannot make them collide (11.5° tolerance against 9° per tooth, Part 1).
+  - A hall sensor on plate 3 could confirm the closed positions. It would use one of the bridge's
+    spare GPIOs, but needs two more wires up the pole, so it is left for later (Open items).
 
 ## Part 3: Head construction
 
@@ -178,27 +196,37 @@ lid facing out. Any variant with **buttons and RFID** works (Deluxe, or Budget p
 
 | Part | Where | Purpose |
 |---|---|---|
-| PCA9685 16-channel PWM module | On the 3V3 I2C bus, chained between `J_NFC1` and the PN532 (the modules have pass-through headers) | ch0 = servo pulse, ch1 = servo boost enable (full on/off) |
-| Boost module, 3.0-4.2 V in, 6.0 V out, ≥ 2 A, with an EN pin | In the base box | Servo supply. Must not load the pack's 5 V MT3608, which feeds the LCD |
-| 1 A polyfuse in the 6 V servo line | In the base box | Limits a jammed servo |
+| SC16IS750 I2C-to-UART module (14.7456 MHz crystal) | On the 3V3 I2C bus, chained between `J_NFC1` and the PN532 | UART for the servo, plus 8 GPIOs (GPIO0 = servo boost enable) |
+| 74LVC1G126 tri-state buffer + 10k pull-up on the data line | Small perfboard next to the bridge | Joins TX and RX onto the servo's single data wire; the bridge's RTS enables the buffer while it transmits |
+| 100k pull-down on the boost EN line | Same perfboard | The bridge's GPIOs come up as inputs, so the boost stays off until firmware drives GPIO0 |
+| Boost module, 3.0-4.2 V in, 7.4 V out, ≥ 2 A, with an EN pin | In the base box | Servo supply. Must not load the pack's 5 V MT3608, which feeds the LCD |
+| 1 A polyfuse in the 7.4 V servo line | In the base box | Backs up the servo's torque limit |
 | Y-lead on the pack-to-carrier harness | `J_PWR1` cable | Takes `VBAT_SW` and GND for the boost |
 | 3-pin weatherproof connector (e.g. GX16-3) + cable gland | Base box wall | Head detaches for transport |
-| 3-core outdoor cable, 0.5 mm² (≈ 2.5 m) | Up the pole | 6 V, GND, PWM. At 1 A the 6 V drop is about 0.2 V |
+| 3-core outdoor cable, 0.5 mm² (≈ 2.5 m) | Up the pole | 7.4 V, GND, DATA. At 1 A the drop is about 0.2 V |
 
 Why this split:
 
-- **No spare native GPIO is reachable.** GPIO43/44 are not routed on this carrier revision, and GPIO43
-  toggles at boot (the plates would twitch).
-- **The PCA9685 powers up safe.** After reset it is asleep with every output low, so the boost stays
-  off and the servo gets no pulse until firmware has set the right pulse.
-- **The boost and PWM stay in the base box**, which is easier to service, and only a standard
-  3-wire servo signal goes up the pole.
+- **GPS stays.** The flag device keeps its L76K on UART1 and the Heltec GNSS connector, unchanged.
+- **No spare native UART pin is reachable.** GPIO43/44 (UART0) are not routed on this carrier
+  revision, and GPIO43 prints the boot log at power-up. The bridge adds a UART over I2C instead.
+- **Half-duplex in hardware.** In its RS-485 mode the bridge drives RTS on every transmit, and RTS
+  enables the buffer, so firmware never times the direction switch.
+- **115200 baud.** The 14.7456 MHz crystal divides exactly to 115200. The servo ships at 1 Mbaud and
+  is set to 115200 once, on the bench (its baud register is in EEPROM). A 10 Hz poll of position and
+  load is a few hundred bytes per second, easy over the 50 kHz I2C bus.
+- **Powers up safe.** Boost EN is pulled down and the bridge's GPIOs reset to inputs, so the servo
+  has no power until firmware enables it.
+- **The bridge and boost stay in the base box**, which is easier to service. Only the standard
+  3-wire bus-servo cable goes up the pole.
 - **I2C does not go up the pole.** About 2 m of cable carrying servo current next to a 50 kHz bus
   would be fragile.
 
 ### I2C addresses
 
-PCA9685 at **0x40** (all address pins low). Firmware clears ALLCALL in MODE1, so 0x70 is not used.
+SC16IS750 at **0x4C**, set with the module's A0/A1 jumpers. The chip's range is 0x48-0x57, and 0x48
+is taken by the ADS1115.
+
 No clash with the carrier bus: 0x10 PAC1934 (pack-internal), 0x20 expander, 0x24 PN532, 0x28 LCD,
 0x30 pack MCU, 0x48 ADS1115.
 
@@ -206,33 +234,49 @@ No clash with the carrier bus: 0x10 PAC1934 (pack-internal), 0x20 expander, 0x24
 
 | Load | Battery-side estimate |
 |---|---|
-| PCA9685 awake | ~6 mA (asleep: µA) |
-| Servo move, ramped (~0.5 A at 6 V for ~1 s) | ~1 A peak; ~9 mA average at 30 moves/h |
-| Servo holding at 90° (contested) | ~25 mA while held |
-| Re-assert pulses (0.5 s every 60 s) | ~5 mA |
+| SC16IS750 + buffer | ~2 mA |
+| Boost + servo powered, torque off (watch mode) | ~20-35 mA |
+| Servo move (~0.4 A at 7.4 V for ~1 s) | ~1 A peak; ~9 mA average at 30 moves/h |
+| Servo holding at 90° with torque on (contested) | +10-30 mA while held, depending on wind |
 
-That is about 20-40 mA on top of the counter's budget, so the 350 mA weekend target still holds
-(the counter models 74-236 mA). These rows are added to `power_budget.py` in milestone F1, and the
-real values are measured there. The pack's 2 A path has to carry a servo peak plus LoRa TX: check
-this in F1 (Open items).
+That is about 30-70 mA on top of the counter's budget. The counter models 74-236 mA, so the
+350 mA weekend target still holds, but with little margin if the backlight is always on. Low-power
+watch mode (Part 2) cuts the second row to a few mA.
+
+These rows are added to `power_budget.py` in milestone F1, and the real values are measured there.
+The pack's 2 A path has to carry a servo peak plus LoRa TX: check this in F1 (Open items).
 
 ## Part 5: Firmware
 
 ### Device
 
-- **Detection:** the PCA9685 is probed at 0x40 at boot, like the other modules. If found, the `flag`
-  task starts and the domination mode becomes selectable. No new cargo feature is needed.
-- **`flag` task** (device crate), the only owner of the PCA9685:
-  1. Write the **current** position's pulse to ch0, then wake the chip (prescale 121 = 50 Hz,
-     totem-pole outputs, ALLCALL off).
-  2. Turn on the boost (ch1 full on) and wait 100 ms. The servo holds where it is instead of jumping.
-  3. Ramp the pulse to the target (180° in about 1 s), then hold for 300 ms.
-  4. Depending on the holding policy, switch the boost off and put the chip to sleep, or stay powered.
-  5. Store the new position in config (sequential-storage).
-  - If a new target arrives mid-move, it replaces the old one and the ramp continues from the current
-    pulse.
-- **Calibration:** pulse widths for 0°, 90° and 180°, the holding policy and the re-assert interval
-  are in config. They are edited on the WiFi config page, with live "move to" buttons.
+- **Detection:** the bridge is probed at 0x4C at boot, like the other modules: write and read back
+  its scratchpad register. If found, firmware powers the servo and pings it.
+  - If the servo answers, the `flag` task starts and the domination mode becomes selectable. No new
+    cargo feature is needed.
+  - If the bridge answers but the servo does not, firmware reports `NO SERVO` (LCD and STATUS).
+- **Servo protocol in `core` (`core::sts`):** packet encode and decode, checksum, and the few
+  registers used (torque enable, acceleration, goal position, goal speed, torque limit, present
+  position, load, voltage, temperature, moving).
+  - It is pure and host-tested, like `core::card`.
+  - Register addresses come from the Feetech STS memory table: check them against the servo in F1.
+- **`flag` task** (device crate), the only owner of the bridge:
+  1. Enable the boost (bridge GPIO0) and wait about 200 ms for the servo to start. Ping it.
+  2. Read the present position and write it as the goal, then enable torque. The servo holds where
+     it is instead of jumping.
+  3. Write the goal speed and acceleration (180° in about 1 s), then the target position.
+  4. Poll position and load at 20 Hz until the servo reports it has stopped moving. Too much load for
+     200 ms means a jam (Part 2).
+  5. Hold for 300 ms, then apply the holding policy: torque off at 0° and 180°, torque on at 90°.
+  6. Watch mode (Part 2): poll once a second and correct drift above 5°.
+  - If a new target arrives mid-move, it simply becomes the new goal position.
+- **Calibration:** the encoder counts for 0°, 90° and 180°, the torque limit, the holding policy and
+  the watch mode are in config.
+  - They are edited on the WiFi config page, which has live "move to" buttons and a read-out of the
+    current count.
+  - A one-time "prepare servo" button sets a new servo's ID and its baud rate to 115200. The bridge
+    first talks to it at 1 Mbaud: with the 14.7456 MHz crystal that is not an exact divisor, so check
+    it in F1, or prepare the servo once with Feetech's USB adapter.
 
 ### `core`: new domination mode (`core::domination`)
 
@@ -267,7 +311,8 @@ it. The new mode is pure logic like `core::game`: time in, effects out, host-tes
 
 ### LoRa protocol
 
-- **STATUS** gains the flag position (red, neutral, blue, moving) and both hold times.
+- **STATUS** gains the flag position as measured (red, neutral, blue, moving), a flag fault (`JAM`,
+  `NO SERVO`, servo over-temperature or under-voltage) and both hold times.
 - **New command `FLAG` (HQ → device):** force red, neutral or blue, or `AUTO` to give control back to
   the game. It is ACKed and retried like the others, and the override shows on the LCD.
 
@@ -278,34 +323,44 @@ it. The new mode is pure logic like `core::game`: time in, effects out, host-tes
   - belt tension and the joint;
   - detent strength;
   - how it looks at 50 m and 100 m.
-- **F1 Servo bench.** PCA9685 + boost + servo on a working carrier. Covers:
-  - the move sequence and calibration;
-  - current at the battery during moves, holding and stall;
+- **F1 Servo bench.** SC16IS750 + buffer + boost + STS3215 on a working carrier. Covers:
+  - half-duplex comms through the bridge, setting the baud rate and ID;
+  - checking the register map;
+  - the move sequence, calibration and the torque limit;
+  - current at the battery during moves, watch, holding and a forced jam;
   - the pack's 2 A path with LoRa TX at the same time;
   - the `power_budget.py` rows.
-- **F2 `core::domination`** with host tests, plus the flag mapping for both modes.
-- **F3 Device integration:** probe, `flag` task, config and WiFi calibration page.
+- **F2 `core::domination` and `core::sts`** with host tests, plus the flag mapping for both modes.
+- **F3 Device integration:** probe, `flag` task (watch mode, jam handling), config and the WiFi
+  calibration page.
 - **F4 LoRa:** STATUS fields and the `FLAG` command.
 - **F5 Field test:** wind, rain, a full weekend on one charge, visibility.
 - **F6 FreeCAD model** of the head in `hardware/mech/`.
 
 Out of scope for now: LED lighting for night games (a strip along the corner posts is the obvious
-place), position feedback, a second head driven by one base unit.
+place), a belt-slip hall sensor on plate 3, a second head driven by one base unit (bus servos can share
+one wire with different IDs, so this is mostly a mechanical question).
 
 ## Open items
 
-- Servo: a 270° model of 10 kg·cm or more that is waterproof, or a cover for it under the deck. Check
-  the real pulse range and the travel at 500-2500 µs.
-- Boost module: pick a type with an EN pin, ≥ 2 A at 6 V from 3.0 V input, and low quiescent current
+- STS3215: no waterproof version, so it needs a cover under the deck. Check stall current at the
+  chosen torque limit, idle current with torque off, and that the encoder count survives power cycles
+  (absolute, not counted from power-up).
+- Servo data-line levels: check that 3.3 V logic from the buffer works with the STS3215. If the line
+  needs 5 V, power the buffer from 5 V and divide the RX side down.
+- SC16IS750 module: crystal frequency, A0/A1 jumper options for 0x4C, whether RTS and the GPIOs are
+  brought out, the RS-485 direction setting (EFCR), and the RTS polarity against the buffer's OE.
+- Boost module: pick a type with an EN pin, ≥ 2 A at 7.4 V from 3.0 V input, and low quiescent current
   when off.
 - The pack's 2 A path (PTC on the pack board) with a servo peak plus LoRa TX plus audio.
 - Wind torque against the servo and detent: measure in F0/F5. Decide whether 90° needs the servo
   powered all the time.
 - How strong the magnetic detent should be (magnet size) without stalling a ramped move.
 - Mass and stiffness of the 2 m pole with 0.7 kg on top; the guy-line layout.
-- PCA9685 module pass-through header order against the PN532 cable (`J_NFC1`: GND, 3V3, SDA, SCL).
+- I2C chain from `J_NFC1` (GND, 3V3, SDA, SCL) through the bridge module to the PN532: header order
+  and whether the bridge module brings its own pull-ups (remove them; the carrier has 4.7k).
 - How far an A4 face reads as red or blue (check at 30 / 50 / 80 m in F0), and whether the 13 mm
   corner gaps need cover strips. If A4 is too small in the field, use the A3 upgrade path (Part 1).
 - Face material: laminated paper against printed PP or vinyl, for rain and UV over a season.
-- Hall sensor on plate 1 for position feedback: needs an input, and none is free on this carrier
-  revision.
+- Hall sensor on plate 3 for belt slip: one of the bridge's spare GPIOs, plus 3V3 and signal wires up
+  the pole (a 5-core cable instead of 3-core).
