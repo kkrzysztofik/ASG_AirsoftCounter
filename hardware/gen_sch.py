@@ -921,7 +921,10 @@ def build_sheet(sh, blocks, exits, nets=None, pre=None, cables=()):
 # --- Hierarchical mode (board module defines SHEETS / ROOT / OFFBOARD) ---
 
 MARGIN = 12.7  # where a sheet's content starts (inside the drawing frame)
-PAPERS_HIER = [("A4", 297, 210), *PAPERS]
+# A function sheet holds one function, so most are small: A5 down from A4 lifts the small ones from
+# ~30% to ~70% of the frame. Text is drawn at absolute size, so a smaller frame removes blank margin
+# and nothing else. The root needs A3, which the flat papers below still supply.
+PAPERS_HIER = [("A5", 210, 148), ("A4", 297, 210), *PAPERS]
 
 
 def root_refs():
