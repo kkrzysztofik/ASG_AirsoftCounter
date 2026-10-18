@@ -49,10 +49,10 @@ def survey(board):
 
 
 def main():
-    if len(sys.argv) != 3:
-        raise SystemExit(__doc__.strip().splitlines()[2].strip())
     allow_unnamed = "--allow-unnamed" in sys.argv
     argv = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if len(argv) != 2:
+        raise SystemExit(__doc__.strip().splitlines()[2].strip())
     (old, old_name), (new, new_name) = load(argv[0]), load(argv[1])
     a, _pa = survey(old)
     b, _pb = survey(new)
