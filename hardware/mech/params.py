@@ -125,9 +125,15 @@ ARM_CLEAR = 2.0               # gap between a carrier arm's gusset and the pack 
 CARRIER_BOSS_H = 4.0          # depth of the carrier arm and of the screw boss under the carrier hole
 
 PACK_ORIGIN = ((BOX_IN[0] - PACK[0]) / 2, (BOX_IN[1] - PACK[1]) / 2)          # (47, 25)
-CARRIER_ORIGIN = ((BOX_IN[0] - CARRIER[0]) / 2, (BOX_IN[1] - CARRIER[1]) / 2)  # (50, 40)
+# shifted CARRIER_SHIFT toward x0: the pack's right-edge connectors (J_KEY1, J_PWR1, J_UART1, top up to
+# z 35.9) stand at tray x >= 134.2, and the carrier's Heltec header pins come 1.8 mm below its underside
+CARRIER_SHIFT = 7.0
+CARRIER_ORIGIN = ((BOX_IN[0] - CARRIER[0]) / 2 - CARRIER_SHIFT, (BOX_IN[1] - CARRIER[1]) / 2)  # (43, 40)
 STANDOFF_H = 8.0              # pack board -> carrier
 HELTEC_H = 15.0               # Heltec in its 2x18 headers, above the carrier
+HELTEC_PADS = ((44.82, 27.00), (88.00, 49.86))  # carrier-local pin 1 of J3 / pin 18 of J2 (carrier.py)
+HELTEC_PCB = (51.7, 25.4)     # MEASURE the Heltec V4 module's board, centred on its header rows
+PLUG_REACH = 16.0             # MEASURE a mated XH plug plus its wire bend, above the board's top face
 HELTEC_SOCKET_H = 8.5         # MEASURE the 2x18 female headers the Heltec plugs into (KiCad PinSocket body)
 
 # --- cells ----------------------------------------------------------------------------------
@@ -316,6 +322,13 @@ def nfc_box():
 
 def button_boxes():
     return [_centre_box(c, (BUTTON_D, BUTTON_D)) for c in BUTTON_XY]
+
+
+def heltec_box():
+    """(x0, x1, y0, y1) of the Heltec module, centred on its header rows."""
+    (ax, ay), (bx, by) = (board_xy(CARRIER_ORIGIN, CARRIER, x, y) for x, y in HELTEC_PADS)
+    cx, cy = (ax + bx) / 2, (ay + by) / 2
+    return (cx - HELTEC_PCB[0] / 2, cx + HELTEC_PCB[0] / 2, cy - HELTEC_PCB[1] / 2, cy + HELTEC_PCB[1] / 2)
 
 
 def carrier_box():

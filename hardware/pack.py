@@ -609,11 +609,14 @@ _STRIP = {
     "TP_GND": (37.5, 87.4, 0),
     **{r: (66.5 + 2.6 * i, 87.2, 0) for i, r in enumerate(TP_DEBUG)}, "LED_MCU": (42.5, 87.4, 0), "R_LED_MCU": (49, 87.4, 0),
     "R_BOOT": (55, 87.4, 0), "C_NRST": (61, 87.4, 0),
-    # board-edge connectors (openings face +x)
-    "J_USB1": (90, 23, 90), "J_PWR1": (90, 55, 90), "J_KEY1": (90, 78, 90),
+    # board-edge connectors (J_PWR1 and J_KEY1 are top-entry XH, plugged from above). The carrier
+    # sits shifted toward x0 so nothing covers this strip (mech/params.CARRIER_SHIFT); the
+    # assembly gate checks the plugs' keep-outs against it.
+    "J_USB1": (90, 23, 90), "J_PWR1": (90, 55, 90), "J_KEY1": (90, 77, 90),
     # UART header upright in the holder-free right strip (THT pins can't go under a holder); rot 180
-    # puts pin 1 (GND) at the bottom so the rot-90 label reads in pin order
-    "J_UART1": (88.5, 70.04, 180),
+    # puts pin 1 (GND) at the bottom so the rot-90 label reads in pin order. pack_tme/pack_xiao
+    # inherit this spot.
+    "J_UART1": (88.5, 67.5, 180),
     "H1": (4, 4, 0), "H2": (92, 4, 0), "H3": (4, 86, 0), "H4": (92, 86, 0),
 }
 

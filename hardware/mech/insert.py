@@ -416,14 +416,22 @@ def board_step(name):
 
 def _placed(board, pos):
     """A board moved into place component by component, names kept. Moving the compound alone
-    leaves its children where they were, and the gate reads the children. They move in place:
-    `pos * child` deep-copies the whole parent tree for every child (82 s for one board)."""
+    leaves its children where they were, and the gate reads the children.
+
+    Each child from the STEP import is a Compound wrapping one Solid: the board placement lives
+    in the Compound's node, not in the solid. `k.move(pos)` shifts that node only, and neither
+    re-walking the child nor the gate's booleans see it, so some parts stayed at the origin.
+    Baking the placement into a transform-copy of the solid is correct and cheap.
+    Returns a list of solids (a board with no components: one bare plate)."""
     kids = list(board.children)
     if not kids:
-        return pos * board
+        return [pos * board]
+    out = []
     for k in kids:
-        k.move(pos)
-    return Compound(children=kids)
+        s = pos * k.solids()[0]
+        s.label = k.label  # the model name lives on the wrapper, the gate reports it
+        out.append(s)
+    return out
 
 
 def placeholders():
@@ -436,7 +444,7 @@ def placeholders():
         out[f"cell_{i + 1}"] = cyl_x(cy, cell_z,
                                      cell_x - P.CELL_LEN / 2, cell_x + P.CELL_LEN / 2, P.CELL_D / 2)
     # the Heltec rides on its header sockets; below them only the carrier's own parts
-    out["heltec_envelope"] = box(*P.carrier_box(), P.carrier_z() + P.BOARD_T + P.HELTEC_SOCKET_H, P.heltec_top())
+    out["heltec_envelope"] = box(*P.heltec_box(), P.carrier_z() + P.BOARD_T + P.HELTEC_SOCKET_H, P.heltec_top())
     out["lcd"] = box(*P.lcd_box(), z0 - P.LCD_DEPTH, z0 - P.LCD_BOSS_H)
     out["nfc"] = box(*P.nfc_box(), z0 - P.NFC_DEPTH, z0)
     for i, (bx, by) in enumerate(P.BUTTON_XY):
@@ -458,7 +466,19 @@ def make_assembly(boards):
     # the grille's z = 0 face is the wall side too, but the plate stands out along +Z
     parts["grille"] = wall_frame(s["wall"], s["u"], s["z"]) * Rot(X=180) * make_grille()
     parts.update(placeholders())
+    parts.update(plug_keepouts(parts["pack_board"], P.pack_z()) | plug_keepouts(parts["carrier_board"], P.carrier_z()))
     return parts
+
+
+def plug_keepouts(board, z):
+    """The room a mated plug and its wire bend need over each top-entry XH header on a board."""
+    out = {}
+    for s in board:
+        if s.label.startswith("JST_XH") and "Vertical" in s.label:
+            b = s.bounding_box()
+            out[f"plug_{b.center().X:.0f}_{b.center().Y:.0f}"] = box(
+                b.min.X, b.max.X, b.min.Y, b.max.Y, b.max.Z, z + P.BOARD_T + P.PLUG_REACH)
+    return out
 
 
 def _boxes_touch(a, b):
@@ -469,7 +489,10 @@ def _boxes_touch(a, b):
 
 def _solids(shape, label=""):
     """(label, solid, bbox) for every solid; a board's label is its component's model name.
-    The gate works solid by solid: one boolean against a whole populated board runs out of memory."""
+    The gate works solid by solid: one boolean against a whole populated board runs out of memory.
+    A part may also be a list of already-placed solids, the boards from `_placed`."""
+    if isinstance(shape, list):
+        return [(getattr(s, "label", "") or label, s, s.bounding_box()) for s in shape]
     label = getattr(shape, "label", "") or label
     kids = list(getattr(shape, "children", ()) or ())
     if kids:
@@ -477,9 +500,19 @@ def _solids(shape, label=""):
     return [(label, s, s.bounding_box()) for s in shape.solids()]
 
 
+def _whole_box(part):
+    """Bounding box of a part, which may be a list of solids."""
+    if not isinstance(part, list):
+        return part.bounding_box()
+    box0 = part[0].bounding_box()
+    for s in part[1:]:
+        box0 = box0.add(s.bounding_box())
+    return box0
+
+
 def check_assembly(parts):
     names = list(parts)
-    boxes = {n: parts[n].bounding_box() for n in names}
+    boxes = {n: _whole_box(parts[n]) for n in names}
     solids = {n: _solids(parts[n], n) for n in names}
     clashes = []
     for i, a in enumerate(names):
@@ -512,8 +545,10 @@ def write_assembly(boards, check):
         check_assembly(parts)
     children = []
     for name, shape in parts.items():
-        shape.label = name
-        children.append(shape)
+        kids = shape if isinstance(shape, list) else [shape]
+        for k in kids:
+            k.label = name
+        children.extend(kids)
     asm = Compound(children=children)
     asm.label = "insert_assembly"
     export_step(asm, str(OUT / "assembly.step"))

@@ -43,6 +43,9 @@ def rasters_match():
         holes = [(float(mod.PLACE[f"H{i}"][0]), float(mod.PLACE[f"H{i}"][1])) for i in range(1, 5)]
         if holes != params.EXPECTED_HOLES[tag]:
             bad.append(f"{tag}: {holes} != {params.EXPECTED_HOLES[tag]}")
+    pads = tuple(tuple(carrier.HELTEC_PADS[k]) for k in (("J3", "1"), ("J2", "18")))
+    if pads != params.HELTEC_PADS:
+        bad.append(f"heltec pads {pads} != {params.HELTEC_PADS}")
     if bad:
         return fail("board hole raster drifted - " + "; ".join(bad))
     return ok("post rasters match carrier.py and pack.py")
