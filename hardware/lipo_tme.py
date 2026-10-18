@@ -126,16 +126,23 @@ def _copy_blocks():
 
 
 BLOCKS = _copy_blocks()
-# MCU block: the L072 adds two supply caps and a dedicated BOOT0 test pad.
+# MCU block: the L072 adds two supply caps. Its dedicated BOOT0 test pad (TP_BOOT0) is a root part,
+# drawn in the bring-up row like lipo's other test pads.
 _mcu = next(b for b in BLOCKS if b["title"].startswith("Always-on"))
 _mcu["title"] = "Always-on 3V3, STM32L072, SWD pads"
 _mcu["parts"] |= {
     "C_MCU3": (30.48, 58.42, 0, None),     # pin 17 VDD
     "C_VDDA": (30.48, 76.2, 0, None),      # pin 5 VDDA
-    "TP_BOOT0": (106.68, 101.6, 0, None),
 }
-_mcu["fields"]["TP_BOOT0"] = {"Reference": (5.08, -2.54, "left"),
-                               "Value": (5.08, 2.54, "left")}
+
+# --- Hierarchical schematic: lipo's sheets, root and off-board parts, edited for the L072 -------------
+SHEETS = dict(lipo.SHEETS)
+SHEETS["bucks"] = ("Buck A 4.07 V (VBAT_SW), buck B 5.05 V (+5V)", lipo.SHEETS["bucks"][1])
+SHEETS["mcu"] = ("Always-on 3V3 and STM32L072", lipo.SHEETS["mcu"][1])
+# lipo's root, plus the L072's BOOT0 pad at the same 15.24 mm pitch as the other bring-up pads.
+ROOT = dict(lipo.ROOT)
+ROOT["parts"] = {**lipo.ROOT["parts"], "TP_BOOT0": (50.8, 182.88, 0, None)}
+OFFBOARD = dict(lipo.OFFBOARD)
 
 
 def check_mcu():
@@ -156,6 +163,7 @@ def check():
     board.check_structure(this)
     lipo.check_power_path(this)
     check_mcu()
+    lipo.check_sheets(this)
     print(f"lipo_tme ok: {len(PARTS)} parts, {len(NETS)} nets")
 
 
