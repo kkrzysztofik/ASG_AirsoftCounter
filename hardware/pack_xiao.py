@@ -74,7 +74,13 @@ def assembled(variant="standard"):
 
 
 # --- layout: pack_tme's, minus the dropped parts ----------------------------------------------
-W, H, CORNER = pack_tme.W, pack_tme.H, pack_tme.CORNER
+# Board grows 96×90 -> 96×112 (builder-approved 2026-10-18): the four holder bands tile the old
+# field (courtyards x 7.7..85.3, end legs to x 75.75, GND pins x 81..83.4 at 21.5 mm pitch), so
+# 96×90 holds no 17.9 mm flat span anywhere. The new 22 mm top strip carries the module, its two
+# run diodes (east, cathodes west straight into pad 14 under the module) and the 3V3 caps (west,
+# hugging pad 12); USB-C end flush on the new top edge, 28 mm clear floor left in the Pawbol box.
+# The M3 pattern and every connector stay exactly at pack_tme's spots.
+W, H, CORNER = pack_tme.W, 112.0, pack_tme.CORNER
 NETCLASS_POWER, NETCLASS_EXPECT = pack_tme.NETCLASS_POWER, pack_tme.NETCLASS_EXPECT
 DEFAULT_CLEARANCE, DRC_RULES = pack_tme.DEFAULT_CLEARANCE, pack_tme.DRC_RULES
 RAILS, PORT_LIB, BOTTOM = pack_tme.RAILS, pack_tme.PORT_LIB, pack_tme.BOTTOM
@@ -82,12 +88,18 @@ PTH_COMPONENT_MIN, NPTH_EXPECT = pack_tme.PTH_COMPONENT_MIN, pack_tme.NPTH_EXPEC
 LABELS, GND_VIAS = pack_tme.LABELS, list(pack_tme.GND_VIAS)
 TEXTS = [t for t in pack_tme.TEXTS if t[0] != "GND TX RX"]   # J_UART1 is gone
 PTH_UNDER_OK, RULE_SEVERITIES = pack_tme.PTH_UNDER_OK, pack_tme.RULE_SEVERITIES
-HELTEC_PADS, SIZE_MM, NPTH_XY, SENSE_IN = {}, pack_tme.SIZE_MM, pack_tme.NPTH_XY, pack_tme.SENSE_IN
+HELTEC_PADS, NPTH_XY, SENSE_IN = {}, pack_tme.NPTH_XY, pack_tme.SENSE_IN
+SIZE_MM = (W, H)
 HIDE_REF = tuple(r for r in pack_tme.HIDE_REF if r not in _GONE)
 PLACE = {r: v for r, v in pack_tme.PLACE.items() if r not in _GONE}
 REF_AT = {r: v for r, v in pack_tme.REF_AT.items() if r not in _GONE}
-# TODO(Task 9): module, D_M1, D_M2 positions
-PLACE |= {"U_MCU": (60.0, 88.0, 0), "D_M1": (80.0, 70.0, 0), "D_M2": (80.0, 74.0, 0)}
+# Module rot 180, USB end flush at the new top edge y 112 (the lipo trick); power column
+# (pads 8-14) lands at x 62.7..65.5, NTC/I2C column at 28.7..31.3. D_M1/D_M2 east in the free
+# corridor, C_MCU1/2 west at pad 12, TPs just south of the module under its bottom pads.
+PLACE |= {"U_MCU": (78.0, 90.85, 180), "D_M1": (81.5, 109.0, 0), "D_M2": (81.5, 105.2, 0),
+          "C_MCU1": (57.5, 103.9, 90), "C_MCU2": (57.5, 99.5, 90),
+          "TP_SDA": (66.5, 88.6, 0), "TP_SCL": (69.1, 88.6, 0)}
+REF_AT |= {"U_MCU": (82.0, 96.5, 90), "C_MCU2": (54.0, 99.5, 0)}
 
 BLOCKS = copy.deepcopy(pack_tme.BLOCKS)
 for _b in BLOCKS:
