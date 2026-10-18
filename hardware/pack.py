@@ -320,7 +320,8 @@ def _tags(nets, x0, y0, per_row=7, pitch=20.32, row=12.7):
 
 def _cell(i, x0, y0):
     """One cell's branch (design doc order: holder+ -> fuse -> shunt -> back-to-back P-FET) plus
-    the crowbar, the diode-OR tap, the NTC and the switch gate drive. Four copies, one per cell block."""
+    the crowbar, the NTC and the switch gate drive. Four copies, one per cell block. The diode-OR tap
+    (D_ORi) is drawn on the monitor sheet with the rest of the bank: VMCU_IN has a single capacitor."""
     def a(x, y, rot=0):
         return (x0 + x, y0 + y, rot, None)
 
@@ -329,76 +330,93 @@ def _cell(i, x0, y0):
         f"Q_A{i}": a(12.7, 82.55), f"Q_B{i}": a(31.75, 82.55),
         f"R_GS{i}": a(24.13, 100.33), f"R_BYP{i}": a(43.18, 100.33),
         f"Q_N{i}": a(12.7, 116.84), f"R_PD{i}": a(7.62, 134.62), f"R_SW{i}": a(25.4, 134.62),
-        f"D_CB{i}": a(60.96, 20.32), f"D_OR{i}": a(78.74, 35.56),
+        f"D_CB{i}": a(60.96, 20.32),
         f"R_SNSF{i}": a(45.72, 64.77), f"R_SNSS{i}": a(45.72, 78.74),
         f"TH{i}": a(83.82, 60.96), f"R_NTC{i}": a(83.82, 78.74),
     }
 
 
 def _blocks():
-    """Hand-placed parts, one block per sheet area. Tags are the global labels that carry a
-    multi-block net across a block boundary (rails use power ports instead)."""
+    """Hand-placed parts, one block per function sheet. Tags are the global labels that carry a
+    multi-block net across a block boundary (rails use power ports instead).
+
+    Block 3 (key switch, PTC, 5 V boost) has every part on the root sheet, and block 8's holes are
+    root parts too: both its connectors are root parts, and VBAT_SW has exactly one capacitor (C_IN1),
+    so the chain, its caps and J_PWR1 must be drawn in one file. Pieces of a block that are root
+    parts (J_KEY1/J_PWR1 here) are removed from the sheet by gen_sch.sheet_blocks, so the blocks stay
+    the description of each function even where the root draws them."""
     out = []
-    # Charger + USB-C receptacle. Caps sit on the side of U_CHG whose pins they decouple.
+    # Charger + USB-C receptacle. Caps sit on the side of U_CHG whose pins they decouple. R_INT_CHG,
+    # R_STAT and LED_STAT pull the charger's /INT and STAT up to +3V3, which this sheet has no
+    # capacitor for, so they are drawn on the MCU sheet with the other status/interface parts.
     out.append({
         "title": "USB-C input, BQ25601 charger", "at": (12.7, 12.7), "size": (203.2, 139.7),
         "parts": {
             "U_CHG": (48.26, 50.8, 0, None),
             "C_VBUS": (15.24, 25.4, 0, None), "C_PMID": (15.24, 50.8, 0, None),
-            "R_CE": (15.24, 76.2, 0, None), "R_INT_CHG": (15.24, 101.6, 0, None),
+            "R_CE": (15.24, 76.2, 0, None),
             "L_CHG": (81.28, 27.94, 0, None), "C_BTST": (100.33, 27.94, 0, None),
             "C_SYS": (81.28, 55.88, 0, None), "C_BAT": (100.33, 60.96, 0, None),
             "C_REGN": (81.28, 78.74, 0, None), "RT1": (100.33, 78.74, 0, None),
             "RT2": (100.33, 95.25, 0, None), "TH_CHG": (116.84, 95.25, 0, None),
-            "R_STAT": (95.25, 48.26, 90, None), "LED_STAT": (76.2, 48.26, 0, None),
             "J_USB1": (152.4, 71.12, 0, None),
             "R_CC1": (182.88, 60.96, 90, None), "R_CC2": (182.88, 68.58, 90, None),
             "R_SYS1": (124.46, 30.48, 0, None),
             "R_BAT1": (124.46, 55.88, 0, None), "R_BAT2": (137.16, 55.88, 0, None),
         },
         "tags": _tags(["SCL_INT", "SDA_INT", "CHG_INT", "CHG_CE", "USB_DP", "USB_DM", "SYS",
-                       "CC2", "LED_STAT_A"], 12.7, 118.11),
+                       "CC2"], 12.7, 118.11),
+        # Every rail this sheet draws that no on-board source drives takes its PWR_FLAG here, beside
+        # the cap that decouples it in this file.
+        "flags": [("VBUS", 15.24, 147.32), ("BAT_CHG", 45.72, 147.32), ("VPACK", 76.2, 147.32)],
     })
-    # Monitoring: PAC1934, the SYS diode-OR leg and the MCU supply LDO.
+    # Monitoring: PAC1934, the whole diode-OR bank and the 3V3 LDO. All five diode-OR legs share
+    # VMCU_IN, whose only capacitor (C_LDO1) is here, so the four cell legs are drawn here too.
+    # The bank is a column: each cathode (VMCU_IN) needs a power port to its left.
     out.append({
         "title": "Cell monitoring (PAC1934), diode-OR, 3V3 LDO", "at": (228.6, 12.7),
         "size": (139.7, 177.8),
         "parts": {
             "U_MON": (30.48, 60.96, 0, None),
-            "C_MON1": (7.62, 22.86, 0, None), "C_MON2": (7.62, 78.74, 0, None),
-            "R_SCL_INT": (60.96, 30.48, 90, None), "R_SDA_INT": (60.96, 43.18, 90, None),
-            "R_ALERT": (60.96, 55.88, 90, None), "R_PWRDN": (60.96, 68.58, 90, None),
-            "D_OR5": (78.74, 91.44, 0, None), "U_LDO": (105.41, 91.44, 0, None),
-            "C_LDO1": (105.41, 68.58, 0, None), "C_LDO2": (105.41, 111.76, 0, None),
+            "C_MON1": (7.62, 20.32, 0, None), "C_MON2": (7.62, 101.6, 0, None),
+            "R_SCL_INT": (60.96, 38.1, 90, None), "R_SDA_INT": (60.96, 55.88, 90, None),
+            "R_ALERT": (60.96, 73.66, 90, None), "R_PWRDN": (60.96, 91.44, 90, None),
+            "D_OR5": (105.41, 20.32, 0, None),
+            "D_OR1": (105.41, 45.72, 0, None), "D_OR2": (105.41, 63.5, 0, None),
+            "D_OR3": (105.41, 81.28, 0, None), "D_OR4": (105.41, 99.06, 0, None),
+            "U_LDO": (144.78, 60.96, 0, None),
+            "C_LDO1": (144.78, 38.1, 0, None), "C_LDO2": (144.78, 83.82, 0, None),
         },
         "tags": _tags(["SNS_F1", "SNS_F2", "SNS_F3", "SNS_F4",
                        "SNS_S1", "SNS_S2", "SNS_S3", "SNS_S4",
-                       "SCL_INT", "SDA_INT", "MON_ALERT", "MON_PWRDN", "SYS"],
-                      12.7, 137.16, per_row=6),
+                       "SCL_INT", "SDA_INT", "MON_ALERT", "MON_PWRDN", "SYS",
+                       "CELL1_F", "CELL2_F", "CELL3_F", "CELL4_F"],
+                      12.7, 130.81, per_row=6),
+        "flags": [("VMCU_IN", 12.7, 170.18)],
     })
-    # MCU, decoupling, reset/boot, test pads and the status LED.
+    # MCU, decoupling, reset/boot, the status LEDs and the charger's /INT pull-up. The bring-up test
+    # pads and J_UART1 are root parts (drawn beside the board-edge connectors). Each LED needs room
+    # beside it for its GND port, so the two LED rows are 33 mm apart.
     out.append({
-        "title": "STM32C071 MCU, reset/boot, test pads", "at": (381.0, 12.7), "size": (139.7, 190.5),
+        "title": "STM32C071 MCU, reset/boot, status LEDs", "at": (381.0, 12.7), "size": (139.7, 190.5),
         "parts": {
             "U_MCU": (45.72, 63.5, 0, None),
             "C_MCU1": (17.78, 25.4, 0, None), "C_MCU2": (17.78, 45.72, 0, None),
             "C_NRST": (17.78, 66.04, 0, None), "SW_RST": (20.32, 78.74, 0, None),
             "R_BOOT": (17.78, 91.44, 0, None), "SW_BOOT": (25.4, 104.14, 0, None),
-            "TP_NRST": (12.7, 111.76, 0, None), "TP_SWCLK": (12.7, 119.38, 0, None),
-            "TP_SWDIO": (74.93, 76.2, 0, None), "TP_GND": (68.58, 119.38, 0, None),
-            "R_LED_MCU": (68.58, 90.17, 0, None), "LED_MCU": (81.28, 90.17, 90, None),
-            "J_UART1": (106.68, 50.8, 0, None),
+            "R_INT_CHG": (68.58, 25.4, 0, None),
+            "R_LED_MCU": (68.58, 81.28, 0, None), "LED_MCU": (88.9, 81.28, 90, None),
+            "R_STAT": (68.58, 114.3, 0, None), "LED_STAT": (88.9, 114.3, 90, None),
         },
-        # Bare test-pad symbols carry their text over the pad; move it aside, or the pad cannot route.
-        "fields": {r: {"Reference": (5.08, -2.54, "left"), "Value": (5.08, 2.54, "left")}
-                   for r in ("TP_NRST", "TP_SWCLK", "TP_SWDIO", "TP_GND")},
         "tags": _tags(["SW1_DRV", "SW2_DRV", "SW3_DRV", "SW4_DRV", "USB_DP", "USB_DM",
                        "NTC1", "NTC2", "NTC3", "NTC4", "NTC_PWR", "CHG_CE", "SDA_EXT", "SCL_EXT",
                        "CHG_INT", "MON_ALERT", "MON_PWRDN", "SCL_INT", "SDA_INT",
-                       "LED_MCU_A", "LED_MCU_DRV", "SWDIO", "UART_TX", "UART_RX"],
-                      12.7, 135.89, per_row=6),
+                       "LED_MCU_A", "LED_MCU_DRV", "SWDIO", "NRST", "BOOT0", "UART_TX", "UART_RX",
+                       "STAT"],
+                      12.7, 147.32, per_row=6),
     })
-    # Power out: key switch, 2 A PTC, 5 V boost and the 6-pin XH to the carrier.
+    # Power out: key switch, 2 A PTC, 5 V boost and the 6-pin XH to the carrier. Every part is on the
+    # root sheet (see the docstring); the block is kept as the description of that function.
     out.append({
         "title": "Key switch, 2 A PTC, 5 V boost, J_PWR1", "at": (533.4, 12.7),
         "size": (165.1, 114.3),
@@ -411,11 +429,9 @@ def _blocks():
             "C_OUT2": (83.82, 74.93, 0, None), "J_PWR1": (124.46, 45.72, 0, None),
             "TP_SDA": (12.7, 45.72, 0, None), "TP_SCL": (12.7, 58.42, 0, None),
         },
-        "fields": {r: {"Reference": (5.08, -2.54, "left"), "Value": (5.08, 2.54, "left")}
-                   for r in ("TP_SDA", "TP_SCL")},
-        "tags": _tags(["SDA_EXT", "SCL_EXT", "GND", "SYS"], 12.7, 95.25), "wired": {"GND"},
     })
-    # One identical block per cell branch.
+    # One identical block per cell branch, plus the mounting holes and power flags block (holes are
+    # root parts; the flags live on the sheet that carries each rail's capacitor).
     for i, bx in enumerate((12.7, 114.3, 215.9, 317.5)):
         out.append({
             "title": f"Cell {i + 1} branch", "at": (bx, 190.5), "size": (99.06, 180.34),
@@ -425,19 +441,112 @@ def _blocks():
                           per_row=4)
                      | {f"NTC{i + 1}": [(83.82, 120.65, "R")]},
         })
-    # Mounting holes and one PWR_FLAG per rail whose source is passive.
+    # Mounting holes (root parts) and the pack's flags. Kept as a block so the root parts are
+    # documented where the layout is.
     out.append({
-        "title": "Mounting holes and power flags", "at": (419.1, 190.5), "size": (139.7, 55.88),
+        "title": "Mounting holes", "at": (419.1, 190.5), "size": (139.7, 55.88),
         "parts": {"H1": (7.62, 16.51, 0, None), "H2": (22.86, 16.51, 0, None),
                   "H3": (38.1, 16.51, 0, None), "H4": (53.34, 16.51, 0, None)},
-        "flags": [("GND", 10.16, 36.83), ("VPACK", 33.02, 36.83), ("VBUS", 55.88, 36.83),
-                  ("VMCU_IN", 78.74, 36.83), ("VBAT_SW", 101.6, 36.83),
-                  ("BAT_CHG", 119.38, 36.83)],
     })
     return out
 
 
 BLOCKS = _blocks()
+
+# Cable connectors drawn on the root get 5.08 mm-pitch symbols (same pins and footprints): the gap
+# between a connector and its off-board part holds that rail's power ports, which do not fit at
+# 2.54 mm. Nothing on the board changes.
+for _r in ("J_PWR1", "J_KEY1"):
+    _v, _sym, _fp = PARTS[_r]
+    PARTS[_r] = (_v, f"local:Conn_W_{_sym[-2:]}", _fp)
+
+
+# --- Hierarchical schematic (docs/plans/2026-10-18-hierarchical-schematics-design.md) ---
+# Function sheets: name -> (title, BLOCKS indexes). One block per sheet; the parts a block shares with
+# ROOT (its connectors and bring-up pads) are drawn on the root instead, by gen_sch.sheet_blocks.
+SHEETS = {
+    "charger": ("USB-C input, BQ25601 charger", [0]),
+    "monitor": ("Cell monitoring (PAC1934), diode-OR, 3V3 LDO", [1]),
+    "mcu": ("STM32C071 MCU, reset/boot, status LEDs", [2]),
+    "cell1": ("Cell 1 branch (18650 holder)", [4]),
+    "cell2": ("Cell 2 branch (18650 holder)", [5]),
+    "cell3": ("Cell 3 branch (18650 holder)", [6]),
+    "cell4": ("Cell 4 branch (18650 holder)", [7]),
+}
+# Root (system) sheet: both board-edge connectors with their off-board parts, the key -> PTC -> boost
+# -> J_PWR1 chain (block 3, whose rails have a single capacitor each, drawn here with them), the
+# bring-up pads, the mounting holes and the pack's rail bulk caps. Function sheets are boxes beside
+# the parts they talk to. Coordinates are absolute sheet mm; content starts at (12.7, 12.7).
+ROOT = {
+    "parts": {
+        # key switch (left) and the carrier link (right), each with its off-board part beyond it
+        "J_KEY1": (81.28, 33.02, 0, None), "J_PWR1": (337.82, 33.02, 0, "y"),
+        # key -> 2 A PTC -> boost -> J_PWR1, flowing left to right, with the caps of VBAT_SW and +5V
+        "F_SYS1": (120.65, 33.02, 0, None), "C_IN1": (127.0, 50.8, 0, None),
+        "U1": (152.4, 33.02, 0, None), "L1": (177.8, 20.32, 90, None),
+        "D1": (195.58, 20.32, 180, None),
+        "C_OUT1": (205.74, 35.56, 0, None), "C_OUT2": (215.9, 45.72, 0, None),
+        "R_FB1": (205.74, 55.88, 0, None), "R_FB2": (215.9, 63.5, 0, None),
+        # bring-up: UART header and the SWD / I2C pads, one row inside their outline
+        "J_UART1": (25.4, 233.68, 0, "y"),
+        "TP_SWDIO": (55.88, 233.68, 0, None), "TP_SWCLK": (66.04, 233.68, 0, None),
+        "TP_NRST": (76.2, 233.68, 0, None), "TP_GND": (86.36, 233.68, 0, None),
+        "TP_SDA": (96.52, 233.68, 0, None), "TP_SCL": (106.68, 233.68, 0, None),
+        # mounting holes, in the free right margin below the carrier cable
+        "H1": (355.6, 222.25, 0, None), "H2": (372.11, 222.25, 0, None),
+        "H3": (355.6, 240.03, 0, None), "H4": (372.11, 240.03, 0, None),
+    },
+    # The rails drawn here whose source is passive: a PWR_FLAG per rail, on the sheet that carries
+    # that rail's capacitor (VPACK's flag sits with R_BAT1/R_BAT2 on the charger sheet).
+    "flags": [("GND", 25.4, 63.5), ("VBAT_SW", 58.42, 63.5)],
+    # The 2.54 mm UART header takes rail ports along its stubs, which stay in the pin's own row.
+    "port_modes": {"J_UART1": "along"},
+    # Wide channels: every root signal needs a straight run with free rows beside it for its global
+    # label, so the gap between boxes is sized from ~70 sheet pins, not from the box content.
+    "sheets": {
+        "charger": (25.4, 88.9, 60.96, 38.1), "mcu": (118.11, 88.9, 60.96, 48.26),
+        "monitor": (210.82, 88.9, 60.96, 38.1),
+        "cell1": (25.4, 175.26, 60.96, 38.1), "cell2": (118.11, 175.26, 60.96, 38.1),
+        "cell3": (210.82, 175.26, 60.96, 38.1), "cell4": (303.53, 175.26, 60.96, 38.1),
+    },
+    # The one module-like group on the root: the bring-up pads and the UART header.
+    "outline": ("Pack bring-up pads (SWD, UART, I2C)", (17.78, 218.44, 96.52, 30.48)),
+    "size": (391.16, 236.22),  # root content from (12.7, 12.7): fits A3
+}
+# Off-board parts, drawn on the root beyond their connector, never on the board or in a BOM:
+# ref -> (value, symbol, connector, {own pin: connector pin}, cable note, (x, y, rot, mirror)).
+# J_USB1 is on the charger sheet with its CC pull-downs and C_VBUS, so the USB-C cable has no
+# off-board part (USB-C receptacles are panel-side by definition); VBUS's capacitor can only live
+# where the charger draws it.
+OFFBOARD = {
+    "#X_CARRIER": ("Carrier board (J_PWR1)", "local:Pack_Link_6", "J_PWR1",
+                   {str(i): str(i) for i in range(1, 7)}, "XH-6 to the carrier's J_PWR1",
+                   (386.08, 33.02, 0, None)),
+    "#X_KEY": ("EAO 82-6121 key switch", "local:Conn_W_02", "J_KEY1",
+               {"1": "1", "2": "2"}, "XH-2", (40.64, 33.02, 0, "y")),
+}
+
+
+def check_sheets(m=None):
+    """Every board part is drawn exactly once: on the root, or in one block of one sheet; and any
+    block that is on no sheet has all its parts on the root (block 3 and the hole block do)."""
+    import sys
+
+    m = m or sys.modules[__name__]
+    on_sheets = [r for _t, idx in m.SHEETS.values() for i in idx for r in m.BLOCKS[i]["parts"]
+                 if r not in m.ROOT["parts"]]
+    drawn = on_sheets + list(m.ROOT["parts"])
+    twice = sorted({r for r in drawn if drawn.count(r) > 1})
+    assert not twice, f"drawn twice: {twice}"
+    assert set(drawn) == set(m.PARTS), \
+        (f"not drawn: {sorted(set(m.PARTS) - set(drawn))}, "
+         f"unknown: {sorted(set(drawn) - set(m.PARTS))}")
+    assert m.ROOT["sheets"].keys() == m.SHEETS.keys(), "ROOT['sheets'] must place every sheet"
+    used = {i for _t, idx in m.SHEETS.values() for i in idx}
+    root = set(m.ROOT["parts"])
+    for i, b in enumerate(m.BLOCKS):
+        off = sorted(set(b["parts"]) - root) if i not in used else []
+        assert not off, f"block {i} is on no sheet and its parts are not root parts: {off}"
 
 
 # --- PCB (read by gen_pcb.py / route.py / check_gerbers.py) -------------------------------------
@@ -609,6 +718,7 @@ def check():
     import board  # pyright: ignore[reportMissingImports]  # local sibling module
     board.check_structure(sys.modules[__name__])
     check_branches()
+    check_sheets()
     print(f"pack ok: {len(PARTS)} parts, {len(NETS)} nets")
 
 
