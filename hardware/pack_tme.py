@@ -258,10 +258,14 @@ def check_sheets():
     pack.check_sheets(sys.modules[__name__])
 
 
-def check_branches():
+def check_branches(m=None):
     """Every cell in branch order, with its own INA226 across the 10R Kelvin split: IN+ and VBUS on
-    the cell side of the shunt, IN- after it, addresses 0x40-0x43 by A1/A0, ALERTs wired together."""
-    net_of = {p: n for n, m in NETS.items() for p in m}
+    the cell side of the shunt, IN- after it, addresses 0x40-0x43 by A1/A0, ALERTs wired together
+    (or all unconnected on a board without MON_ALERT). m: a derived board module (default: this one)."""
+    import sys
+
+    m = m or sys.modules[__name__]
+    net_of = {p: n for n, mem in m.NETS.items() for p in mem}
     addr = {1: ("GND", "GND"), 2: ("GND", "+3V3"), 3: ("GND", "SDA_INT"), 4: ("GND", "SCL_INT")}
     for i in range(1, 5):
         assert net_of[f"BT{i}.1"] == net_of[f"F{i}.1"], f"cell {i}: holder+ not on fuse"
@@ -274,7 +278,8 @@ def check_branches():
         assert net_of[f"R_SNSS{i}.2"] == net_of[f"U_MON{i}.9"], f"cell {i}: IN-"
         assert net_of[f"Q_B{i}.3"] == "VPACK" and net_of[f"BT{i}.2"] == "GND", f"cell {i}: rail"
         assert (net_of[f"U_MON{i}.1"], net_of[f"U_MON{i}.2"]) == addr[i], f"INA226 {i} address"
-        assert net_of[f"U_MON{i}.3"] == "MON_ALERT" and net_of[f"U_MON{i}.6"] == "+3V3"
+        assert net_of.get(f"U_MON{i}.3") == ("MON_ALERT" if "MON_ALERT" in m.NETS else None)
+        assert net_of[f"U_MON{i}.6"] == "+3V3"
         assert (net_of[f"U_MON{i}.4"], net_of[f"U_MON{i}.5"]) == ("SDA_INT", "SCL_INT")
 
 
