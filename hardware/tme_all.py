@@ -27,7 +27,9 @@ DEFAULT = ["carrier_tme", "pack_tme", "lipo_tme"]
 # cut-tape family is assumed the same), C1F-5, CL21B105KAFNNNE. Anything not listed is ordered as-is.
 ORDER = {"SMD0805-": (100, 100), "SMD1206-": (100, 100), "C1F-": (5, 1)}
 # Small passives get +10 %, at least +5: easy to lose, cheap to over-buy.
-SPARE = ("SMD0805-", "SMD1206-", "CL21", "CL31", "CC0805", "NTCS")
+SPARE = ("SMD0805-", "SMD1206-", "CL21", "CC0805")
+# Bigger or dearer parts are not lost to the tweezers as easily: +10 % only, no minimum.
+SPARE_PCT = ("CL31", "NTCS")
 
 
 def merge(texts, names=None):
@@ -47,6 +49,8 @@ def order(symbol, n):
     """Quantity to order for n fitted parts: spares for small passives, rounded up to TME's multiple."""
     if symbol.startswith(SPARE):
         n += max(5, math.ceil(n / 10))
+    elif symbol.startswith(SPARE_PCT):
+        n += math.ceil(n / 10)
     lo, m = next((v for p, v in ORDER.items() if symbol.startswith(p)), (1, 1))
     return math.ceil(max(n, lo) / m) * m
 

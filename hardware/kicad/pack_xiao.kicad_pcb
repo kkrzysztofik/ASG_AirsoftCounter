@@ -104,7 +104,7 @@
 				)
 			)
 		)
-		(property "Value" "1M"
+		(property "Value" "240k"
 			(at 0 1.65 0)
 			(layer "F.Fab")
 			(uuid "87e8c521-1ded-4721-aa3a-1aa77c8529e0")
@@ -4484,7 +4484,7 @@
 				)
 			)
 		)
-		(property "Value" "1M"
+		(property "Value" "240k"
 			(at 0 1.65 0)
 			(layer "F.Fab")
 			(uuid "72a1444c-20d4-4655-8e87-e015f25fe222")
@@ -7743,7 +7743,7 @@
 				)
 			)
 		)
-		(property "Value" "1M"
+		(property "Value" "240k"
 			(at 0 1.65 0)
 			(layer "F.Fab")
 			(uuid "be748038-0e42-4ff9-9c2f-8b32bb64b2c2")
@@ -15227,7 +15227,7 @@
 				)
 			)
 		)
-		(property "Value" "1M"
+		(property "Value" "240k"
 			(at 0 1.65 0)
 			(layer "F.Fab")
 			(uuid "650127af-e4b5-41ab-b860-23da998c6bde")
@@ -34306,7 +34306,7 @@
 	(zone
 		(net "GND")
 		(layer "F.Cu")
-		(uuid "06b9a487-37d7-4031-a8b6-d9002d70e93e")
+		(uuid "bca169f4-6b69-41ad-88fa-095b86db32eb")
 		(name "GND_F")
 		(hatch edge 0.5)
 		(connect_pads yes

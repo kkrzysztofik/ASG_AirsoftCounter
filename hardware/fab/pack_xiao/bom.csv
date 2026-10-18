@@ -23,7 +23,7 @@
 "R_CE?,R_NTC1-R_NTC4","10k","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","5"
 "R_FB1","75k","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","1"
 "R_FB2","24k","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","1"
-"R_GS1-R_GS4","1M","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","4"
+"R_GS1-R_GS4","240k","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","4"
 "R_PD1-R_PD4,R_SCL_INT?,R_SDA_INT?","4k7","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","6"
 "R_SH1-R_SH4","10mOhm","Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder","4"
 "R_SNSF1-R_SNSF4,R_SNSS1-R_SNSS4","10R","Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder","8"

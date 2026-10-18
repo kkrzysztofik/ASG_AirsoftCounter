@@ -30,7 +30,8 @@ PARTS["U_MCU"] = XIAO
 PARTS["D_M1"] = B5819W   # run feed from the boost (key on)
 PARTS["D_M2"] = B5819W   # run feed from USB VBUS (cable in); the charger keeps the raw VBUS
 for _i in range(1, 5):
-    PARTS[f"R_PD{_i}"] = ("4k7", *pack.R0805)   # 0.3 V against a 45k boot pull-up (D7 = U0RXD)
+    PARTS[f"R_PD{_i}"] = ("4k7", *pack.R0805)
+    PARTS[f"R_GS{_i}"] = ("240k", *pack.R0805)   # P-FET gate pull-up: 17 uA while closed; shares carrier_tme's 240k tape   # 0.3 V against a 45k boot pull-up (D7 = U0RXD)
 
 # XIAO pins (symbol = footprint numbers): 1-11 D0..D10, 12 3V3, 13 GND, 14 5V (VBUS),
 # 15 MTDI, 16 MTDO (GPIO40), 17 EN, 18 GND, 19 MTMS, 20 MTCK (GPIO39), 21/22 USB, 23 BAT+, 24 GND, 25 PAD.
@@ -66,6 +67,7 @@ LCSC = {}
 _KEYS = {(v, fp) for r, (v, sym, fp) in PARTS.items()
          if sym != "Mechanical:MountingHole" and r not in DNP | NOT_TME}
 TME = {k: s for k, s in pack_tme.TME.items() if k in _KEYS}   # B5819W and 4k7 are already on the list
+TME[("240k", pack.R0805[1])] = "SMD0805-240K-1%"   # R_GS1..4, carrier_tme's tape
 MODULES, VARIANTS = {}, {"standard": set()}
 
 

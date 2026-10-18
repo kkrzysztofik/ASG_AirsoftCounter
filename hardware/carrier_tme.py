@@ -36,12 +36,15 @@ PARTS |= {
     "C_DLDO": ("100nF", *C0805),        # LDOO
     "C_DVDD": ("100nF", *C0805), "C_DAVDD": ("100nF", *C0805), "C_DCPV": ("100nF", *C0805),
     "C_DBULK": ("10uF", *C0805),
-    "R_OL": ("470R", *R0805), "C_OL": ("2.2nF", *C0805),    # DAC output RC, left
-    "R_OR": ("470R", *R0805), "C_OR": ("2.2nF", *C0805),    # right (driven in antiphase)
+    "R_OL": ("1k", *R0805), "C_OL": ("2.2nF", *C0805),      # DAC output RC, left: 72 kHz, 1k shares a tape
+    "R_OR": ("1k", *R0805), "C_OR": ("2.2nF", *C0805),      # right (driven in antiphase)
     "C_INP": ("1uF", *C0805), "R_INP": ("240k", *R0805),    # amp input coupling + gain
     "C_INN": ("1uF", *C0805), "R_INN": ("240k", *R0805),
     "U_AMP": ("PAM8302AADCR", "Amplifier_Audio:PAM8302AAD", SOIC8),
 }
+# The button LEDs have their own resistors: 10R (the pack's tape) in the jumper spot, no 0805 0R tape.
+for _r in ("R_LLB1", "R_LLR1"):
+    PARTS[_r] = ("10R", *PARTS[_r][1:])
 
 # The Heltec headers' named-pin symbols and the root's 5.08 mm-pitch cable connectors come from
 # carrier.PARTS (same values and footprints, so nothing changes on the board or in the TME list).
@@ -81,7 +84,7 @@ _KEYS = {(v, fp) for r, (v, sym, fp) in PARTS.items()
 TME = tme.from_lcsc(carrier.LCSC, _KEYS)
 TME |= {
     ("PAM8302AADCR", SOIC8): "PAM8302AADCR",
-    ("470R", R0805[1]): "SMD0805-470R-1%",
+    ("10R", R0805[1]): "SMD0805-10R-1%",       # R_LLB1/R_LLR1 (button LED jumpers)
     ("240k", R0805[1]): "SMD0805-240K-1%",
     ("2.2nF", C0805[1]): "CC0805KRX7R9BB222",
     ("2.2uF", C0805[1]): "CL21A225KAFNNNE",

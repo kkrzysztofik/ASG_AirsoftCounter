@@ -100,11 +100,14 @@ def main():
 
 
 def import_ses(path):
-    """Import a Specctra SES onto a freshly loaded board and save it. One LoadBoard for this process."""
+    """Import a Specctra SES onto a freshly loaded board, strip its stubs and save it. One LoadBoard for
+    this process. stub_free runs here, not in finish(): its connectivity rebuilds can break KiCad 10's SWIG
+    type table for the rest of the process (new zones/polygons come back as bare SwigPyObjects; carrier_tme)."""
     board = load()
     pcbnew.KIID.SeedGenerator(2)  # deterministic uuids for imported tracks/vias and the new zone
     if not pcbnew.ImportSpecctraSES(board, path):
         raise SystemExit("SES import failed")
+    stub_free(board)
     if not pcbnew.SaveBoard(str(gen_pcb.PCB), board, True):  # True: leave <BOARD>.kicad_pro alone
         raise SystemExit("save after SES import failed")
 
@@ -136,9 +139,8 @@ def stub_free(board, tries=6):
 
 
 def finish():
-    """Strip dangling stubs, add the F.Cu GND pour, fill zones, check, save. See main()."""
+    """Add the F.Cu GND pour, fill zones, check, save (stubs are gone already, see import_ses)."""
     board = load()
-    stub_free(board)
 
     b_gnd = [z for z in board.Zones() if z.GetZoneName() == "GND"]
     if len(b_gnd) != 1:

@@ -2784,7 +2784,7 @@
 				)
 			)
 		)
-		(property "Value" "470R"
+		(property "Value" "1k"
 			(at 102.87 49.506 270)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5684,7 +5684,7 @@
 				)
 			)
 		)
-		(property "Value" "470R"
+		(property "Value" "1k"
 			(at 102.87 64.746 270)
 			(show_name no)
 			(do_not_autoplace no)

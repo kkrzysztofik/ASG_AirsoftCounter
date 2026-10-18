@@ -1610,7 +1610,7 @@
 				)
 			)
 		)
-		(property "Value" "0R"
+		(property "Value" "10R"
 			(at 69.85 36.83 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2096,7 +2096,7 @@
 				)
 			)
 		)
-		(property "Value" "0R"
+		(property "Value" "10R"
 			(at 128.27 36.83 90)
 			(show_name no)
 			(do_not_autoplace no)
