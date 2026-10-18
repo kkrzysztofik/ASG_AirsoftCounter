@@ -1,6 +1,8 @@
 # Hierarchical schematics: design (pilot: carrier_tme)
 
-Date: 2026-10-18. Status: implemented on carrier_tme; carrier, pack and lipo still flat.
+Date: 2026-10-18. Status: implemented on all six boards (carrier, carrier_tme, pack, pack_tme, lipo,
+lipo_tme). carrier_tme was the pilot; the rest followed the handover, and the deviations found on the
+way are recorded at the end of that document.
 
 Changes from the approved design, made to clear the review findings (each sheet is audited on its own):
 - Power-entry caps, the bring-up headers and pads, D_FLY1 and the I2C level shifter with the bus

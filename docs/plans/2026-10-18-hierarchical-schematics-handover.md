@@ -9,11 +9,16 @@ Date: 2026-10-18. Branch `esp32-lora-design`. Read with the design
 | Board | Schematic | Notes |
 |---|---|---|
 | **carrier_tme** | hierarchical, done | Pilot. Root + expander, drivers, audio. Review: 0 errors |
-| carrier | flat | Next: the closest to carrier_tme (same board minus the DAC/amp swap) |
-| pack | flat | Biggest (127 parts, 4 cell branches, bottom-side holders) |
-| pack_tme | flat | Derives from pack.py by import and edit |
-| lipo | flat | `lipo.py` imports `pack` (shared constants): check what it reuses before changing pack |
-| lipo_tme | flat | Derives from lipo.py |
+| **carrier** | hierarchical, done | Root + expander, drivers, NS4168 audio. Review: 0 errors |
+| **pack** | hierarchical, done | Root + charger, monitor, MCU, cell1..cell4. Review: 5x VPACK + 1 PWRDN, all pre-existing |
+| **pack_tme** | hierarchical, done | Same sheets, INA226 per cell. Review: 5x VPACK + 12x INA, all pre-existing |
+| **lipo** | hierarchical, done | Root + input, enable, bucks, MCU, bal. Review: 0 errors |
+| **lipo_tme** | hierarchical, done | Derives from lipo.py. Review: 0 errors |
+
+All six boards pass: netlist parity, ERC 0, DRC 0 violations / 0 unconnected / 0 schematic parity,
+gerbers accepted, board unchanged apart from footprint paths (and the Heltec `unconnected-(...)` pin
+names), Konnect `check_schematic_overlaps` 0 on every sheet, and the review error sets above. The
+"Pitfalls found while migrating" section at the end is the part to read before touching this again.
 
 The goal the user set: "complete schema, not partial". That means three things:
 
@@ -196,3 +201,66 @@ A board module switches to hierarchical mode by defining `SHEETS`. The flat boar
 - **Stale sheet files**: gen_sch deletes `kicad/<board>-*.kicad_sch` that no longer belong to SHEETS.
   Commit that deletion.
 - **Headless pcbnew**: a pcbnew under xvfb may still hold `pack_tme.kicad_pcb` open. Never save from it.
+  One reappeared on its own (the Konnect IPC bridge relaunching KiCad against its stale last project):
+  kill it rather than save, and remember only a pcbnew on *your* board can hurt you.
+
+## Pitfalls found while migrating carrier, pack and lipo (2026-10-18, second pass)
+
+- **A ROOT part off the 1.27 mm grid silently breaks connectivity.** gen_sch rounds a symbol's pin cells
+  to its own grid; KiCad does not. An off-grid ROOT part (R_EN1 at x = 319.19 on lipo) then reads
+  `unconnected-(<ref>-Pad<N>)` and `check_netlist.py` fails with `missing ('VIN','R_EN1.1')`. Every
+  ROOT coordinate must be a multiple of 1.27; rot 0/90 keeps pins on-grid.
+- **Konnect audits each schematic FILE on its own, keyed by net name** (0.13.0, `design_review.rs`):
+  - a net is a *rail* if it carries a power symbol or a label matching
+    `VCC*|VDD*|3V3*|5V*|12V*|VBUS*|GND|DGND|AGND|+*|V+*`; a rail with no capacitor **in that file** is
+    an **error** (a cap under 10 µF is only a warning);
+  - any non-passive, non-connector symbol pin whose NAME matches
+    `VCC|VDD|VBUS|V+|VIN|3V3|5V|1V|2V|VCAP|VREF|PWR|POWER` needs a capacitor on that pin's net **in the
+    same file**, else **error**;
+  - findings aggregate per file, so a net drawn on N sheets can report N times.
+  So the sheet partition decides the error list: every sheet that draws a rail must draw one of that
+  rail's capacitors, and every sheet with an IC must carry a cap on that IC's supply net. Draw the
+  power-entry/bulk caps, the bring-up headers and pads, the protection parts at connectors and the bus
+  pull-ups on the root, and put pull-ups on the sheet that owns the rail's capacitors.
+- **Do not restructure the drawing to quiet the audit.** Refused here: demoting VPACK out of `RAILS` so
+  the name stops matching, and shipping an INA226/PAC1934 symbol with sanitised pin names. Both would
+  have removed real findings. The accepted pack/pack_tme errors are enumerated below instead.
+- **Measured flat baselines** (`run_design_review`, severity=error, before any migration):
+  carrier 0, carrier_tme 0, lipo 0, lipo_tme 0, pack 2, pack_tme 13.
+  - pack: `Power rail 'VPACK' has no decoupling capacitors` + `Power pin '~{PWRDN}' on U_MON`.
+  - pack_tme: the same VPACK one + 12x `Power pin 'Vbus'|'Vin+'|'Vin-' on U_MON1..4`.
+  Nothing on the VPACK net is a capacitor anywhere in the design (four cell branches feed it; C_BAT is
+  behind the R_BAT1/R_BAT2 0 Ω bring-up jumpers), and the rest are symbol pin names. They are reported
+  once per sheet that draws the net, which is why pack is 5x VPACK + 1 and pack_tme 5x VPACK + 12.
+- **A function sheet must draw its function, not a side network.** On carrier the first pass put U3 on
+  the root beside J_SPK1 and left the audio sheet with R_SD1/R_SDPD1 plus two caps: a ~15% full page
+  showing everything but the amplifier. ERC 0, parity 0, `run_design_review` 0 errors and
+  `check_schematic_overlaps` 0 all passed. **Only looking at the rendered page finds this.** Rule: an IC
+  belongs on its function sheet; the root gets the board-edge parts that the per-file audit needs there.
+- **Paper**: A4 was the floor, so small functions sat at 27-34% of the frame. `PAPERS_HIER` now tries
+  **A5** first (`[("A5",210,148),("A4",297,210),*PAPERS]`). Text is drawn at absolute size, so a smaller
+  frame removes blank margin only - the same drawing, less waste. The root still needs A3 and falls
+  through. Flat mode is untouched (`schematic()` uses the default `PAPERS`).
+- **Stay in scope.** One agent added two capacitors to carrier_tme (splitting C_DBULK into
+  C_DBULK1/2/3) and moved C_DCPV while "fixing" a decoupling warning. That changed a delivered
+  hand-built board's placement and BOM, and the 2 extra parts are not in the TME list. The rule is in
+  the gates for a reason: the board may change **only** in footprint paths. Verify with
+  `tools/pcb_diff.py` and diff `PARTS`/`NETS` against the previous commit before believing a green
+  build.
+- **Gate tooling**: `tools/pcb_diff.py [--allow-unnamed] <old> <new>` compares ref, position, rotation,
+  side and pad nets, and understands `<rev>:<path>` through git, so the pre-migration baseline is one
+  argument away. `--allow-unnamed` tolerates the `unconnected-(...)` names that change when a symbol's
+  pin names do (the Heltec headers). `check_gerbers.py` needs `BOARD=<board>` in the environment, as the
+  Makefile exports it.
+- **pcbnew: one `LoadBoard()` per interpreter.** Calling it twice in one process hands back a proxy for
+  the freed first board: on pack_tme the second load reported **614 tracks for a 1464-track file**, and
+  `board.GetTracks()` came back as a bare `SwigPyObject` (`TypeError: 'SwigPyObject' object is not
+  iterable`). `gen_pcb.verify(board)` now takes the board you already hold instead of reloading, and
+  `route.py` runs the DSN export, the SES import (`--import <ses>`) and the finish stage (`--finish`) in
+  three separate interpreters, one load each. This showed up as an intermittent `make route` failure on
+  pack_tme (roughly one run in three) and never on the smaller boards.
+- **Do not call `board.GetConnectivity()` while walking `board.GetTracks()`.** The old stub-removal loop
+  did exactly that inside its comprehension, rebuilding the connectivity once per track. Fetch the track
+  list and the connectivity once per pass, remove every dangling stub, rebuild, re-check, and bound the
+  retries (`route.stub_free`).
+

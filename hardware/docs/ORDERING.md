@@ -148,6 +148,8 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 
 Other files in `fab/carrier/`: `schematic.pdf`, `top.png`/`bottom.png` (3D renders), `gerbers/` (created by `make all` and not committed: the unzipped Gerbers plus drill maps and a Gerber job file, which are not in the zip).
 
+**Schematic.** `fab/carrier/schematic.pdf` is multi-page. Page 1 is the system sheet: the Heltec V4 with named pins inside its module outline, every connector with the off-board part it plugs into (pack board, Heltec battery, LCD, PN532, both buttons, buzzer, speaker) drawn past it as a cable, and the board-edge parts beside the connectors they belong to - the pack-rail bulk caps and the +5 V reservoir at J_PWR1, the NFC bulk cap at J_NFC1, the I2C level shifter and its bus pull-ups at J_LCD1, D_FLY1 at the buzzer, the UART/I2C bring-up headers and the four rail test pads, and U3 (NS4168) beside J_SPK1. One box per function sheet. Pages 2-4: the GPIO expander with the button RC inputs, the LED/buzzer drivers, and the NS4168's supply and shutdown (R_SD1/R_SDPD1 on AMP_SD, C_AMP1/C_AMP2 on VBAT_SW). The off-board `#X_*` symbols are virtual (documentation only): not on the board, not in the netlist or any BOM, so they never reach `jlc_bom.csv`/`jlc_cpl.csv`. The one cosmetic trade-off is that the AMP_SD_R wire from the audio box crosses the three I2S wires at right angles, which was preferred over detouring both speaker wires around the sheet.
+
 ## 7. The pack board (4 x 18650)
 
 `fab/pack/pack_gerbers_jlcpcb.zip`, 96 x 90 mm, 2 layers, 1.6 mm, rounded corners, top-side
@@ -205,6 +207,8 @@ the board, standoffs need about 20 mm plus clearance (holder 14.9 mm, the cell t
 for boards, put a real BH-18650-A6AJ012 on the 1:1 print (`fab/pack/print_1to1.pdf`): check the tab
 slots and pegs, and that the floor window leaves room for the bead NTC (design doc, Unverified).
 
+**Schematic.** `fab/pack/schematic.pdf` is multi-page. Page 1 is the system sheet: the key switch and the carrier link (`J_KEY1`, `J_PWR1`) each with the part that plugs in drawn past it (`#X_KEY`, `#X_CARRIER`) and a cable note, the whole key -> 2 A PTC -> 5 V boost -> `J_PWR1` power path with its input and output caps (`C_IN1`, `C_OUT1`, `C_OUT2`), the bring-up pads (`TP_*`, `J_UART1`) and the four mounting holes. One box per function sheet: page 2 the USB-C input and BQ25601 charger (with `J_USB1` and `C_VBUS`), page 3 the PAC1934 cell monitor with the diode-OR bank and the 3V3 LDO, page 4 the STM32C071 with reset/boot and status LEDs, pages 5-8 one per cell branch (holder, NTC, protection FETs, fuse, shunt). The off-board `#X_*` symbols are virtual (documentation only): not on the board, not in the netlist or any BOM. The charger's `INT`/`STAT` pull-ups are drawn on the monitor sheet, which is where `+3V3` and its capacitors live, so each sheet carries the capacitors of the rails it draws.
+
 ## 8. The LiPo board (2S/3S)
 
 `fab/lipo/lipo_gerbers_jlcpcb.zip`, 70 x 50 mm, 2 layers, 1.6 mm, rounded corners, top-side
@@ -255,6 +259,8 @@ on both layers.
 **Note.** 4S is out of scope, but the input rating (TPS54302 28 V, HT7533-1 30 V) leaves room if the
 SMBJ15A is swapped for a higher-standoff TVS.
 
+**Schematic.** `fab/lipo/schematic.pdf` is multi-page. Page 1 is the system sheet: the LiPo input on `J_IN1` with the pack drawn past it as an XT60 pigtail, the key switch on `J_KEY1`, the carrier link on `J_PWR1` (the same 1:1 XH-6 harness as the pack board), the balance plug on `J_BAL1` (a 2S 3-pin plug sits on pins 1-3), the SWD/UART bring-up pads, one bulk cap per rail the root draws (the VIN cap `C_VIN1` beside `J_IN1`, the buck output caps `C_OA2`/`C_OB2`, and the root's `+3V3` reservoir `C_LDO2` at `TP_3V3`), and the key pull-up `R_EN1` beside `J_KEY1`. One box per function sheet, in page order: page 2 the LiPo input (fuse, reverse FET, TVS), page 3 the key enable / MCU kill, page 4 the two bucks, page 5 the always-on 3V3 regulator with the microcontroller and the SWD pads, page 6 the balance-lead dividers. The off-board `#X_*` symbols are virtual (documentation only): not on the board, not in the netlist or any BOM. Two warnings are expected and accepted: the `#X_CARRIER` I2C lines show no pull-up because the bus pull-ups live on the carrier on purpose (no back-powering), and the MCU sheet's `+3V3` shows no >=10 uF bulk because `C_LDO2` is drawn on the root at `TP_3V3`.
+
 ## 9. TME hand-build boards (carrier_tme, pack_tme, lipo_tme)
 
 The same three boards re-drawn for an iron-only build from TME parts. **Order bare PCBs only, no JLC
@@ -286,8 +292,8 @@ with named pins, every connector with the off-board part it plugs into (pack boa
 buzzer, speaker) drawn as a cable, the board-edge parts beside their connectors (power-entry caps, I2C
 level shifter and bus pull-ups, D_FLY1, the UART/I2C headers and test pads), and one box per function
 sheet. Pages 2-4: expander + buttons, LED/buzzer drivers, DAC + amp. The off-board `#X_*` symbols are
-virtual (documentation only): not on the board, not in the netlist or any BOM. pack_tme, lipo_tme and the
-JLC boards are still single-sheet.
+virtual (documentation only): not on the board, not in the netlist or any BOM. All six boards are now
+multi-page; each board's own section describes its pages.
 
 **Board facts.** Same outline, holes and 2-layer stack as the JLC originals; the pack keeps 0.8 mm
 power traces except `+5V`, which is 0.25 mm (82 mA peak) so the MCP1640's fine VOUT pad takes it.
