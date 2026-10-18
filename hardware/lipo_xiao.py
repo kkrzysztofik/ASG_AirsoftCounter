@@ -76,11 +76,21 @@ NETCLASS_POWER, NETCLASS_EXPECT = lipo_tme.NETCLASS_POWER, lipo_tme.NETCLASS_EXP
 RAILS, PORT_LIB, DRC_RULES = lipo_tme.RAILS, lipo_tme.PORT_LIB, lipo_tme.DRC_RULES
 BOTTOM, GND_VIAS, HELTEC_PADS = lipo_tme.BOTTOM, lipo_tme.GND_VIAS, lipo_tme.HELTEC_PADS
 LABELS, TEXTS, SIZE_MM, NPTH_XY = lipo_tme.LABELS, list(lipo_tme.TEXTS), lipo_tme.SIZE_MM, lipo_tme.NPTH_XY
-HIDE_REF = tuple(r for r in lipo_tme.HIDE_REF if r not in _GONE)
+HIDE_REF = tuple(r for r in lipo_tme.HIDE_REF if r not in _GONE) + \
+    ("D_KA", "C_LDO1", "C_MCU1", "C_MCU2", "U_LDO")
 PLACE = {r: v for r, v in lipo_tme.PLACE.items() if r not in _GONE}
 REF_AT = {r: v for r, v in lipo_tme.REF_AT.items() if r not in _GONE}
-# TODO(Task 5): module, D_KA, D_M1 positions
-PLACE |= {"U_MCU": (4.0, 47.0, 0), "D_KA": (26.0, 36.0, 0), "D_M1": (26.0, 40.0, 0)}
+# Module in the L072's old area, USB-C edge flush with the board bottom (the only free edge:
+# left has J_IN1, top J_BAL1 + the tap row, right J_KEY1/J_PWR1), D0..D2 column facing the
+# C_VIN column at x 33. D_KA/D_M1 on the module's power-pad side; its decoupling caps and the
+# AP7381 parts + test pads stack in the strip left of the module (courtyard-solved, task 5).
+PLACE |= {"U_MCU": (30.9, 28.89, 180),
+          "D_KA": (11.35, 42.0, 90), "D_M1": (11.4, 47.3, 270),
+          "C_MCU1": (9.0, 43.5, 90), "C_MCU2": (10.6, 32.25, 90),
+          "C_LDO2": (5.2, 39.5, 90), "C_LDO1": (8.2, 40.0, 0),
+          "TP_3V3": (8.2, 31.5, 0), "TP_GND": (11.0, 28.9, 0),
+          "C_VIN3": (33.7, 41.5, 0), "C_VIN4": (33.7, 46.2, 0)}
+REF_AT |= {"U_MCU": (24.0, 25.5, 0), "D_M1": (9.45, 47.3, 90), "C_LDO2": (1.6, 42.0, 90)}
 
 BLOCKS = copy.deepcopy(lipo_tme.BLOCKS)
 for _b in BLOCKS:

@@ -61,8 +61,16 @@ def children(text):
 
 
 def import_footprint(src):
-    """Text copy (pcbnew Remove() on ~2500 shapes crashes KiCad 10's Python): drop User.2 children."""
-    kept = [c for c in children(src.read_text()) if '(layer "User.2")' not in c]
+    """Text copy (pcbnew Remove() on ~2500 shapes crashes KiCad 10's Python): drop User.2 children.
+
+    F.SilkS graphics are dropped too: the outline rect + rounded-corner arcs run across the module's
+    own castellated pads (mask windows) and its edge crosses the board edge when flush-mounted; the
+    physical module hides that artwork anyway, so the footprint ships with no F.SilkS items.
+    """
+    kept = [c for c in children(src.read_text())
+            if '(layer "User.2")' not in c
+            and not (c.lstrip("(").split()[0] in
+                     ("fp_line", "fp_arc", "fp_circle", "fp_poly", "fp_text") and '(layer "F.SilkS")' in c)]
     body = "\n\t".join(kept)
     (KICAD / "local.pretty" / f"{FP}.kicad_mod").write_text(f'(footprint "{FP}"\n\t{body}\n)\n')
 
