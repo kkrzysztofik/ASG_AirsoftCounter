@@ -3336,7 +3336,7 @@
 				)
 			)
 		)
-		(property "Footprint" "local:XIAO_ESP32S3_SMD"
+		(property "Footprint" "local:XIAO_ESP32S3_SMD_THB"
 			(at 75.438 94.742 0)
 			(hide yes)
 			(show_name no)

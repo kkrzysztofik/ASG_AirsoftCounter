@@ -124,6 +124,13 @@ def outline(board):
     arcs = [((design.W - r, 0), (design.W - k, k), (design.W, r)),
             ((design.W, design.H - r), (design.W - k, design.H - k), (design.W - r, design.H)),
             ((r, design.H), (k, design.H - k), (0, design.H - r)), ((0, r), (k, k), (r, 0))]
+    # NOTCH_BL (x, y): the rectangle x 0..x, y..H is cut out of the bottom-left corner (pack_xiao:
+    # room for a carrier post of the enclosure tray). Its corners stay sharp.
+    if notch := getattr(design, "NOTCH_BL", None):
+        nx, ny = notch
+        segs[2], segs[3] = ((design.W - r, design.H), (nx, design.H)), ((0, ny), (0, r))
+        segs += [((nx, design.H), (nx, ny)), ((nx, ny), (0, ny))]
+        del arcs[2]
     for a, b in segs:
         s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_SEGMENT)
         s.SetStart(mm(*a))
@@ -134,6 +141,14 @@ def outline(board):
     for a, m, b in arcs:
         s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_ARC)
         s.SetArcGeometry(mm(*a), mm(*m), mm(*b))
+        s.SetLayer(pcbnew.Edge_Cuts)
+        s.SetWidth(pcbnew.FromMM(0.05))
+        board.Add(s)
+    # CUTOUTS (x, y, d): round holes through the board, milled with the outline (not drilled)
+    for x, y, d in getattr(design, "CUTOUTS", ()):
+        s = pcbnew.PCB_SHAPE(board, pcbnew.SHAPE_T_CIRCLE)
+        s.SetCenter(mm(x, y))
+        s.SetEnd(mm(x + d / 2, y))
         s.SetLayer(pcbnew.Edge_Cuts)
         s.SetWidth(pcbnew.FromMM(0.05))
         board.Add(s)
@@ -245,6 +260,11 @@ def build():
                     raise SystemExit(f"{ref}.{p.GetNumber()}: through-hole pad inside {under}'s courtyard")
 
     outline(board)
+    # the autorouter keeps only its own small gap to an inner Edge.Cuts circle, not the 0.5 mm edge
+    # clearance DRC wants: fence each cutout off with a square no-copper area
+    for i, (x, y, d) in enumerate(getattr(design, "CUTOUTS", ())):
+        h = d / 2 + 0.75
+        rule_area(board, f"CUTOUT{i + 1}", (x - h, y - h, x + h, y + h), no_copper=True)
     if design.HELTEC_PADS:  # carrier only: keep the Heltec socket/antenna area clear
         # Nothing between the Heltec socket rows (its battery socket hangs below); tracks/vias fine
         j3 = fps["J3"].GetCourtyard(pcbnew.F_CrtYd).BBox()

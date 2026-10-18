@@ -19,7 +19,8 @@ import pack_tme
 NAME = "pack_xiao"
 TITLE = "AirsoftCounter v2 pack (XIAO hand-build)"
 
-XIAO = ("XIAO ESP32-S3", "local:XIAO_ESP32S3", "local:XIAO_ESP32S3_SMD")
+# _THB: bottom pads 16/20 (the only ones used) are plated holes, soldered with an iron from the back
+XIAO = ("XIAO ESP32-S3", "local:XIAO_ESP32S3", "local:XIAO_ESP32S3_SMD_THB")
 B5819W = ("B5819W", *pack.B5819W)
 _GONE = {"C_MCU3", "C_VDDA", "R_BOOT", "C_NRST", "TP_NRST", "TP_SWDIO", "TP_SWCLK", "SW_BOOT",
          "SW_RST", "J_UART1", "R_ALERT", "R_INT_CHG", "R_LED_MCU", "LED_MCU"}
@@ -81,6 +82,12 @@ def assembled(variant="standard"):
 # hugging pad 12); USB-C end flush on the new top edge, 28 mm clear floor left in the Pawbol box.
 # The M3 pattern and every connector stay exactly at pack_tme's spots.
 W, H, CORNER = pack_tme.W, 112.0, pack_tme.CORNER
+# The enclosure tray's two y0-side carrier posts (mech/params.carrier_post_xy, Ø8) stand in the old
+# board's margin, at board y 96: the strip clears them by a notch (left post, x -0.5) and a round
+# cutout (inner post, x 82.5). check_posts() holds them to mech/params with POST_CLEAR to spare.
+POST_CLEAR = 1.0
+NOTCH_BL = (5.0, 90.0)
+CUTOUTS = [(82.5, 96.0, 10.0)]
 NETCLASS_POWER, NETCLASS_EXPECT = pack_tme.NETCLASS_POWER, pack_tme.NETCLASS_EXPECT
 DEFAULT_CLEARANCE, DRC_RULES = pack_tme.DEFAULT_CLEARANCE, pack_tme.DRC_RULES
 RAILS, PORT_LIB, BOTTOM = pack_tme.RAILS, pack_tme.PORT_LIB, pack_tme.BOTTOM
@@ -96,10 +103,11 @@ REF_AT = {r: v for r, v in pack_tme.REF_AT.items() if r not in _GONE}
 # Module rot 180, USB end flush at the new top edge y 112 (the lipo trick); power column
 # (pads 8-14) lands at x 62.7..65.5, NTC/I2C column at 28.7..31.3. D_M1/D_M2 east in the free
 # corridor, C_MCU1/2 west at pad 12, TPs just south of the module under its bottom pads.
-PLACE |= {"U_MCU": (78.0, 90.85, 180), "D_M1": (81.5, 109.0, 0), "D_M2": (81.5, 105.2, 0),
-          "C_MCU1": (57.5, 103.9, 90), "C_MCU2": (57.5, 99.5, 90),
+# Module 2 mm west of the inner post's cutout (edge pads 1 mm clear of it).
+PLACE |= {"U_MCU": (76.0, 90.85, 180), "D_M1": (81.5, 109.0, 0), "D_M2": (81.5, 105.2, 0),
+          "C_MCU1": (55.5, 103.9, 90), "C_MCU2": (55.5, 99.5, 90),
           "TP_SDA": (66.5, 88.6, 0), "TP_SCL": (69.1, 88.6, 0)}
-REF_AT |= {"U_MCU": (82.0, 96.5, 90), "C_MCU2": (54.0, 99.5, 0)}
+REF_AT |= {"U_MCU": (88.5, 106.0, 90), "C_MCU2": (52.0, 99.5, 0)}
 
 BLOCKS = copy.deepcopy(pack_tme.BLOCKS)
 for _b in BLOCKS:
@@ -142,6 +150,26 @@ def check_mcu():
     assert PARTS["U_MCU"] == XIAO and PARTS["U_CHG"][2] == pack_tme.QFN24_HAND
 
 
+def check_posts():
+    """Every tray carrier post that reaches the board passes it through NOTCH_BL or a CUTOUT."""
+    import math
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "mech"))
+    import params as P  # noqa: PLC0415  (mech's plain-number parameters, no CAD imports)
+
+    r = P.POST_R + POST_CLEAR
+    for px, py in P.carrier_post_xy():
+        # tray -> board: pack_xiao shares the pack's frame (same M3 holes), it only runs further in y
+        x, y = px - P.PACK_ORIGIN[0], P.PACK_ORIGIN[1] + P.PACK[1] - py
+        if math.hypot(x - min(max(x, 0), W), y - min(max(y, 0), H)) >= r:
+            continue  # clear of the board
+        in_notch = x + r <= NOTCH_BL[0] and y - r >= NOTCH_BL[1]
+        in_cut = any(math.hypot(x - cx, y - cy) + r <= d / 2 for cx, cy, d in CUTOUTS)
+        assert in_notch or in_cut, f"carrier post at board ({x:.1f}, {y:.1f}) hits the board"
+
+
 def check():
     import sys
 
@@ -149,6 +177,7 @@ def check():
     board.check_structure(this)
     pack_tme.check_branches(this)
     check_mcu()
+    check_posts()
     pack.check_sheets(this)
     print(f"pack_xiao ok: {len(PARTS)} parts, {len(NETS)} nets")
 

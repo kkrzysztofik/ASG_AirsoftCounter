@@ -98,10 +98,13 @@ export MECH_PARTS = $(PARTS)
 models:
 	/usr/bin/python3 tools/fetch_3d_models.py
 
+# The second gate fits pack_xiao (96x112, notch + cutout around the tray's carrier posts); it
+# runs first so out/assembly.step is left with the default pack.
 .PHONY: mech
 mech:
 	/usr/bin/python3 mech/check.py
 	uv run mech/insert.py --part $(PARTS) --check
+	uv run mech/insert.py --part assembly --check --boards pack_xiao,carrier
 	uv run mech/insert.py --part assembly --check
 
 # Quote package for JLCPCB 3D printing: one model per part in a zip, plus the quote sheet.
