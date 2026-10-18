@@ -65,7 +65,7 @@ is reusable. Per board, against `pack_tme`/`lipo_tme` (`fab/*_xiao/tme_bom.csv`)
 |---|---|---|
 | STM32L072KZT6 | −~€4.60 | V: TME schema top (the `_tme` BOM line) |
 | L072 support parts (boot/NRST/decoupling, SWD + BOOT test pads, LED + R, `J_UART1` on pack) | −~€0.50 | ~ |
-| 1N5819HW-7-F, 2x (run-feed diodes into the module's 5 V pad) | +~€0.20 | V: already a TME line, pack has 7 total |
+| 1N5819HW-7-F, 2x (pack: run-feed diodes `D_M1`/`D_M2` into the module's 5 V pad; lipo: `D_M1` run feed + `D_KA` keep-alive into the 3V3 pad) | +~€0.20 | V: already a TME line, pack has 7 total |
 | Seeed XIAO ESP32-S3 | +~€4.4 | ~ Botland, **confirm SKU and price at ordering** (`OFFBOARD_PARTS.md`) |
 
 ## Open items

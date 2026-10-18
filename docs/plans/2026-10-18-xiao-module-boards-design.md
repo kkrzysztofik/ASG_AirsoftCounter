@@ -172,6 +172,11 @@ NVS — a firmware step, recorded here because the LVC threshold depends on it.
   USB-C slot; exact positions with the pack insert redesign (`mech/`, out of scope). Two exposed
   ports are accepted (charge vs program/console). The v2 one-port option (board `VBUS` fed from
   the module's 5V pad) is **dropped**: it would push the charger's ~2 A through the module.
+  **Amended 2026-10-18 by implementation (ledger a1c7767):** `pack_xiao` grew to 96 × 112 mm and
+  the module sits in the new top strip with its USB-C flush on the new top edge — the two slots
+  are on **adjacent** edges (~28 mm corner-to-corner), not alongside on one wall. `mech/` must
+  cut the module slot in the wall above the board's top edge, not next to the board USB-C.
+  `lipo_xiao` does keep both on the one (top) edge as originally written.
 - The module's BOOT (GPIO0) and RESET buttons have no bottom pads: keep them reachable by a
   paperclip before gluing inserts (bricking via bad flash is the only case they are needed; first
   flash is buttonless).
