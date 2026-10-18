@@ -35,6 +35,14 @@ def check_structure(m):
         assert refs <= m.PARTS.keys(), f"module {mod}: unknown parts {refs - m.PARTS.keys()}"
     for v, mods in m.VARIANTS.items():
         assert mods <= m.MODULES.keys(), f"variant {v}: unknown modules {mods - m.MODULES.keys()}"
+    # Off-board parts are schematic documentation only: they may hang off a connector pin, nothing else.
+    on_net = set(pins)
+    for ref, (_v, _sym, conn, pin_map, _cable, _at) in getattr(m, "OFFBOARD", {}).items():
+        assert ref.startswith("X_") and ref not in m.PARTS, f"OFFBOARD {ref}: needs an X_ ref not in PARTS"
+        assert conn in m.PARTS and m.PARTS[conn][1].startswith("Connector"), \
+            f"OFFBOARD {ref}: {conn} is not a connector part"
+        stray = sorted(p for p in pin_map.values() if f"{conn}.{p}" not in on_net)
+        assert not stray, f"OFFBOARD {ref}: {conn} pins {stray} are not on a net"
     if hasattr(m, "TME"):
         # Hand-built board: nothing machine-placed, every bought part has a TME symbol.
         assert not m.LCSC and not m.assembled(), "TME board must have no LCSC parts / placements"
@@ -78,4 +86,22 @@ if __name__ == "__main__":
         assert "no part uses" in str(e), e
     else:
         raise SystemExit("check_structure accepted a stale TME entry")
+
+    def off_ns(offboard):
+        parts = {"J1": ("CONN", "Connector_Generic:Conn_01x02", "fp"), "R1": ("1k", "Device:R", "fp")}
+        return types.SimpleNamespace(PARTS=parts, NETS={"A": ["J1.1", "R1.1"], "B": ["J1.2", "R1.2"]},
+                                     DNP=set(), LCSC={}, MODULES={}, VARIANTS={"x": set()},
+                                     assembled=lambda v="x": [], OFFBOARD=offboard)
+
+    def off(conn, pins):
+        return {"X_A": ("thing", "Device:Speaker", conn, pins, "cable", (0, 0, 0, None))}
+
+    check_structure(off_ns(off("J1", {"1": "1", "2": "2"})))   # off-board part on a connector passes
+    for bad, why in ((off("R1", {"1": "1"}), "not a connector"), (off("J1", {"1": "3"}), "not on a net")):
+        try:
+            check_structure(off_ns(bad))
+        except AssertionError as e:
+            assert "OFFBOARD" in str(e), e
+        else:
+            raise SystemExit(f"check_structure accepted an OFFBOARD part {why}")
     print("board.py self-check ok")

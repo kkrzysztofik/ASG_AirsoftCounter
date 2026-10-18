@@ -192,6 +192,67 @@ PLACE |= {
 }
 
 
+# --- Hierarchical schematic (docs/plans/2026-10-18-hierarchical-schematics-design.md) ---
+# Function sheets: name -> (title, BLOCKS indexes). A block's parts land on that sheet, except the ROOT parts
+# (connectors, Heltec headers, holes), which gen_sch draws on the root sheet instead.
+SHEETS = {
+    "power": ("Power: pack rail bulk, +5V reservoir", [0]),
+    "i2c": ("I2C level shifter, NFC bulk", [3]),
+    "expander": ("GPIO expander (0x20), button inputs", [4]),
+    "drivers": ("Low-side drivers: button LEDs, buzzer", [5]),
+    "audio": ("I2S DAC and speaker amp", [1]),
+    "debug": ("Debug: UART, I2C, test pads", [6]),
+}
+# Root (system) sheet: {ref: (x, y, rot, mirror)} in root coordinates, sheet boxes {name: (x, y, w, h)},
+# and the outline drawn round J2/J3 so they read as one module.
+ROOT = {
+    "parts": {
+        "J2": (190.5, 76.2, 0, None), "J3": (241.3, 76.2, 0, None),
+        "J_PWR1": (63.5, 50.8, 0, "y"), "J_HBAT1": (63.5, 88.9, 0, "y"),
+        "J_LCD1": (342.9, 50.8, 0, None), "J_NFC1": (342.9, 76.2, 0, None),
+        "J_BTN_R1": (342.9, 101.6, 0, None), "J_BTN_B1": (342.9, 127.0, 0, None),
+        "J_BUZ1": (342.9, 152.4, 0, None), "J_SPK1": (342.9, 177.8, 0, None),
+        "H1": (25.4, 254.0, 0, None), "H2": (35.56, 254.0, 0, None),
+        "H3": (45.72, 254.0, 0, None), "H4": (55.88, 254.0, 0, None),
+    },
+    "sheets": {
+        "power": (88.9, 38.1, 38.1, 25.4), "i2c": (279.4, 38.1, 38.1, 38.1),
+        "expander": (279.4, 91.44, 38.1, 50.8), "drivers": (279.4, 152.4, 38.1, 38.1),
+        "audio": (279.4, 203.2, 38.1, 38.1), "debug": (88.9, 177.8, 38.1, 38.1),
+    },
+    "outline": ("Heltec WiFi LoRa 32 V4 (plugs into J2/J3)", (165.1, 30.48, 101.6, 104.14)),
+}
+# Off-board parts, drawn on the root beyond their connector, never on the board or in a BOM:
+# ref -> (value, symbol, connector, {own pin: connector pin}, cable note, (x, y, rot, mirror)).
+_PINS4 = {"1": "1", "2": "2", "3": "3", "4": "4"}
+OFFBOARD = {
+    "X_PACK": ("Pack board (P5)", "local:Pack_Link_6", "J_PWR1",
+               {str(i): str(i) for i in range(1, 7)}, "XH-6", (25.4, 50.8, 0, None)),
+    "X_HBAT": ("Heltec V4 battery input (SH1.25)", "Connector_Generic:Conn_01x02", "J_HBAT1",
+               {"1": "1", "2": "2"}, "XH-2 to SH1.25", (25.4, 88.9, 0, None)),
+    "X_LCD": ("LCD 1602 + PCF8574", "local:Module_I2C_4", "J_LCD1", _PINS4, "XH-4", (381.0, 50.8, 0, "y")),
+    "X_NFC": ("PN532 (I2C)", "local:Module_I2C_4", "J_NFC1", _PINS4, "XH-4", (381.0, 76.2, 0, "y")),
+    "X_BTN_R": ("ONPOW LAS1-AGQ-11E/R/6V", "local:Button_LED_4", "J_BTN_R1", _PINS4, "XH-4",
+                (381.0, 101.6, 0, "y")),
+    "X_BTN_B": ("ONPOW LAS1-AGQ-11E/B/6V", "local:Button_LED_4", "J_BTN_B1", _PINS4, "XH-4",
+                (381.0, 127.0, 0, "y")),
+    "X_BUZ": ("BZ-38 buzzer", "Device:Buzzer", "J_BUZ1", {"1": "1", "2": "2"}, "XH-2", (381.0, 152.4, 0, None)),
+    "X_SPK": ("VISATON K 50, 8 ohm", "Device:Speaker", "J_SPK1", {"1": "1", "2": "2"},
+              "XH-2, BTL: neither side is GND", (381.0, 177.8, 0, None)),
+}
+
+
+def check_sheets():
+    """Every board part is drawn exactly once: on the root, or in one block of one sheet."""
+    in_sheets = [r for _t, idx in SHEETS.values() for i in idx for r in BLOCKS[i]["parts"] if r not in ROOT["parts"]]
+    drawn = in_sheets + list(ROOT["parts"])
+    twice = sorted({r for r in drawn if drawn.count(r) > 1})
+    assert not twice, f"drawn twice: {twice}"
+    assert set(drawn) == set(PARTS), f"not drawn: {sorted(set(PARTS) - set(drawn))}, " \
+                                     f"unknown: {sorted(set(drawn) - set(PARTS))}"
+    assert ROOT["sheets"].keys() == SHEETS.keys(), "ROOT['sheets'] must place every sheet"
+
+
 def check_header(m):
     """The carrier's Heltec header checks (from carrier.check), reading module m."""
     pins = [p for members in m.NETS.values() for p in members]
@@ -231,6 +292,7 @@ def check():
     board.check_structure(this)
     check_header(this)
     check_audio()
+    check_sheets()
     print(f"carrier_tme ok: {len(PARTS)} parts, {len(NETS)} nets")
 
 
