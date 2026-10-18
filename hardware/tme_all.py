@@ -11,6 +11,8 @@ board, so name one build per board; the default is the TME hand-build set. Budge
 (tme_bom_budget.csv) and the off-board lists (fab/offboard/) are left out: upload those separately.
 
 /usr/bin/python3 tme_all.py [board ...]   (after `make boards`; default carrier_tme pack_tme lipo_tme)
+Another set writes fab/tme_bom_all-<board>-<board>-....csv, e.g. the XIAO build:
+  /usr/bin/python3 tme_all.py carrier_tme pack_xiao lipo_xiao
 """
 import math
 import sys
@@ -55,8 +57,9 @@ def main():
         raise SystemExit(f"tme_all: missing {', '.join(missing)} (run `make boards` first)")
     merged = merge([p.read_text() for p in boms], boms)
     merged = "".join(f"{s};{order(s, int(n))}\n" for s, n in (l.rsplit(";", 1) for l in merged.splitlines()))
-    OUT.write_text(merged)
-    print(f"tme_all ok: {' + '.join(boards)} -> {OUT} ({len(merged.splitlines())} TME lines)")
+    out = OUT if boards == DEFAULT else OUT.with_name(f"{OUT.stem}-{'-'.join(boards)}.csv")
+    out.write_text(merged)
+    print(f"tme_all ok: {' + '.join(boards)} -> {out} ({len(merged.splitlines())} TME lines)")
 
 
 if __name__ == "__main__":
