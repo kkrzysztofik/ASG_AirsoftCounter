@@ -38,8 +38,10 @@ def unconnected_nets():
             for pin in gen_sch.kids(body, "pin"):
                 n, name = (gen_sch.unq(gen_sch.child(pin, k)[1]) for k in ("number", "name"))
                 if f"{ref}.{n}" not in used:
-                    # KiCad escapes "/" in a pin name as "{slash}" when it names an unconnected net
-                    out[f"{ref}.{n}"] = f"unconnected-({ref}-{name.replace('/', '{slash}')}-Pad{n})"
+                    # KiCad escapes "/" in a pin name as "{slash}" and a space as "_" when it names an
+                    # unconnected net
+                    esc = name.replace("/", "{slash}").replace(" ", "_")
+                    out[f"{ref}.{n}"] = f"unconnected-({ref}-{esc}-Pad{n})"
     return out
 
 
@@ -85,7 +87,12 @@ def footprint(board, ref, nets):
         fp.Reference().SetPosition(mm(rx, ry))
         fp.Reference().SetTextAngleDegrees(rrot)
     # links the footprint to its schematic symbol (gen_sch's deterministic uuid)
-    fp.SetPath(pcbnew.KIID_PATH("/" + gen_sch.unq(gen_sch.uid(f"sym/{ref}"))))
+    # KiCad links a footprint to its symbol by sheet path + symbol uuid ("root" parts: symbol uuid only)
+    sheet = gen_sch.sheet_of(ref)
+    path = "/" + gen_sch.unq(gen_sch.uid(f"sym/{ref}"))
+    if sheet != "root":
+        path = "/" + gen_sch.sheet_uuid(sheet) + path
+    fp.SetPath(pcbnew.KIID_PATH(path))
     fp.SetSheetname("/")
     fp.SetSheetfile(f"{design.NAME}.kicad_sch")
     if ref in design.DNP:
