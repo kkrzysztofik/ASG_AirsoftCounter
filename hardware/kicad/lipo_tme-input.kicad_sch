@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "6c986b4f-94f6-573f-b088-c5a2c5ca5709")
-	(paper "A4")
+	(paper "A5")
 	(title_block
 		(title "AirsoftCounter v2 LiPo (hand-build): LiPo input: fuse, reverse FET, TVS")
 	)
