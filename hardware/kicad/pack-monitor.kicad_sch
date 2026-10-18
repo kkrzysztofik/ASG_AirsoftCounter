@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "9efc66fc-09c3-5d4b-a68e-085797eef557")
-	(paper "A3")
+	(paper "A4" portrait)
 	(title_block
 		(title "AirsoftCounter v2 pack: Cell monitoring (PAC1934), diode-OR, 3V3 LDO")
 	)

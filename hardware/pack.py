@@ -504,8 +504,11 @@ ROOT = {
     # Wide channels: every root signal needs a straight run with free rows beside it for its global
     # label, so the gap between boxes is sized from ~70 sheet pins, not from the box content.
     "sheets": {
-        "charger": (25.4, 88.9, 60.96, 38.1), "mcu": (118.11, 88.9, 60.96, 48.26),
-        "monitor": (210.82, 88.9, 60.96, 38.1),
+        # The MCU box sits between the cell2 and cell3 columns so its 26 sheet pins split evenly
+        # between its two edges (cell1/cell2 to the left, cell3/cell4 to the right) and no run has to
+        # wrap around a box; charger and monitor stay in their own wide gaps.
+        "charger": (25.4, 88.9, 60.96, 38.1), "mcu": (163.83, 88.9, 60.96, 48.26),
+        "monitor": (303.53, 88.9, 60.96, 38.1),
         "cell1": (25.4, 175.26, 60.96, 38.1), "cell2": (118.11, 175.26, 60.96, 38.1),
         "cell3": (210.82, 175.26, 60.96, 38.1), "cell4": (303.53, 175.26, 60.96, 38.1),
     },

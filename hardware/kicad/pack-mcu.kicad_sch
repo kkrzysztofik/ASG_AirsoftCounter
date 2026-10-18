@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "fddc42c9-51bd-581a-b266-40a831c34a21")
-	(paper "A3")
+	(paper "A4" portrait)
 	(title_block
 		(title "AirsoftCounter v2 pack: STM32C071 MCU, reset/boot, status LEDs")
 	)

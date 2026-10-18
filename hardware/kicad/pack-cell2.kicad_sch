@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "fed07544-13d6-5289-92a1-c6645cc002cf")
-	(paper "A3")
+	(paper "A4" portrait)
 	(title_block
 		(title "AirsoftCounter v2 pack: Cell 2 branch (18650 holder)")
 	)

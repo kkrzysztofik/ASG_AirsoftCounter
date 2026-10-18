@@ -184,33 +184,38 @@ BLOCKS = _copy_blocks()
 BLOCKS[1] = {
     "title": "Diode-OR and 3V3 LDO", "at": (228.6, 12.7), "size": (114.3, 139.7),
     "parts": {
-        "D_OR5": (25.4, 25.4, 0, None),
-        "U_LDO": (50.8, 25.4, 0, None),
-        "C_LDO1": (76.2, 25.4, 0, None),
-        "C_LDO2": (25.4, 50.8, 0, None),
-        "R_SCL_INT": (50.8, 50.8, 0, None),
-        "R_SDA_INT": (76.2, 50.8, 0, None),
-        "R_ALERT": (25.4, 76.2, 0, None),
+        "D_OR5": (25.4, 20.32, 0, None),
+        # The four cell legs of the diode-OR bank are drawn here with the SYS leg: VMCU_IN has one
+        # capacitor in the whole design (C_LDO1), so every part on that net is drawn in one file.
+        "D_OR1": (25.4, 40.64, 0, None), "D_OR2": (25.4, 58.42, 0, None),
+        "D_OR3": (25.4, 76.2, 0, None), "D_OR4": (25.4, 93.98, 0, None),
+        "U_LDO": (76.2, 20.32, 0, None),
+        "C_LDO1": (76.2, 40.64, 0, None),
+        "C_LDO2": (25.4, 116.84, 0, None),
+        "R_SCL_INT": (60.96, 116.84, 0, None), "R_SDA_INT": (76.2, 116.84, 0, None),
+        "R_ALERT": (91.44, 116.84, 0, None),
     },
-    "tags": _tags(["SCL_INT", "SDA_INT", "MON_ALERT", "SYS"], 12.7, 101.6, per_row=4),
+    "tags": _tags(["SCL_INT", "SDA_INT", "MON_ALERT", "SYS",
+                   "CELL1_F", "CELL2_F", "CELL3_F", "CELL4_F"], 12.7, 135.89, per_row=5),
+    "flags": [("VMCU_IN", 12.7, 165.1)],
 }
-# The L072 adds VDD (17) and VDDA (5) decoupling.
-BLOCKS[2]["title"] = "STM32L072 MCU, reset/boot, test pads"
+# The L072 adds VDD (17) and VDDA (5) decoupling, and its symbol is 25.4 mm wide (long pin names),
+# so the right-hand column moves out; the bring-up pads are root parts now (see pack.py).
+BLOCKS[2]["title"] = "STM32L072 MCU, reset/boot, status LEDs"
 BLOCKS[2]["size"] = (165.1, 190.5)
 BLOCKS[2]["parts"].update({
     "U_MCU": (58.42, 55.88, 0, None),     # the L072 is 25.4 mm wide; move it clear of the left column
     "C_MCU3": (30.48, 22.86, 0, None),
     "C_VDDA": (43.18, 22.86, 0, None),  # one step up: at 25.4 its pin and value text met the U_MCU reference
-    "TP_SWDIO": (95.25, 60.96, 0, None),
-    "R_LED_MCU": (95.25, 76.2, 0, None),
-    "LED_MCU": (105.41, 76.2, 90, None),
-    "TP_GND": (95.25, 91.44, 0, None),
+    "R_INT_CHG": (95.25, 25.4, 0, None),
+    "R_LED_MCU": (95.25, 81.28, 0, None), "LED_MCU": (115.57, 81.28, 90, None),
+    "R_STAT": (95.25, 114.3, 0, None), "LED_STAT": (115.57, 114.3, 90, None),
 })
 BLOCKS[2]["tags"].pop("MON_PWRDN", None)
 # The L072's three +3V3 pins are adjacent on the top edge (2.54 mm apart), so they cannot each
 # take a power port: wire the rails and name them with tags, as the carrier amp block does.
-BLOCKS[2]["tags"]["+3V3"] = [(12.7, 186.69, "R")]
-BLOCKS[2]["tags"]["GND"] = [(33.02, 186.69, "R")]
+BLOCKS[2]["tags"]["+3V3"] = [(12.7, 210.82, "R")]
+BLOCKS[2]["tags"]["GND"] = [(33.02, 210.82, "R")]
 BLOCKS[2]["wired"] = {"+3V3", "GND"}
 # The synchronous MCP1640 needs no catch diode.
 del BLOCKS[3]["parts"]["D1"]
@@ -230,6 +235,27 @@ for _i in range(1, 5):
                    | _tags(["SDA_INT", "SCL_INT", "MON_ALERT"], 12.7, 165.1, per_row=3)
                    | {f"SNS_F{_i}": [(34.29, 68.58, "L")], f"SNS_S{_i}": [(40.64, 57.15, "L")],
                       f"NTC{_i}": [(83.82, 144.78, "R")]})
+
+
+# --- Hierarchical schematic: pack's hierarchy data, edited for this board -------------------------
+# Same sheet set, root layout and off-board parts as pack (docs/plans/2026-10-18-hierarchical-
+# schematics-design.md); only the titles differ - this board's monitor sheet is the diode-OR and LDO
+# on their own, and each cell sheet carries an INA226 - and D1 does not exist here.
+SHEETS = dict(pack.SHEETS)
+SHEETS |= {"monitor": ("Diode-OR and 3V3 LDO", [1]),
+           "mcu": ("STM32L072 MCU, reset/boot, status LEDs", [2])}
+for _i in range(1, 5):
+    SHEETS[f"cell{_i}"] = (f"Cell {_i} branch + INA226", [3 + _i])
+ROOT = {**pack.ROOT, "parts": {r: v for r, v in pack.ROOT["parts"].items() if r in PARTS},
+        "sheets": dict(pack.ROOT["sheets"]), "flags": list(pack.ROOT["flags"])}
+OFFBOARD = dict(pack.OFFBOARD)
+
+
+def check_sheets():
+    """pack's part/sheet consistency check, against this board's own SHEETS/BLOCKS/ROOT/PARTS."""
+    import sys
+
+    pack.check_sheets(sys.modules[__name__])
 
 
 def check_branches():
@@ -277,6 +303,7 @@ def check():
     board.check_structure(this)
     check_branches()
     check_mcu()
+    check_sheets()
     print(f"pack_tme ok: {len(PARTS)} parts, {len(NETS)} nets")
 
 
