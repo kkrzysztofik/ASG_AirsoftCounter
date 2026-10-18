@@ -231,15 +231,18 @@ def wire(a, b, key):
             ["stroke", ["width", "0"], ["type", "default"]], ["uuid", uid(key)]]
 
 
-def instances(root, ref):
-    return ["instances", ["project", q(design.NAME), ["path", q(f"/{root}"), ["reference", q(ref)], ["unit", "1"]]]]
+def instances(sh, ref):
+    path = "/" + "/".join([sh.root, *sh.path])  # root sheet, then the uuids of the sheets above the symbol
+    return ["instances", ["project", q(design.NAME), ["path", q(path), ["reference", q(ref)], ["unit", "1"]]]]
 
 
 class Sheet:
     """Placement state: obstacles, pins, wires, and the items to emit."""
 
-    def __init__(self):
+    def __init__(self, path=()):
         self.root = str(uuid.uuid5(NS, "root"))
+        self.path = path  # uuids of the sheet symbols from the root down to this sheet (() = the root)
+        self.hier = []  # (net, cell, dir) of each hierarchical label: the sheet box pins on the root
         self.pins: dict = {}  # "REF.pin" -> (cell, stub dir), filled by place_part
         self.hard = {}  # cell -> owner: bodies, pin lines, texts, ports, labels (no wire may enter)
         self.term = {}  # cell -> (net, stub dir): pin ends and label/port anchors
@@ -358,7 +361,7 @@ def place_part(sh, ref, x, y, rot, mirror, fields):
                        ["on_board", "yes"], ["dnp", "yes" if dnp else "no"],
                        ["uuid", uid(f"sym/{ref}")], *props,
                        *[["pin", q(n), ["uuid", uid(f"pin/{ref}/{n}")]] for n in pins_of(sym)],
-                       instances(sh.root, ref)])
+                       instances(sh, ref)])
     return {f"{ref}.{n}": v for n, v in pins.items()}
 
 
@@ -396,7 +399,7 @@ def add_power(sh, lib_id, value, c, d, ref):
     sh.lib_ids.add(lib_id)
     sh.symbols.append(["symbol", ["lib_id", q(lib_id)], at(x, y, rot), ["unit", "1"], ["exclude_from_sim", "no"],
                        ["in_bom", "no"], ["on_board", "no"], ["dnp", "no"], ["uuid", uid(f"sym/{ref}")], *props,
-                       ["pin", q("1"), ["uuid", uid(f"pin/{ref}/1")]], instances(sh.root, ref)])
+                       ["pin", q("1"), ["uuid", uid(f"pin/{ref}/1")]], instances(sh, ref)])
 
 
 def port(sh, net, c, d):
@@ -487,26 +490,32 @@ def glabel_cells(net, c, d, half=1.0):
                      (x - half, min(y, ey), x + half, max(y, ey)), 0.2) - {c}
 
 
-def glabel(sh, net, c, d):
+def glabel(sh, net, c, d, kind="global"):
+    """Net label at cell c pointing d: global (names the net board-wide) or hierarchical (a sheet pin)."""
     angle = {"R": 0, "U": 90, "L": 180, "D": 270}[d]
     sh.mark(glabel_cells(net, c, d), f"label {net}")
     sh.mark(glabel_cells(net, c, d, 2.3), f"label {net}", check=False)  # keep wires off its outline
-    sh.items.append(["global_label", q(net), ["shape", "passive"], at(c[0] * STEP, c[1] * STEP, angle),
-                     ["fields_autoplaced", "yes"], font(["justify", "left" if d in "RU" else "right"]),
-                     ["uuid", uid(f"glabel/{net}/{c[0]}/{c[1]}")]])
+    head, key = ("global_label", "glabel") if kind == "global" else ("hierarchical_label", "hlabel")
+    sh.items.append([head, q(net), ["shape", "passive"], at(c[0] * STEP, c[1] * STEP, angle),
+                     *([["fields_autoplaced", "yes"]] if kind == "global" else []),
+                     font(["justify", "left" if d in "RU" else "right"]),
+                     ["uuid", uid(f"{key}/{'/'.join(sh.path)}/{net}/{c[0]}/{c[1]}" if sh.path else
+                                  f"{key}/{net}/{c[0]}/{c[1]}")]])
+    if kind == "hier":
+        sh.hier.append((net, c, d))
 
 
-def label_on_pin(sh, net, c, s, bound):
+def label_on_pin(sh, net, c, s, bound, kind="global"):
     d = DIRS_OF[s]
     for n in (2, 4, 6):
         e = add(c, s, n)
         if sh.free({add(c, s, k) for k in range(1, n + 1)} | glabel_cells(net, e, d), net, bound):
             sh.stub(net, c, e)
             sh.term[e] = (net, neg(s))
-            glabel(sh, net, e, d)
+            glabel(sh, net, e, d, kind)
             return e
     sh.clashes.append(f"no room for a {net} label at {c[0] * STEP:.2f},{c[1] * STEP:.2f}")
-    glabel(sh, net, c, d)
+    glabel(sh, net, c, d, kind)
     return c
 
 
@@ -674,6 +683,7 @@ def paper_for(w, h):
 
 
 def schematic():
+    """Flat mode: every block on one sheet."""
     sh = Sheet()
     placed = [r for b in design.BLOCKS for r in b["parts"]]
     missing = set(design.PARTS) - set(placed)
@@ -681,8 +691,22 @@ def schematic():
     if missing or dupes or set(placed) - set(design.PARTS):
         raise SystemExit(f"design.BLOCKS: missing {sorted(missing)}, twice {sorted(dupes)}, "
                          f"unknown {sorted(set(placed) - set(design.PARTS))}")
+    body, w, h = build_sheet(sh, design.BLOCKS, set())
+    head = [["lib_symbols", *[embedded(i) for i in sorted(sh.lib_ids)]]]
+    return ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")], ["generator_version", q("9.0")],
+            ["uuid", q(sh.root)], ["paper", q(paper_for(w, h))],
+            ["title_block", ["title", q(design.TITLE)]], *head, *body, *sh.items, *sh.symbols,
+            ["sheet_instances", ["path", q("/"), ["page", q("1")]]], ["embedded_fonts", "no"]], sh.root, sh.clashes
+
+
+def build_sheet(sh, blocks, exits):
+    """Place, port, label, route and name `blocks` on sheet `sh`; returns (wires and junctions, width, height).
+
+    Net members whose part is not in `blocks` belong to another sheet. A net in `exits` leaves this sheet:
+    each of its groups here gets a hierarchical label (flat mode passes no exits, so every block-crossing
+    net is joined by global labels, as before)."""
     block_of, bounds = {}, []
-    for i, b in enumerate(design.BLOCKS):
+    for i, b in enumerate(blocks):
         (bx, by), (bw, bh) = b["at"], b["size"]
         bounds.append((round(bx / STEP) + 1, round(by / STEP) + 1, round((bx + bw) / STEP) - 1,
                        round((by + bh) / STEP) - 1))
@@ -698,7 +722,7 @@ def schematic():
             sh.pins |= place_part(sh, ref, bx + dx, by + dy, rot, mirror, b.get("fields", {}))
             block_of[ref] = i
     nflags = 0
-    for _i, b in enumerate(design.BLOCKS):
+    for _i, b in enumerate(blocks):
         for net, dx, dy in b.get("flags", []):
             nflags += 1
             flag(sh, net, gk(b["at"][0] + dx, b["at"][1] + dy), nflags)
@@ -707,10 +731,11 @@ def schematic():
     groups = collections.defaultdict(lambda: collections.defaultdict(list))
     for net, members in design.NETS.items():
         for p in members:
-            groups[net][block_of[p.split(".")[0]]].append(p)
+            if p.split(".")[0] in block_of:
+                groups[net][block_of[p.split(".")[0]]].append(p)
     terms = collections.defaultdict(list)  # (net, block) -> [(cell, stub dir)]
     # explicit tags first (their boxes must be free before anything else claims the space)
-    for i, b in enumerate(design.BLOCKS):
+    for i, b in enumerate(blocks):
         for net, tags in b.get("tags", {}).items():
             if i not in groups[net]:
                 raise SystemExit(f"tag {net} in block {b['title']!r}, which has none of its pins")
@@ -723,41 +748,45 @@ def schematic():
                 if net in design.RAILS:
                     port(sh, net, c, d)
                 else:
-                    glabel(sh, net, c, d)
+                    glabel(sh, net, c, d, "hier" if net in exits else "global")
     for net in design.RAILS:
         for i, pins in sorted(groups[net].items()):
-            if net not in design.BLOCKS[i].get("wired", ()):
+            if net not in blocks[i].get("wired", ()):
                 rail_ports(sh, net, pins, bounds[i])
     # a lone pin of a multi-block net gets its label on a stub
+    def crossing(net, by_block):
+        return net not in design.RAILS and (len(by_block) > 1 or net in exits)
+
     for net, by_block in groups.items():
-        if net in design.RAILS or len(by_block) == 1:
+        if not crossing(net, by_block):
             continue
         for i, pins in sorted(by_block.items()):
             if not terms[(net, i)] and len(pins) == 1:
                 c, s = sh.pins[pins[0]]
-                terms[(net, i)].append((label_on_pin(sh, net, c, s, bounds[i]), s))
+                kind = "hier" if net in exits else "global"
+                terms[(net, i)].append((label_on_pin(sh, net, c, s, bounds[i], kind), s))
     for net, by_block in groups.items():
         for i in by_block:
-            if net not in design.RAILS and len(by_block) > 1 and not terms[(net, i)]:
-                raise SystemExit(f"{net} needs a tag in block {design.BLOCKS[i]['title']!r}")
+            if crossing(net, by_block) and not terms[(net, i)]:
+                raise SystemExit(f"{net} needs a tag in block {blocks[i]['title']!r}")
 
     def spread(net, i):
         cs = [sh.pins[p][0] for p in groups[net][i]]
         return max(c[0] for c in cs) - min(c[0] for c in cs) + max(c[1] for c in cs) - min(c[1] for c in cs)
 
     todo = [(net, i) for net, by_block in groups.items() for i in by_block
-            if net not in design.RAILS or net in design.BLOCKS[i].get("wired", ())]
+            if net not in design.RAILS or net in blocks[i].get("wired", ())]
     for net, i in sorted(todo, key=lambda t: (spread(*t), t[0], t[1])):
         ts = [sh.pins[p][0] for p in groups[net][i]] + [c for c, _ in terms[(net, i)]]
         route(sh, net, list(dict.fromkeys(ts)), bounds[i])
     # name one-block nets
     for net, by_block in groups.items():
-        if net not in design.RAILS and len(by_block) == 1 and not terms[(net, next(iter(by_block)))]:
+        if net not in design.RAILS and not crossing(net, by_block) and not terms[(net, next(iter(by_block)))]:
             deg = degree(sh.edges[net])
             stops = {c for c, (n, _) in sh.term.items() if n == net} | {c for c in deg if deg[c] > 2}
             name_label(sh, net, segments(sh.edges[net], stops))
     inside = set().union(*(box_cells((b["at"][0], b["at"][1], b["at"][0] + b["size"][0], b["at"][1] + b["size"][1]),
-                                     -0.1) for b in design.BLOCKS))
+                                     -0.1) for b in blocks))
     sh.clashes += [f"{o} outside its block at {c[0] * STEP:.2f},{c[1] * STEP:.2f}"
                    for c, o in sh.hard.items() if c not in inside]
 
@@ -771,13 +800,9 @@ def schematic():
             body.append(wire(a, b, f"wire/{net}/{k}"))
         body += [["junction", at(c[0] * STEP, c[1] * STEP)[:3], ["diameter", "0"], ["color", "0", "0", "0", "0"],
                   ["uuid", uid(f"junction/{net}/{c[0]}/{c[1]}")]] for c in dots]
-    w = max(b["at"][0] + b["size"][0] for b in design.BLOCKS)
-    h = max(b["at"][1] + b["size"][1] for b in design.BLOCKS)
-    head = [["lib_symbols", *[embedded(i) for i in sorted(sh.lib_ids)]]]
-    return ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")], ["generator_version", q("9.0")],
-            ["uuid", q(sh.root)], ["paper", q(paper_for(w, h))],
-            ["title_block", ["title", q(design.TITLE)]], *head, *body, *sh.items, *sh.symbols,
-            ["sheet_instances", ["path", q("/"), ["page", q("1")]]], ["embedded_fonts", "no"]], sh.root, sh.clashes
+    w = max(b["at"][0] + b["size"][0] for b in blocks)
+    h = max(b["at"][1] + b["size"][1] for b in blocks)
+    return body, w, h
 
 
 # KiCad 9 default ERC pin conflict matrix (0 ok, 1 warning, 2 error), rows/columns: input, output,
