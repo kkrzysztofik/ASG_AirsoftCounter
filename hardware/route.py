@@ -8,6 +8,7 @@ Run from anywhere: /usr/bin/python3 route.py
 """
 import re
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -22,8 +23,20 @@ TIMEOUT_S = 600
 
 
 def load():
-    gen_pcb.verify()  # rules + per-net classes resolve (i.e. <BOARD>.kicad_pro is beside the board)
-    return pcbnew.LoadBoard(str(gen_pcb.PCB))
+    """The board to work on, with rules + per-net classes checked (`<BOARD>.kicad_pro` is beside it).
+
+    One LoadBoard() per process: a second one hands back a stale proxy for the first board (see
+    gen_pcb.verify), which is why the DSN export, the SES import and the finish stage each run in their
+    own interpreter rather than reloading in one.
+    """
+    board = pcbnew.LoadBoard(str(gen_pcb.PCB))
+    gen_pcb.verify(board)
+    return board
+
+
+def reexec(*args):
+    """Run this script again in a fresh interpreter with `args` (stdout/stderr inherited)."""
+    subprocess.run([sys.executable, str(Path(__file__).resolve()), *args], check=True)
 
 
 def freeroute(board, tmp, margin_um):
@@ -79,18 +92,53 @@ def main():
         ses = freeroute(board, Path(tmp), 40) or freeroute(board, Path(tmp), 0)
         if not ses:
             raise SystemExit("freerouting left unrouted connections with and without the Power margin")
-        board = load()  # fresh copy: DSN export must not leave anything behind
-        pcbnew.KIID.SeedGenerator(2)  # deterministic uuids for imported tracks/vias and the new zone
-        if not pcbnew.ImportSpecctraSES(board, str(ses)):
-            raise SystemExit("SES import failed")
+        del board
+        # Import in its own interpreter: it needs a board loaded after the DSN export, and loading twice
+        # in one process returns a stale proxy (see load()).
+        reexec("--import", str(ses))
+    reexec("--finish")
 
-    # Freerouting leaves the odd sub-mm stub with a free end (DRC track_dangling); it carries nothing.
+
+def import_ses(path):
+    """Import a Specctra SES onto a freshly loaded board and save it. One LoadBoard for this process."""
+    board = load()
+    pcbnew.KIID.SeedGenerator(2)  # deterministic uuids for imported tracks/vias and the new zone
+    if not pcbnew.ImportSpecctraSES(board, path):
+        raise SystemExit("SES import failed")
+    if not pcbnew.SaveBoard(str(gen_pcb.PCB), board, True):  # True: leave <BOARD>.kicad_pro alone
+        raise SystemExit("save after SES import failed")
+
+
+def stub_free(board, tries=6):
+    """Drop the odd sub-mm stub Freerouting leaves with a free end (DRC track_dangling); it carries nothing.
+
+    Fetches the track list once per pass and the connectivity once per pass rather than calling
+    board.GetConnectivity() per track: walking the tracks while the connectivity is rebuilt made
+    board.GetTracks() intermittently hand back an untyped SwigPyObject (TypeError on pack_tme). Each pass
+    removes every stub it finds and re-checks, so a couple of passes converge; a pass that cannot read the
+    track list is retried within the budget, and running out of budget is a real error.
+    """
     board.BuildConnectivity()
-    while stubs := [t for t in board.GetTracks() if t.Type() == pcbnew.PCB_TRACE_T and not t.IsLocked()
-                    and board.GetConnectivity().TestTrackEndpointDangling(t, False)]:
+    for _ in range(tries):
+        try:
+            tracks, conn = board.GetTracks(), board.GetConnectivity()
+            stubs = [t for t in tracks if t.Type() == pcbnew.PCB_TRACE_T and not t.IsLocked()
+                     and conn.TestTrackEndpointDangling(t, False)]
+        except TypeError:
+            board.BuildConnectivity()
+            continue
+        if not stubs:
+            return
         for t in stubs:
             board.Remove(t)
         board.BuildConnectivity()
+    raise SystemExit("could not read the track list (SWIG type table broke after a connectivity rebuild)")
+
+
+def finish():
+    """Strip dangling stubs, add the F.Cu GND pour, fill zones, check, save. See main()."""
+    board = load()
+    stub_free(board)
 
     b_gnd = [z for z in board.Zones() if z.GetZoneName() == "GND"]
     if len(b_gnd) != 1:
@@ -109,9 +157,14 @@ def main():
         raise SystemExit(f"{unconnected} unconnected items after SES import + fill")
     if not pcbnew.SaveBoard(str(gen_pcb.PCB), board, True):  # True: leave <BOARD>.kicad_pro alone
         raise SystemExit("save failed")
-    gen_pcb.verify()
+    gen_pcb.verify(board)
     print(f"wrote {gen_pcb.PCB.name}: {len(board.GetTracks())} tracks/vias, 0 unconnected")
 
 
 if __name__ == "__main__":
-    main()
+    if "--import" in sys.argv:
+        import_ses(sys.argv[sys.argv.index("--import") + 1])
+    elif "--finish" in sys.argv:
+        finish()
+    else:
+        main()

@@ -269,9 +269,15 @@ def build():
     return board, len(set(net_of.values())) - len(design.NETS)
 
 
-def verify():
-    """Reload the saved board as KiCad would (with <BOARD>.kicad_pro) and check rules + classes."""
-    b = pcbnew.LoadBoard(str(PCB))
+def verify(board=None):
+    """Check rules + classes on `board`, or on a fresh load of the saved board when None.
+
+    Pass the board you already hold: pcbnew.LoadBoard() called twice in one interpreter can hand back a
+    stale proxy for the freed first board, and board.Tracks()/GetTracks() then read garbage (614 tracks
+    for a 1464-track board) or raise `TypeError: 'SwigPyObject' object is not iterable`. One load per
+    process, always.
+    """
+    b = pcbnew.LoadBoard(str(PCB)) if board is None else board
     ds = b.GetDesignSettings()
     got = [pcbnew.ToMM(v) for v in (ds.m_MinClearance, ds.m_TrackMinWidth, ds.m_ViasMinSize, ds.m_MinThroughDrill)]
     want = [getattr(design, "DRC_RULES", {}).get("min_clearance", 0.2), 0.15, 0.6, 0.3]
