@@ -88,6 +88,12 @@ PARTS = {
 for i in range(1, 5):
     PARTS[f"H{i}"] = ("M3", "Mechanical:MountingHole", MH)
 
+# Root-sheet cable connectors use 5.08 mm-pitch symbols (same pins, same footprints): the half row
+# between two cables holds each rail's power port, which does not fit at 2.54 mm pitch.
+for _r in ("J_IN1", "J_KEY1", "J_BAL1", "J_PWR1"):
+    _v, _sym, _fp = PARTS[_r]
+    PARTS[_r] = (_v, f"local:Conn_W_{_sym[-2:]}", _fp)
+
 DNP = set()
 NOT_ASSEMBLED = {"J_IN1", "TP_SWDIO", "TP_SWCLK", "TP_NRST", "TP_3V3", "TP_GND", "J_UART1"}
 # Unused MCU pins (all but supply, NRST, 3 ADC, I2C slave, kill, SWD).
@@ -182,11 +188,17 @@ _tags = pack._tags
 
 BLOCKS = [
     {"title": "LiPo input: fuse, reverse FET, TVS", "at": (12.7, 12.7), "size": (127.0, 88.9),
+     # VIN is made here by a passive FET, so its one PWR_FLAG stays on this sheet, beside the input.
+     # LIPO_RAW leaves for J_IN1 on the root: a tag in the free space J_IN1 leaves behind (a label on
+     # F_IN1's own top pin would run into the block title above it).
+     "tags": {"LIPO_RAW": [(12.7, 21.59, "L")]},
+     "flags": [("VIN", 12.7, 76.2)],
+     # C_VIN1 is the power entry's bulk cap on the root, C_VIN2 stays here, C_VIN3/C_VIN4 move to the
+     # buck sheet: every file that draws the VIN rail needs a capacitor of it (Konnect audits per file).
      "parts": {"J_IN1": (12.7, 30.48, 0, None), "F_IN1": (35.56, 25.4, 0, None),
                "Q_REV1": (58.42, 30.48, 0, None), "R_REV1": (58.42, 55.88, 0, None),
                "D_GZ1": (76.2, 45.72, 0, None), "D_TVS1": (93.98, 45.72, 0, None),
-               "C_VIN1": (106.68, 45.72, 0, None), "C_VIN2": (114.3, 45.72, 0, None),
-               "C_VIN3": (106.68, 66.04, 0, None), "C_VIN4": (114.3, 66.04, 0, None)}},
+               "C_VIN2": (114.3, 45.72, 0, None)}},
     {"title": "Buck A 4.10 V (VBAT_SW), buck B 5.07 V (+5V)", "at": (152.4, 12.7),
      "size": (152.4, 139.7),
      "parts": {"U_BA": (30.48, 30.48, 0, None), "C_BTA": (55.88, 20.32, 0, None),
@@ -196,13 +208,15 @@ BLOCKS = [
                "U_BB": (30.48, 91.44, 0, None), "C_BTB": (55.88, 81.28, 0, None),
                "L_B": (76.2, 88.9, 0, None), "R_FBB1": (96.52, 99.06, 0, None),
                "R_FBB2": (96.52, 114.3, 0, None), "C_OB1": (114.3, 99.06, 0, None),
-               "C_OB2": (127.0, 99.06, 0, None)},
+               "C_OB2": (127.0, 99.06, 0, None),
+               "C_VIN3": (12.7, 55.88, 0, None), "C_VIN4": (12.7, 78.74, 0, None)},
      "tags": _tags(["BUCK_EN"], 12.7, 127.0)},
     {"title": "Key enable, MCU kill, J_PWR1", "at": (12.7, 114.3), "size": (127.0, 88.9),
      "parts": {"J_KEY1": (12.7, 20.32, 0, None), "R_EN1": (35.56, 20.32, 0, None),
                "R_EN2": (55.88, 35.56, 0, None), "Q_KILL": (76.2, 40.64, 0, None),
                "R_GK": (66.04, 60.96, 0, None), "R_KILL": (50.8, 50.8, 0, None),
                "J_PWR1": (96.52, 35.56, 180, None)},
+     # J_KEY1, R_EN1 (the key pull-up, drawn at its connector) and J_PWR1 are root parts now.
      "tags": _tags(["BUCK_EN", "KILL_DRV", "SDA_EXT", "SCL_EXT", "KILL_G", "GND"], 12.7, 76.2),
      "wired": {"GND"}},
     {"title": "Always-on 3V3, STM32C071, SWD pads", "at": (317.5, 12.7), "size": (139.7, 152.4),
@@ -233,6 +247,88 @@ BLOCKS = [
      "flags": [("GND", 10.16, 36.83), ("VIN", 33.02, 36.83), ("VBAT_SW", 55.88, 36.83),
                ("+5V", 78.74, 36.83)]},
 ]
+
+# --- Hierarchical schematic (docs/plans/2026-10-18-hierarchical-schematics-design.md) ---
+# Function sheets: name -> (title, BLOCKS indexes). A block's parts land on that sheet, except the root
+# parts below (the connectors, the bring-up pads, the mounting holes and one bulk cap per rail the root
+# draws), which gen_sch draws on the root sheet instead. Block 5 (holes + flags) is all root parts.
+SHEETS = {
+    "input": ("LiPo input: fuse, reverse FET, TVS", [0]),
+    "bucks": ("Buck A 4.10 V (VBAT_SW), buck B 5.07 V (+5V)", [1]),
+    "enable": ("Key enable and MCU kill", [2]),
+    "mcu": ("Always-on 3V3 and STM32C071", [3]),
+    "bal": ("Balance lead dividers", [4]),
+}
+# Root (system) sheet: {ref: (x, y, rot, mirror)} in page coordinates, sheet boxes {name: (x, y, w, h)},
+# and the outline drawn round the pack that plugs into J_IN1. Drawn on the root, where they sit on the
+# board: the four connectors with the off-board part beyond each, one bulk cap per rail the root draws
+# (VBAT_SW, +5V, +3V3 - their twin stays on the buck sheet, and GND needs none), the bring-up pads and
+# UART header, and the mounting holes. VIN is not drawn here, so its bulk caps stay on the input sheet.
+ROOT = {
+    "parts": {
+        # Connector pins face their off-board part: the left-hand connector as drawn (pins left), the
+        # right-hand ones mirrored (pins right); the cable gap between holds the rail ports.
+        "J_IN1": (76.2, 53.34, 0, None),
+        "J_KEY1": (337.82, 53.34, 0, "y"),
+        "J_BAL1": (337.82, 152.4, 0, "y"),
+        "J_PWR1": (337.82, 213.36, 0, "y"),
+        # One bulk cap per rail the root draws, beside the connector that carries it out of the board.
+        "C_OA2": (317.5, 236.22, 0, None), "C_OB2": (330.2, 236.22, 0, None),
+        "C_LDO2": (66.04, 152.4, 0, None),
+        # VIN bulk at the input connector, and the key pull-up R_EN1 at J_KEY1 (both keep the root's VIN
+        # rail covered; R_EN1 must not stay on the enable sheet, which would then draw VIN uncapped).
+        "C_VIN1": (88.9, 66.04, 0, None), "R_EN1": (318.77, 50.8, 90, None),
+        # Bring-up: the SWD/rail test pads and the UART header. Their text sits above each pad, so they
+        # are spaced 15.24 mm apart to leave the row below clear for the rail ports.
+        "TP_NRST": (50.8, 106.68, 0, None), "TP_SWCLK": (50.8, 121.92, 0, None),
+        "TP_SWDIO": (50.8, 137.16, 0, None), "TP_3V3": (50.8, 152.4, 0, None),
+        "TP_GND": (50.8, 167.64, 0, None), "J_UART1": (50.8, 195.58, 0, "y"),
+        # Mounting holes.
+        "H1": (25.4, 243.84, 0, None), "H2": (35.56, 243.84, 0, None),
+        "H3": (45.72, 243.84, 0, None), "H4": (55.88, 243.84, 0, None),
+    },
+    "flags": [("GND", 106.68, 238.76), ("VBAT_SW", 121.92, 238.76), ("+5V", 137.16, 238.76)],
+    # The UART header's GND pin takes its port along its own stub: its pins are 2.54 mm apart.
+    "port_modes": {"J_UART1": "along"},
+    "sheets": {
+        "input": (99.06, 33.02, 55.88, 38.1),
+        "enable": (243.84, 48.26, 55.88, 38.1),
+        "bucks": (243.84, 99.06, 55.88, 45.72),
+        "mcu": (99.06, 116.84, 60.96, 55.88),
+        "bal": (243.84, 152.4, 55.88, 45.72),
+    },
+    "outline": ("2S/3S LiPo pack", (20.32, 38.1, 29.21, 30.48)),
+    "size": (391.16, 236.22),  # root content from (12.7, 12.7): fits A3
+}
+# Off-board parts, drawn on the root beyond their connector, never on the board or in a BOM:
+# ref -> (value, symbol, connector, {own pin: connector pin}, cable note, (x, y, rot, mirror)).
+OFFBOARD = {
+    "#X_LIPO": ("2S/3S LiPo pack", "local:Conn_W_02", "J_IN1", {"1": "1", "2": "2"},
+                "XT60 pigtail into the J_IN1 pads", (44.45, 53.34, 0, "y")),
+    "#X_KEY": ("Airsoft key switch", "local:Conn_W_02", "J_KEY1", {"1": "1", "2": "2"},
+               "XH-2", (386.08, 53.34, 0, None)),
+    "#X_BAL": ("2S/3S balance plug", "local:Conn_W_04", "J_BAL1",
+               {str(i): str(i) for i in range(1, 5)}, "XH-4, 2S plug on pins 1-3",
+               (386.08, 152.4, 0, None)),
+    "#X_CARRIER": ("Carrier board (J_PWR1)", "local:Pack_Link_6", "J_PWR1",
+                   {str(i): str(i) for i in range(1, 7)}, "XH-6 to the carrier",
+                   (386.08, 213.36, 0, None)),
+}
+
+
+def check_sheets(m=None):
+    """Every board part is drawn exactly once: on the root, or in one block of one sheet."""
+    import sys
+    m = m or sys.modules[__name__]
+    in_sheets = [r for _t, idx in m.SHEETS.values() for i in idx for r in m.BLOCKS[i]["parts"]
+                 if r not in m.ROOT["parts"]]
+    drawn = in_sheets + list(m.ROOT["parts"])
+    twice = sorted({r for r in drawn if drawn.count(r) > 1})
+    assert not twice, f"drawn twice: {twice}"
+    assert set(drawn) == set(m.PARTS), f"not drawn: {sorted(set(m.PARTS) - set(drawn))}, " \
+                                       f"unknown: {sorted(set(drawn) - set(m.PARTS))}"
+    assert m.ROOT["sheets"].keys() == m.SHEETS.keys(), "ROOT['sheets'] must place every sheet"
+
 
 # --- PCB (read by gen_pcb.py / route.py / check_gerbers.py) ------------------------------------
 # 50 x 40 mm, single-side SMD on top. Left edge: the LiPo solder pads. Right edge: J_PWR1 and
@@ -333,6 +429,7 @@ def check():
     import board  # pyright: ignore[reportMissingImports]  # local sibling module
     board.check_structure(sys.modules[__name__])
     check_power_path()
+    check_sheets()
     print(f"lipo ok: {len(PARTS)} parts, {len(NETS)} nets")
 
 
