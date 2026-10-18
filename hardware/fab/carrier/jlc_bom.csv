@@ -1,6 +1,8 @@
 Comment,Designator,Footprint,LCSC Part #
+10uF,C_5V1,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,C15850
+100nF,"C_5V2,C_BB1,C_BR1,C_EXP1",C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,C49678
 100uF 6.3V,"C_AMP1,C_NFC1",C_1206_3216Metric_Pad1.33x1.80mm_HandSolder,C15008
-100nF,"C_AMP2,C_BB1,C_BR1,C_EXP1",C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,C49678
+1uF,C_AMP2,C_0805_2012Metric_Pad1.18x1.45mm_HandSolder,C28323
 47uF 10V,"C_BULK1,C_BULK2",C_1206_3216Metric_Pad1.33x1.80mm_HandSolder,C96123
 1N4148W,D_FLY1,D_SOD-123,C81598
 Heltec_J2/Heltec_J3,"J2,J3",PinSocket_1x18_P2.54mm_Vertical,C2905422

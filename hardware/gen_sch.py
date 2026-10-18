@@ -300,7 +300,8 @@ def place_part(sh, ref, x, y, rot, mirror, fields):
             continue
         pa = child(p, "at")
         eff = child(p, "effects")
-        hidden = any(k[0] == "hide" and k[1:] == ["yes"] for k in kids(eff, "hide"))
+        # KiCad 9 keeps (hide yes) inside (effects ...); KiCad 10 moved it up to the property itself
+        hidden = any(k[1:] == ["yes"] for k in kids(eff, "hide") + kids(p, "hide"))
         text = shown.get(name, unq(p[2]))
         if name in ("Reference", "Value") and (ref in fields or rot % 180 and bx[2] - bx[0] > bx[3] - bx[1]):
             # parts turned horizontal: text above (Reference) / below (Value) the body unless given
@@ -311,6 +312,8 @@ def place_part(sh, ref, x, y, rot, mirror, fields):
             sh.mark(box_cells(text_box(fx, fy, text, True, just)), ref)
             continue
         dx, dy = xf(float(pa[1]), float(pa[2]), rot, mirror)
+        if hidden and not kids(eff, "hide"):  # written as KiCad 9: (hide yes) lives inside (effects ...)
+            eff = [*eff, ["hide", "yes"]]
         props.append(["property", q(name), q(text), at(x + dx, y + dy, float(pa[3])), eff])
         if not hidden:
             js = [j for k in kids(eff, "justify") for j in k[1:] if j in ("left", "right")]
@@ -772,7 +775,8 @@ def schematic():
     h = max(b["at"][1] + b["size"][1] for b in design.BLOCKS)
     head = [["lib_symbols", *[embedded(i) for i in sorted(sh.lib_ids)]]]
     return ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")], ["generator_version", q("9.0")],
-            ["uuid", q(sh.root)], ["paper", q(paper_for(w, h))], *head, *body, *sh.items, *sh.symbols,
+            ["uuid", q(sh.root)], ["paper", q(paper_for(w, h))],
+            ["title_block", ["title", q(design.TITLE)]], *head, *body, *sh.items, *sh.symbols,
             ["sheet_instances", ["path", q("/"), ["page", q("1")]]], ["embedded_fonts", "no"]], sh.root, sh.clashes
 
 

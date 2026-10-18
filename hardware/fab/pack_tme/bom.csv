@@ -36,4 +36,4 @@
 "U_CHG?","BQ25601RTWT","local:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm_HandSolder","1"
 "U_LDO?","XC6206P332MR","Package_TO_SOT_SMD:SOT-23-3","1"
 "U_MCU?","STM32L072KZT6","Package_QFP:LQFP-32_7x7mm_P0.8mm","1"
-"U_MON1-U_MON4","INA226AIDGSR","Package_SO:VSSOP-10_3x3mm_P0.5mm","4"
+"U_MON1-U_MON4","INA226AIDGSR","Package_SO:MSOP-10_3x3mm_P0.5mm","4"

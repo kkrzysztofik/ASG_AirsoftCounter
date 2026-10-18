@@ -272,7 +272,7 @@ NETS = {
             "U_LDO.1", "C_LDO1.2", "C_LDO2.2",
             "U_MON.3", "U_MON.6", "U_MON.17", "C_MON1.2", "C_MON2.2",   # ADDRSEL = GND -> 0x10
             "R_CC1.2", "R_CC2.2",
-            "J_USB1.A1", "J_USB1.A12", "J_USB1.B1", "J_USB1.B12", "J_USB1.S1",
+            "J_USB1.A1", "J_USB1.A12", "J_USB1.B1", "J_USB1.B12", "J_USB1.SH",
             "U_MCU.5", "C_MCU1.2", "C_MCU2.2", "C_NRST.2", "SW_RST.2", "R_BOOT.2",
             "LED_MCU.1", "R_CE.2",
             "U1.2", "C_IN1.2", "C_OUT1.2", "C_OUT2.2", "R_FB2.2",
@@ -455,6 +455,10 @@ NETCLASS_EXPECT = (("CELL1_F", [0.8, 0.2]), ("GND", [0.25, 0.2]), ("+5V", [0.8, 
 DRC_RULES = {"min_hole_clearance": 0.15}
 
 BOTTOM = {f"BT{i}" for i in range(1, 5)} | {f"TH{i}" for i in range(1, 5)}
+# The NTC beads sit in each holder's floor window on purpose. KiCad 10's pth_inside_courtyard (an error
+# now) cannot exempt them, so it is off here and gen_pcb.py checks every other THT pad against the holders.
+PTH_UNDER_OK = {f"TH{i}" for i in range(1, 5)}
+RULE_SEVERITIES = {"pth_inside_courtyard": "ignore"}
 _CELL_X = 46.5                                  # holder centre x (body x 8..85)
 _CELL_Y = (12.35, 34.01, 55.67, 77.33)          # holder centres, 21.66 mm pitch (body 20.7)
 # Holder drills relative to the holder centre as seen from the top, i.e. after the flip to the bottom
@@ -490,11 +494,14 @@ _STRIP = {
     # bottom edge row: buttons, test pads, status LED, NRST/BOOT0 parts
     "SW_BOOT": (16, 87.4, 0), "SW_RST": (23, 87.4, 0),
     "TP_SWDIO": (28.5, 87.4, 0), "TP_SWCLK": (31.5, 87.4, 0), "TP_NRST": (34.5, 87.4, 0),
-    "TP_GND": (37.5, 87.4, 0), "J_UART1": (77.6, 85.3, 90),
+    "TP_GND": (37.5, 87.4, 0),
     **{r: (66.5 + 2.6 * i, 87.2, 0) for i, r in enumerate(TP_DEBUG)}, "LED_MCU": (42.5, 87.4, 0), "R_LED_MCU": (49, 87.4, 0),
     "R_BOOT": (55, 87.4, 0), "C_NRST": (61, 87.4, 0),
     # board-edge connectors (openings face +x)
     "J_USB1": (90, 23, 90), "J_PWR1": (90, 55, 90), "J_KEY1": (90, 78, 90),
+    # UART header upright in the holder-free right strip (THT pins can't go under a holder); rot 180
+    # puts pin 1 (GND) at the bottom so the rot-90 label reads in pin order
+    "J_UART1": (88.5, 70.04, 180),
     "H1": (4, 4, 0), "H2": (92, 4, 0), "H3": (4, 86, 0), "H4": (92, 86, 0),
 }
 
@@ -549,7 +556,7 @@ TEXTS = [
     ("AirsoftCounter v2 pack", 24, 1.8, 0, 1.0, True), ("2026-10", 24, 3.6, 0, 1.0, True),
     ("USB", 85.5, 32, 90, 0.8, False), ("PACK", 85.5, 62, 90, 0.8, False),
     ("KEY", 85.5, 81.8, 90, 0.8, False),
-    ("GND TX RX", 80.14, 83.3, 0, 0.8, False),
+    ("GND TX RX", 91.5, 67.5, 90, 0.8, False),
     *((n, 66.5 + 2.6 * i, 85.0, 0, 0.8, False) for i, n in enumerate(("SDA", "SCL"))),
 ]
 GND_VIAS = []

@@ -51,3 +51,16 @@ Findings:
 - `D_FLY1` 1N4148W (Basic): flyback across the buzzer. The BZ-38 is a piezo with a built-in generator
   (about 8 mA), so it does not strictly need it, but it allows a magnetic buzzer later. Keep, or drop to
   save one line. Polarity (K on +5V) is right.
+
+## Datasheet check, 2026-10-18 (KiCad 10 / Konnect review)
+
+- `U3` NS4168: pinout and CTRL thresholds match (details in `PART_ALTERNATIVES.md`). `C_AMP2` raised
+  from 100 nF to 1 uF to follow the datasheet's 100 uF || 1 uF at VDD.
+- `U2` TCA9534 (TI SCPS197D): pinout, address straps (0x20), INT/SCL/SDA pull-ups all match.
+  **Firmware:** P6/P7 (`U2.11/12`) are unconnected and power up as inputs; set them as outputs (driven
+  low) at init so the CMOS inputs don't float.
+- BSS138 C7420339 (hongjiacheng, Rev 2.1): G=1 S=2 D=3, Vgs(th) 0.8-1.6 V, Rds(on) < 3 ohm at 4.5 V.
+  Fine for the 3.3 V-gated level shifter and the low-side drivers (15 mA LEDs, 8 mA buzzer).
+- `D_FLY1` 1N4148W C81598: pin 1 = cathode, on +5V. Right.
+- `+5V` had no capacitor on the carrier (the MT3608's 2x 22 uF are on the pack board, beyond the cable).
+  Added `C_5V1` 10 uF + `C_5V2` 100 nF at `J_PWR1`; 10 uF rather than 47 uF keeps the boost's output load small.

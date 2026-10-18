@@ -186,6 +186,9 @@ PLACE |= {
     "R_OR": (7.0, 40.0, 0), "C_OR": (32.0, 15.0, 0),
     "C_INP": (25.0, 39.5, 0), "R_INP": (20.5, 42.5, 0),
     "C_INN": (36.0, 24.0, 0), "R_INN": (25.5, 42.5, 0),
+    # +5V reservoir: the carrier's spot is under U_DAC here. Free spot left of J3 pin 1, clear of the DAC
+    # corner (beside D_FLY1 it left +3V3 unroutable)
+    "C_5V1": (37.0, 27.5, 0), "C_5V2": (37.0, 31.5, 0),
 }
 
 

@@ -43,9 +43,14 @@ Symbol in `local.kicad_sym`, footprint `HSOP-8-1EP_3.9x4.9mm_P1.27mm_EP2.3x2.3mm
   writes are far slower, so the default filter stays.
 - **No gain pin:** gain is fixed; volume is digital, as before.
 - **13 mA quiescent when on** (MAX98357A: 2.4 mA): the firmware should hold CTRL low between clips.
-- **C_AMP1** is now the 100 uF 6.3 V part (datasheet: ~100 uF + 1 uF at VDD; VBAT_SW stays under 4.2 V).
+- **C_AMP1** is now the 100 uF 6.3 V part and **C_AMP2** 1 uF (datasheet 10.4: 100 uF + 1 uF ceramic at VDD; VBAT_SW stays under 4.2 V).
 
 ## To verify before acting
 
 - Basic/Preferred/Extended status, stock and price of PCF8574T/PW, PCA9534, PCA9554 and NS4168 on JLCPCB.
-- NS4168 pinout, footprint and gain/enable behaviour against the datasheet.
+
+**Verified 2026-10-18** against the Nsiway NS4168 datasheet v1.2 (LCSC C910588): pinout 1 CTRL, 2 LRCLK,
+3 BCLK, 4 SDATA, 5 VoN, 6 VDD, 7 GND, 8 VoP matches `carrier.py` and `local:NS4168`. CTRL: >= 1.5 V right slot,
+0.9-1.15 V left, <= 0.4 V shutdown, so the 3.3 V expander high selects the right slot. Abs max VDD is 5.0 V
+(operating 3.0-5.5 V): fine on the <= 4.2 V VBAT_SW, and the amp shuts itself down below about 3 V.
+The datasheet does not say where the exposed pad goes; it stays on GND.

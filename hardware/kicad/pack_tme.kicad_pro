@@ -13,7 +13,8 @@
         "min_hole_clearance": 0.15
       },
       "rule_severities": {
-        "lib_footprint_mismatch": "ignore"
+        "lib_footprint_mismatch": "ignore",
+        "pth_inside_courtyard": "ignore"
       }
     }
   },

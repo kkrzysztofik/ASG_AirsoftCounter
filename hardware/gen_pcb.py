@@ -53,6 +53,14 @@ def footprint(board, ref, nets):
     fp.SetFPID(pcbnew.LIB_ID(lib, name))
     fp.SetReference(ref)
     fp.SetValue(value)
+    # The symbol's other fields (Datasheet, Description, Sim.*), hidden, so DRC's schematic parity
+    # (footprint_symbol_field_mismatch, an exit-code violation since KiCad 10) sees the same text.
+    sym = gen_sch.flat_symbol(*design.PARTS[ref][1].split(":"))
+    for p in gen_sch.kids(sym, "property"):
+        name = gen_sch.unq(p[1])
+        if name not in ("Reference", "Value", "Footprint") and not name.startswith("ki_"):
+            fp.SetField(name, gen_sch.unq(p[2]))
+            fp.GetField(name).SetVisible(False)
     fp.Reference().SetTextSize(mm(0.8, 0.8))
     fp.Reference().SetTextThickness(pcbnew.FromMM(0.15))
     x, y, rot = design.PLACE[ref]
@@ -144,7 +152,7 @@ def rule_area(board, name, box, no_footprints=False, no_copper=False):
     z.SetDoNotAllowPads(False)
     z.SetDoNotAllowTracks(no_copper)
     z.SetDoNotAllowVias(no_copper)
-    z.SetDoNotAllowCopperPour(no_copper)
+    z.SetDoNotAllowZoneFills(no_copper)  # KiCad 9 name: SetDoNotAllowCopperPour
 
 
 def text(board, s, x, y, rot=0, size=1.0, left=False, top=False):
@@ -215,6 +223,19 @@ def build():
             t.SetNet(gnd_net)
             t.SetLocked(True)
             board.Add(t)
+
+    # A top-side THT pin under a bottom-side part (pack: the 18650 holders) hits its body. KiCad 10's
+    # pth_inside_courtyard catches that too, but it also flags the NTC beads that sit in the holder
+    # floor window on purpose, so boards that must ignore it list those refs in PTH_UNDER_OK instead.
+    ok = set(getattr(design, "PTH_UNDER_OK", ()))
+    for under in getattr(design, "BOTTOM", ()):
+        crt = fps[under].GetCourtyard(pcbnew.B_CrtYd)
+        for ref, fp in fps.items():
+            if ref == under or ref in ok:
+                continue
+            for p in fp.Pads():
+                if p.HasHole() and crt.Contains(p.GetPosition()):
+                    raise SystemExit(f"{ref}.{p.GetNumber()}: through-hole pad inside {under}'s courtyard")
 
     outline(board)
     if design.HELTEC_PADS:  # carrier only: keep the Heltec socket/antenna area clear

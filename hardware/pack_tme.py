@@ -19,7 +19,7 @@ NAME = "pack_tme"
 TITLE = "AirsoftCounter v2 pack (hand-build)"
 
 LQFP32, SOT23_6, R0805, C0805 = pack.LQFP32, pack.SOT23_6, pack.R0805, pack.C0805
-VSSOP10 = "Package_SO:VSSOP-10_3x3mm_P0.5mm"
+VSSOP10 = "Package_SO:MSOP-10_3x3mm_P0.5mm"  # KiCad 9 name: VSSOP-10_3x3mm_P0.5mm (same MO-187 package)
 QFN24_HAND = "local:QFN-24-1EP_4x4mm_P0.5mm_EP2.6x2.6mm_HandSolder"
 USB_THT = "Connector_USB:USB_C_Receptacle_GCT_USB4085"
 TACT_THT = "Button_Switch_THT:SW_PUSH_6mm"
@@ -123,10 +123,10 @@ NPTH_EXPECT = sorted([(x, y, 3.2) for x, y in pack.NPTH_XY]
                      + [(_CELL_X + dx, cy + dy, size) for cy in _CELL_Y
                         for dx, dy, size in _HOLDER_NPTH])   # the USB4085 adds no NPTH
 LABELS = pack.LABELS
-# The UART header stands upright beside the MCU's pins 19/20 here: along the bottom edge it blocks the
-# USB pair's way up the right strip.
-TEXTS = [t for t in pack.TEXTS if t[0] != "GND TX RX"] + [("GND TX RX", 80.4, 82.0, 90, 0.8, False)]
+# J_PWR1/J_KEY1 sit lower here, so the UART header (and its label) takes the right strip above them
+TEXTS = [t for t in pack.TEXTS if t[0] != "GND TX RX"] + [("GND TX RX", 90.3, 50.0, 90, 0.8, False)]
 GND_VIAS = list(pack.GND_VIAS)
+PTH_UNDER_OK, RULE_SEVERITIES = pack.PTH_UNDER_OK, pack.RULE_SEVERITIES
 HELTEC_PADS = {}
 SIZE_MM = pack.SIZE_MM
 NPTH_XY = pack.NPTH_XY
@@ -136,7 +136,6 @@ PLACE = dict(pack.PLACE)
 for _gone in ("U_MON", "R_PWRDN", "D1"):   # replaced / dropped by the TME build
     del PLACE[_gone]
 PLACE.update({
-    "J_UART1": (78.4, 79.0, 0),
     "TP_SDA": (66.0, 87.4, 0), "TP_SCL": (68.8, 87.4, 0),
     # The BQ25601 hand-solder footprint is 1.2 mm larger and its exposed pad is soldered from the
     # back, so it leaves the holder floor for the holder-free right strip; the THT tact switches
@@ -145,6 +144,7 @@ PLACE.update({
     "J_USB1": (87.0, 23.0, 90),   # pulled in so the USB4085's silk clears the board edge
     "SW_BOOT": (1.6, 48.0, 90), "SW_RST": (1.6, 60.0, 90),
     "J_PWR1": (90.0, 70.5, 90), "J_KEY1": (90.0, 79.2, 90),
+    "J_UART1": (92.5, 52.54, 180),   # pin 1 (GND) at the bottom, as on pack; outer edge keeps x 86-90 for the USB lines
     "C_MCU3": (59.0, 70.0, 0), "C_VDDA": (74.0, 66.5, 0),
 })
 for _i, _cy in enumerate(pack._CELL_Y, start=1):
@@ -199,8 +199,8 @@ BLOCKS[2]["title"] = "STM32L072 MCU, reset/boot, test pads"
 BLOCKS[2]["size"] = (165.1, 190.5)
 BLOCKS[2]["parts"].update({
     "U_MCU": (58.42, 55.88, 0, None),     # the L072 is 25.4 mm wide; move it clear of the left column
-    "C_MCU3": (30.48, 25.4, 0, None),
-    "C_VDDA": (43.18, 25.4, 0, None),
+    "C_MCU3": (30.48, 22.86, 0, None),
+    "C_VDDA": (43.18, 22.86, 0, None),  # one step up: at 25.4 its pin and value text met the U_MCU reference
     "TP_SWDIO": (95.25, 60.96, 0, None),
     "R_LED_MCU": (95.25, 76.2, 0, None),
     "LED_MCU": (105.41, 76.2, 90, None),

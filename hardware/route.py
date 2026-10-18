@@ -26,7 +26,7 @@ def load():
     return pcbnew.LoadBoard(str(gen_pcb.PCB))
 
 
-def freeroute(board, tmp):
+def freeroute(board, tmp, margin_um):
     dsn, ses, log = tmp / "carrier.dsn", tmp / "carrier.ses", tmp / "freerouting.log"
     if not pcbnew.ExportSpecctraDSN(board, str(dsn)):
         raise SystemExit("DSN export failed")
@@ -40,7 +40,16 @@ def freeroute(board, tmp):
         raise SystemExit(f"expected one GND plane in the DSN, found {len(planes)}")
     if planes[0].count("(") != planes[0].count(")"):  # the regex only strips a one-line stanza
         raise SystemExit("GND plane spans several lines in the DSN: extend the stripping")
-    dsn.write_text(text.replace(planes[0], ""))
+    text = text.replace(planes[0], "")
+    # Freerouting checks clearance on octagons, KiCad on true round ends: on a 0.8 mm Power track the
+    # octagon undercuts by up to 0.4 * (1/cos 22.5 - 1) = 0.033 mm, and KiCad 10 exports clearances with
+    # no margin (KiCad 9 wrote 200.1 um), so Power tracks landed 0.17-0.18 mm apart. Route Power with a margin.
+    m = re.search(r"\(class Power[^(]*\(circuit[^)]*\)[^(]*\)\s*\(rule\s*\(width \d+\)\s*\(clearance (\d+)\)", text)
+    if text.count("(class Power") > 1 or ("(class Power" in text) != bool(m):
+        raise SystemExit("unexpected Power class layout in the DSN: update the clearance margin regex")
+    if m:
+        text = text[:m.start(1)] + str(int(m.group(1)) + margin_um) + text[m.end(1):]
+    dsn.write_text(text)
     cmd = ["java", "-jar", str(JAR), "-de", str(dsn), "-do", str(ses), "-mp", str(PASSES),
            "--gui.enabled=false", "--api_server.enabled=false",
            "--usage_and_diagnostic_data.disable_analytics=true"]
@@ -53,8 +62,10 @@ def freeroute(board, tmp):
     # Regex tied to Freerouting 2.4.1 log wording; the post-import unconnected check is the real gate
     done = re.findall(r"Auto-routing stage completed: .*?final score: ([\d.]+) \((\d+) unrouted", text)
     if not done or done[-1][1] != "0" or not ses.exists():
-        raise SystemExit(f"freerouting left unrouted connections or no SES:\n{text[-3000:]}")
-    print(f"freerouting: {len(re.findall('Auto-routing pass #', text))} passes, score {done[-1][0]}, 0 unrouted")
+        print(f"freerouting (Power margin {margin_um} um) left unrouted connections or no SES:\n{text[-1500:]}")
+        return None
+    print(f"freerouting: Power margin {margin_um} um, {len(re.findall('Auto-routing pass #', text))} passes, "
+          f"score {done[-1][0]}, 0 unrouted")
     return ses
 
 
@@ -63,11 +74,23 @@ def main():
     if any(not t.IsLocked() for t in board.GetTracks()) or any(z.GetZoneName() == "GND_F" for z in board.Zones()):
         raise SystemExit(f"{gen_pcb.PCB.name} is already routed: run gen_pcb.py first")
     with tempfile.TemporaryDirectory(prefix="route-") as tmp:
-        ses = freeroute(board, Path(tmp))
+        # The margin can cost the last connection on a tight board (carrier); without it, make check's DRC
+        # is the gate on the octagon undercut.
+        ses = freeroute(board, Path(tmp), 40) or freeroute(board, Path(tmp), 0)
+        if not ses:
+            raise SystemExit("freerouting left unrouted connections with and without the Power margin")
         board = load()  # fresh copy: DSN export must not leave anything behind
         pcbnew.KIID.SeedGenerator(2)  # deterministic uuids for imported tracks/vias and the new zone
         if not pcbnew.ImportSpecctraSES(board, str(ses)):
             raise SystemExit("SES import failed")
+
+    # Freerouting leaves the odd sub-mm stub with a free end (DRC track_dangling); it carries nothing.
+    board.BuildConnectivity()
+    while stubs := [t for t in board.GetTracks() if t.Type() == pcbnew.PCB_TRACE_T and not t.IsLocked()
+                    and board.GetConnectivity().TestTrackEndpointDangling(t, False)]:
+        for t in stubs:
+            board.Remove(t)
+        board.BuildConnectivity()
 
     b_gnd = [z for z in board.Zones() if z.GetZoneName() == "GND"]
     if len(b_gnd) != 1:

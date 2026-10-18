@@ -99,7 +99,11 @@ for t in ("R", "B"):
     PARTS[f"C_B{t}1"] = ("100nF", *C0805)
 PARTS["C_EXP1"] = ("100nF", *C0805)  # U2 decoupling
 PARTS["R_INT1"] = ("10k", *R0805)  # U2 INT pull-up
-PARTS["C_AMP2"] = ("100nF", *C0805)  # U3 VDD decoupling (next to C_AMP1)
+PARTS["C_AMP2"] = ("1uF", *C0805)  # U3 VDD decoupling (next to C_AMP1); NS4168 datasheet 10.4: 100 uF || 1 uF
+# +5V arrives over the pack cable from the MT3608 boost (its 2x 22 uF stay on the pack board): a local
+# reservoir at J_PWR1 for the LCD, button LEDs and buzzer. 10 uF, not 47 uF, to keep the boost's output load small.
+PARTS["C_5V1"] = ("10uF", *C0805)
+PARTS["C_5V2"] = ("100nF", *C0805)
 # CTRL series resistor + pull-down: CTRL abs max is VDD (VBAT_SW, can sag below the 3V3 expander high),
 # the 1k limits that current. No internal pull-down is documented, so the 10k (expander side; CTRL draws
 # no current, so it still pulls CTRL to 0 V) holds the amp off while the expander pins float at reset.
@@ -115,6 +119,8 @@ for i in range(1, 5):
 # Type: B = Basic, P = Preferred Extended (no setup fee), E = Extended.
 LCSC = {
     ("100nF", C0805[1]): "C49678",  # B YAGEO CC0805KRX7R9BB104 50V X7R
+    ("1uF", C0805[1]): "C28323",  # B Samsung CL21B105KBFNNNE 50V X7R (same as pack.py)
+    ("10uF", C0805[1]): "C15850",  # B Samsung CL21A106KAYNNNE 25V X5R (same as pack.py)
     ("47uF 10V", C1206): "C96123",  # B Samsung CL31A476MPHNNNE X5R
     ("100uF 6.3V", C1206): "C15008",  # B Samsung CL31A107MQHNNNE X5R
     ("1N4148W", "Diode_SMD:D_SOD-123"): "C81598",  # B ST Semtech 1N4148W
@@ -140,14 +146,14 @@ NETS = {
             "Q_LR1.2", "Q_LB1.2", "Q_BZ1.2", "R_PDLR1.2", "R_PDLB1.2", "R_PDBZ1.2", "C_BR1.2", "C_BB1.2",
             "J_UART1.1", "J_I2C1.1", "TP_GND.1",
             "U2.1", "U2.2", "U2.3", "U2.8", "C_EXP1.2",  # A0-A2 low: address 0x20
-            "U3.7", "U3.9", "C_AMP1.2", "C_AMP2.2", "R_SDPD1.2"],
+            "U3.7", "U3.9", "C_AMP1.2", "C_AMP2.2", "R_SDPD1.2", "C_5V1.2", "C_5V2.2"],
     "+3V3": ["J3.2", "J3.3", "J_NFC1.2", "C_NFC1.1", "Q_SDA1.1", "Q_SCL1.1", "R_SDA3.1", "R_SCL3.1", "R_PUR1.1", "R_PUB1.1",
              "U2.16", "C_EXP1.1", "R_INT1.1", "J_I2C1.2", "TP_3V3.1"],
     "VBAT_SW": ["J_HBAT1.1", "C_BULK1.1", "C_BULK2.1", "U3.6", "C_AMP1.1", "C_AMP2.1", "J_PWR1.3", "TP_VSW.1"],
     "UART_TX": ["J2.6", "J_UART1.2"],           # GPIO43, U0TXD
     "UART_RX": ["J2.5", "J_UART1.3"],           # GPIO44, U0RXD
     "+5V": ["J_PWR1.4", "J_LCD1.2", "TP_5V.1", "J_BTN_R1.3", "J_BTN_B1.3", "J_BUZ1.1",
-            "D_FLY1.1", "R_SDA5.1", "R_SCL5.1"],
+            "D_FLY1.1", "R_SDA5.1", "R_SCL5.1", "C_5V1.1", "C_5V2.1"],
     # I2C
     "SDA_3V3": ["J3.15", "Q_SDA1.2", "R_SDA3.2", "J_NFC1.3", "U2.15", "J_PWR1.5", "J_I2C1.3"],
     "SCL_3V3": ["J3.14", "Q_SCL1.2", "R_SCL3.2", "J_NFC1.4", "U2.14", "J_PWR1.6", "J_I2C1.4"],
@@ -245,9 +251,10 @@ def _driver(x0, n, load):
 
 
 BLOCKS = [
-    {"title": "Power in (from pack board)", "at": (12.7, 12.7), "size": (100.33, 63.5),
+    {"title": "Power in (from pack board)", "at": (12.7, 12.7), "size": (113.03, 63.5),
      "parts": {"J_PWR1": (20.32, 25.4, 90, None), "J_HBAT1": (45.72, 25.4, 0, None),
-               "C_BULK1": (58.42, 31.75, 0, None), "C_BULK2": (71.12, 31.75, 0, None)},
+               "C_BULK1": (58.42, 31.75, 0, None), "C_BULK2": (71.12, 31.75, 0, None),
+               "C_5V1": (83.82, 31.75, 0, None), "C_5V2": (96.52, 31.75, 0, None)},
      "flags": [("GND", 7.62, 55.88), ("VBAT_SW", 30.48, 55.88), ("+5V", 53.34, 55.88)]},
     {"title": "I2S speaker amp", "at": (208.28, 12.7), "size": (104.14, 63.5),
      "parts": {"U3": (55.88, 38.1, 0, None), "R_SD1": (25.4, 40.64, 90, None),
@@ -314,6 +321,8 @@ PLACE = {
     "U3": (15.2, 23.2, 90), "C_AMP2": (15.2, 18.4, 180), "C_AMP1": (15.2, 14.9, 0),
     # Bulk caps on the switched pack rail, in the strip J_BAT1/J_KEY1 used to share
     "C_BULK1": (37, 17, 90), "C_BULK2": (40.5, 17, 90),
+    # +5V reservoir below the PACK label, a short hop from J_PWR1.4
+    "C_5V1": (25, 14.5, 0), "C_5V2": (29.5, 14.5, 0),
     # I2C level shifter, NFC bulk cap and GPIO expander, under their connectors
     "Q_SDA1": (44, 16, 0), "R_SDA3": (44, 20, 0), "R_SDA5": (44, 23.3, 0),
     "Q_SCL1": (49.5, 16, 0), "R_SCL3": (49.5, 20, 0), "R_SCL5": (49.5, 23.3, 0),

@@ -5,3 +5,6 @@ mech/out/*.step
 mech/out/*.stl
 mech/out/boards/
 kicad/3dmodels/
+# KiCad per-user project state and editor locks (kicad-cli 10 writes .kicad_prl)
+*.kicad_prl
+~*.lck
