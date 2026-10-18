@@ -237,9 +237,9 @@ def jlc_wall_thickness():
     for name, wall, size in items:
         need = params.min_wall(size)
         if wall + 1e-9 < need:
-            return fail(f"JLC wall: {name} is {wall:.2f} mm, {params.RULES['name']} needs "
+            return fail(f"print wall: {name} is {wall:.2f} mm, {params.RULES['name']} needs "
                         f"{need:.2f} at {size:.0f} mm")
-    return ok(f"JLC wall: all {len(items)} features meet the size-dependent "
+    return ok(f"print wall: all {len(items)} features meet the size-dependent "
               f"{params.RULES['name']} minimum")
 
 
@@ -252,13 +252,13 @@ def jlc_clearance():
     clear = params.RULES["clear"]
     tol = params.RULES["hole_tol"]
     if per_side < clear:
-        return fail(f"JLC clearance: {per_side:.2f} mm per side, {params.PROCESS} needs {clear}")
+        return fail(f"print clearance: {per_side:.2f} mm per side, {params.PROCESS} needs {clear}")
     if per_side < tol:
         return fail(
-            f"JLC clearance: {per_side:.2f} mm per side is inside the +-{tol} mm hole "
+            f"print clearance: {per_side:.2f} mm per side is inside the +-{tol} mm hole "
             f"tolerance for {params.RULES['name']}, so it can arrive unable to go in"
         )
-    return ok(f"JLC clearance: {per_side:.2f} mm per side clears the {clear} mm rule and the "
+    return ok(f"print clearance: {per_side:.2f} mm per side clears the {clear} mm rule and the "
               f"+-{tol} mm hole tolerance for {params.RULES['name']}")
 
 
@@ -271,12 +271,12 @@ def jlc_holes():
     ]
     for name, dia, depth in holes:
         if dia < 1.5:
-            return fail(f"JLC holes: {name} is {dia:.1f} mm, below the 1.5 mm floor for "
+            return fail(f"print holes: {name} is {dia:.1f} mm, below the 1.5 mm floor for "
                         f"{params.RULES['name']}")
         if depth > 3 * dia:
-            return fail(f"JLC holes: {name} is {dia:.1f} mm across and {depth:.1f} mm deep, "
+            return fail(f"print holes: {name} is {dia:.1f} mm across and {depth:.1f} mm deep, "
                         f"past the 3x guidance")
-    return ok(f"JLC holes: all {len(holes)} apertures are inside the depth guidance")
+    return ok(f"print holes: all {len(holes)} apertures are inside the depth guidance")
 
 
 def jlc_build_size():
@@ -287,9 +287,9 @@ def jlc_build_size():
     for i, axis in enumerate("XYZ"):
         if big[i] > hi[i]:
             return fail(
-                f"JLC build: {big[i]:.1f} mm on {axis} exceeds {params.RULES['name']}'s {hi[i]:.0f} mm"
+                f"print build: {big[i]:.1f} mm on {axis} exceeds {params.RULES['name']}'s {hi[i]:.0f} mm"
             )
-    return ok(f"JLC build: largest part {big[0]:.0f} x {big[1]:.0f} x {big[2]:.0f} inside "
+    return ok(f"print build: largest part {big[0]:.0f} x {big[1]:.0f} x {big[2]:.0f} inside "
               f"{hi[0]:.0f} x {hi[1]:.0f} x {hi[2]:.0f} for {params.RULES['name']}")
 
 
@@ -302,8 +302,8 @@ def jlc_columns():
     for name, top in (("pack post", params.pack_z()), ("carrier post", params.carrier_z())):
         ratio = top / (2 * params.POST_R)
         if ratio > 4.0 and params.POST_FLARE <= 0:
-            return fail(f"JLC column: {name} is {ratio:.1f}:1 tall with no base flare")
-    return ok(f"JLC column: posts are up to "
+            return fail(f"print column: {name} is {ratio:.1f}:1 tall with no base flare")
+    return ok(f"print column: posts are up to "
               f"{max(params.pack_z(), params.carrier_z()) / (2 * params.POST_R):.1f}:1 with a "
               f"{params.POST_FLARE:.0f} mm flare at the base")
 
@@ -312,15 +312,20 @@ def process_is_known():
     if params.PROCESS not in params.PROCESS_RULES:
         return fail(f"unknown MECH_PROCESS {params.PROCESS!r}, expected one of "
                     f"{', '.join(params.PROCESS_RULES)}")
+    shrink = params.RULES.get("shrink")
+    note = f"; slicer filament shrinkage {shrink} %" if shrink else ""
     return ok(f"process {params.PROCESS} = {params.RULES['name']}, "
-              f"FIT {params.FIT} mm total ({params.fit_per_side():.2f} per side)")
+              f"FIT {params.FIT} mm total ({params.fit_per_side():.2f} per side){note}")
 
 
 def wall_parts_sane():
     for name, p in params.WALL_PARTS.items():
         if p["device_d"] >= p["hole_d"]:
             return fail(f"wall part {name}: device_d {p['device_d']} >= hole_d {p['hole_d']}")
-    return ok(f"{len(params.WALL_PARTS)} wall devices each have a bushing")
+    missing = (set(params.WALL_PARTS) | {"speaker"}) ^ set(params.WALL_BODIES)
+    if missing:
+        return fail(f"wall devices and WALL_BODIES disagree on {sorted(missing)}")
+    return ok(f"{len(params.WALL_PARTS)} wall devices each have a bushing and a body envelope")
 
 
 def wall_holes_clear():

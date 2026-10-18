@@ -82,12 +82,13 @@ boards:
 # Printed insert for the Pawbol S-BOX 416-P. check.py is deliberately run on the system
 # python3: it is the half of the checking that has to work with no CAD stack installed.
 # insert.py is a PEP-723 script, so uv resolves build123d from the file's own metadata.
-# PROC picks the print process everything is validated and priced against: mjf, fdm or sla.
+# PROC picks the print process everything is validated against: p2s_petg (the Bambu P2S at home)
+# or p2s_abs, or a JLC3DP process to quote: mjf, fdm or sla.
 # PARTS limits a run to the parts that process will actually make, so an FDM run is not judged
 # against features belonging to the small flat parts it rejects.
 # The assembly (out/assembly.step) places every part with the boards and fails on any overlap.
 # It needs kicad-cli (KiCad 10) to export the boards; the exports are cached in the gitignored out/boards/.
-PROC ?= mjf
+PROC ?= p2s_petg
 PARTS ?= all
 export MECH_PROCESS = $(PROC)
 export MECH_PARTS = $(PARTS)

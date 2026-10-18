@@ -201,7 +201,7 @@ def make_lid():
             px = P.LCD_CENTRE[0] + sx * P.LCD_HOLES[0] / 2
             py = P.LCD_CENTRE[1] + sy * P.LCD_HOLES[1] / 2
             panel += cyl_z(px, py, z0 - P.LCD_BOSS_H, z0, 3.5)
-            panel -= cyl_z(px, py, z0 - P.LCD_BOSS_H - 1, z0 + 1, 1.6)
+            panel -= cyl_z(px, py, z0 - P.LCD_BOSS_H - 1, z0 + 1, P.LCD_PILOT / 2)
     return panel
 
 
@@ -447,6 +447,15 @@ def placeholders():
     out["heltec_envelope"] = box(*P.heltec_box(), P.carrier_z() + P.BOARD_T + P.HELTEC_SOCKET_H, P.heltec_top())
     out["lcd"] = box(*P.lcd_box(), z0 - P.LCD_DEPTH, z0 - P.LCD_BOSS_H)
     out["nfc"] = box(*P.nfc_box(), z0 - P.NFC_DEPTH, z0)
+    # wall devices: +Z of a wall frame points into the box, z = WALL is the wall's inner face
+    for name, (stages, cable) in P.WALL_BODIES.items():
+        w = P.SPEAKER_WALL if name == "speaker" else P.WALL_PARTS[name]
+        z, body = P.WALL, None
+        for i, (d, depth) in enumerate(stages):
+            depth += cable if i == len(stages) - 1 else 0.0
+            stage = cyl_z(0, 0, z, z + depth, d / 2)
+            body, z = stage if body is None else body + stage, z + depth
+        out[f"body_{name}"] = wall_frame(w["wall"], w["u"], w["z"]) * body
     for i, (bx, by) in enumerate(P.BUTTON_XY):
         out[f"button_{i + 1}"] = cyl_z(bx, by, z0 - P.BUTTON_DEPTH, z0 + P.LID_T, P.BUTTON_D / 2)
     return out
@@ -555,6 +564,46 @@ def write_assembly(boards, check):
     print("wrote out/assembly.step")
 
 
+# --- calibration coupon -------------------------------------------------------------------------
+
+
+def make_coupon():
+    """One plate to print before the real parts, built from the real numbers.
+
+    Back row: a hole per COUPON_FITS clearance, labelled; try make_coupon_peg in each and set
+    RULES' clear from the one that slides. Front row: a pack post with the real M3 pilot, one cell
+    saddle scallop for a real 18650, an O-ring groove, and an LCD boss as the lid carries it.
+    The plate is LID_T thick, so it is the lid panel too.
+    """
+    t = P.LID_T
+    part = box(0, 100, 0, 60, 0, t)
+    peg_r = P.COUPON_PEG_D / 2
+    for i, c in enumerate(P.COUPON_FITS):
+        x = 12 + i * 19
+        part -= cyl_z(x, 46, -1, t + 1, peg_r + c)
+        label = Pos(x, 37, t - 0.6) * extrude(Text(f"{c:.2f}", font_size=4), amount=1)
+        part -= label
+    # pack post, short: the pilot and the flare are what is being tested
+    part += post(12, 18, t + 12)
+    # cell saddle: one scallop of the tray's rail, the cell lies along X
+    sz = P.CELL_D / 2 + 3
+    rail = box(26, 26 + P.SADDLE_T, 18 - P.CELL_D / 2 - 3, 18 + P.CELL_D / 2 + 3, t, t + sz)
+    rail -= cyl_x(18, t + sz, 25, 27 + P.SADDLE_T, P.CELL_D / 2 + P.SADDLE_CLEAR)
+    part += rail
+    # O-ring groove, straight: the cord's seat at the bushings' and grille's width and depth
+    gw, gd = P.ORING_GROOVE
+    part -= box(42, 62, 18 - gw / 2, 18 + gw / 2, t - gd, t + 1)
+    # LCD boss, as make_lid builds it
+    part += cyl_z(80, 18, t, t + P.LCD_BOSS_H, 3.5)
+    part -= cyl_z(80, 18, -1, t + P.LCD_BOSS_H + 1, P.LCD_PILOT / 2)
+    return part
+
+
+def make_coupon_peg():
+    """The loose peg for the coupon's fit sweep, nominal COUPON_PEG_D."""
+    return cyl_z(0, 0, 0, 10, P.COUPON_PEG_D / 2)
+
+
 # --- driver --------------------------------------------------------------------------------------
 
 PARTS = {
@@ -562,6 +611,8 @@ PARTS = {
     "lid": make_lid,
     "grille": make_grille,
     "guide": make_guide,
+    "coupon": make_coupon,
+    "coupon_peg": make_coupon_peg,
 }
 
 
@@ -586,16 +637,14 @@ def check_part(name, part):
     shells = len(part.shells())
     if shells != 1:
         raise SystemExit(
-            f"FAIL {name}: {shells} shells, so it encloses a cavity; MJF needs a "
-            f"{P.RULES['escape']} mm escape hole into it"
+            f"FAIL {name}: {shells} shells, so it encloses a cavity"
+            + (f"; {P.RULES['name']} needs a {P.RULES['escape']} mm escape hole into it" if P.RULES["escape"] else "")
         )
     limit_x = P.BOX_IN[0] - 2 * P.FIT + 1e-6
     limit_y = P.BOX_IN[1] - 2 * P.FIT + 1e-6
     if name in ("tray", "lid"):
         if sx > limit_x or sy > limit_y:
             raise SystemExit(f"FAIL {name}: {sx:.1f} x {sy:.1f} does not fit")
-        if sx > 220 or sy > 220:
-            raise SystemExit(f"FAIL {name}: does not fit a 220 x 220 bed")
         clash = max((part & col).volume for col in column_solids())
         if clash > CLASH_MM3:
             raise SystemExit(

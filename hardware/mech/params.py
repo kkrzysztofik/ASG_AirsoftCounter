@@ -4,7 +4,8 @@ No third-party imports: check.py has to run on a plain /usr/bin/python3 with not
 Coordinates: origin at the inner floor corner of the box, +X along 190, +Y along 140, +Z up.
 Sources are named per line; anything marked MEASURE is a placeholder until the box arrives.
 
-Set MECH_PROCESS to price and validate for a different print process: mjf (default), fdm, sla.
+Set MECH_PROCESS to validate for a different print process: p2s_petg (default), p2s_abs, or the
+JLC3DP services mjf, fdm, sla.
 """
 
 import os
@@ -19,8 +20,22 @@ GUIDE_SOURCE = "jlc3dp.com/help/article/3d-printing-design-guideline"
 # --- print process ----------------------------------------------------------------------------
 # Source: jlc3dp.com/help/article/3d-printing-design-guideline, read 2026-10-02. wall is the
 # (largest part dimension, minimum wall) table; clear and hole_tol are millimetres per side.
-PROCESS = os.environ.get("MECH_PROCESS", "mjf")
+PROCESS = os.environ.get("MECH_PROCESS", "p2s_petg")
+# Home printing on the Bambu P2S, 0.4 mm nozzle (docs/plans/2026-10-11-p2s-prepurchase-design.md).
+# Not a published guideline: wall = 3 perimeters of a 0.4 mm line, clearance and hole tolerance
+# are first guesses until the coupon (insert.py --part coupon) is printed, build = the P2S volume.
+# shrink is what Bambu Studio's filament "Shrinkage (XY)" must be set to; the model is nominal.
+_P2S = {
+    "wall": ((400.0, 1.2),),
+    "clear": 0.2, "hole_tol": 0.2,  # MEASURE with the coupon's fit sweep
+    "min_build": (0.0, 0.0, 0.0), "max_build": (256.0, 256.0, 256.0),
+    "escape": 0.0,
+}
 PROCESS_RULES = {
+    "p2s_petg": {**_P2S, "name": "PETG (Bambu P2S)", "shrink": 99.7},  # MEASURE, ~0.3 %
+    # ABS shrinks ~0.7 %: 1.3 mm over the tray's 190, more than the whole FIT, so the slicer
+    # compensation is not optional. Print it in the closed chamber, brim on the tray and lid.
+    "p2s_abs": {**_P2S, "name": "ABS (Bambu P2S)", "shrink": 99.3},  # MEASURE, ~0.7 %
     "mjf": {
         "name": "Nylon (MJF)",
         "wall": ((50.0, 1.0), (100.0, 1.2), (200.0, 1.5), (400.0, 2.0)),
@@ -51,6 +66,10 @@ RULES = PROCESS_RULES[PROCESS]
 # grille, the guide ring and the wall rings are small flat parts that FDM's minimum build size
 # rejects, so they stay on MJF or SLA and their features must not be judged against FDM's rules.
 PARTS = os.environ.get("MECH_PARTS", "all")
+
+# Calibration coupon (insert.py --part coupon): a hole per clearance, and a loose peg to try them
+COUPON_FITS = (0.15, 0.20, 0.25, 0.30, 0.40)   # per side; set RULES' clear from the one that slides
+COUPON_PEG_D = 8.0
 
 
 def making(part):
@@ -152,7 +171,7 @@ PACK_OVERLAP = 0.0            # MEASURE how far the cell's top rises past the pa
 SADDLE_T = 6.0                # saddle rail thickness along X (v2: was 8, 6 is plenty)
 SADDLE_INSET = 22.0           # saddle rails sit this far either side of the cell centres
 SADDLE_CLEAR = 0.4
-LCD_DEPTH = 13.0              # MEASURE 20x4 + HW-61 backpack, hangs below the panel
+LCD_DEPTH = 13.5              # Newhaven NHD-0420D3Z-FL-GBW-V3, 13.5 max depth, hangs below the panel
 BUTTON_DEPTH = 25.0           # MEASURE behind-panel depth of a 16 mm IP65 button
 NFC_DEPTH = 5.0               # PN532 module thickness
 
@@ -161,7 +180,8 @@ BUTTON_D = 16.0               # budget generic 16 mm (Deluxe is 19)
 BUTTON_BOSS_R = BUTTON_D / 2 + 5  # lid boss that clamps the button
 SPEAKER_D = 50.0              # VISATON K 50
 LCD = (98.0, 60.0)            # 20x4 module
-LCD_HOLES = (93.0, 55.0)      # M3 grid
+LCD_HOLES = (93.0, 55.0)      # M2.5 grid (Newhaven: 4x Ø2.5 holes)
+LCD_PILOT = 2.2               # M2.5 self-tapping pilot in the lid bosses
 LCD_BOSS_H = 5.0              # lid bosses the LCD board hangs from
 LCD_CENTRE = (95.0, 105.0)    # pushed to the top edge, leaving the buttons a clear band below
 BUTTON_XY = [(56.0, 20.0), (96.0, 20.0)]    # below the carrier's footprint, so a 25 mm body fits
@@ -181,13 +201,31 @@ WALLS = {"x0": BOX_IN[1], "x1": BOX_IN[1], "y0": BOX_IN[0], "y1": BOX_IN[0]}  # 
 WALL_PARTS = {
     "key":    {"hole_d": 22.3, "device_d": 22.0, "wall": "x0", "u": 50.0,  "z": 35.0},
     "usbc":   {"hole_d": 12.2, "device_d": 12.0, "wall": "x0", "u": 90.0,  "z": 45.0},
-    "sma":    {"hole_d": 6.5,  "device_d": 6.4,  "wall": "x1", "u": 70.0,  "z": 46.0},
-    "buzzer": {"hole_d": 30.0, "device_d": 29.6, "wall": "y1", "u": 125.0, "z": 46.0},
+    "sma":    {"hole_d": 6.5,  "device_d": 6.4,  "wall": "x1", "u": 45.0,  "z": 46.0},
+    "buzzer": {"hole_d": 30.0, "device_d": 29.6, "wall": "x1", "u": 85.0,  "z": 40.0},
 }
 # Cable tie points, inboard of the corner columns so a clip cannot end up inside one.
 CLIP_XY = [(148.0, 30.0), (148.0, 110.0)]
 CLIP_GROOVE_D = 4.4           # hole through a clip, for a small cable tie
-SPEAKER_WALL = {"wall": "y1", "u": 65.0, "z": 30.0}  # Ø50, own grille plate
+SPEAKER_WALL = {"wall": "y1", "u": 85.0, "z": 30.0}  # Ø50, own grille plate; u 65 hit the left carrier post
+# What each device puts inside the box, from the wall's inner face inward, terminals included:
+# stages of (diameter, depth), front first, then the cable allowance behind the last stage for the
+# plug or wire leaving its back. The assembly gate places these as envelopes.
+# Parts from docs/OFFBOARD_PARTS.md.
+CABLE_ALLOWANCE = 10.0        # MEASURE plug/wire leaving a wall device's back before it can bend
+WALL_BODIES = {
+    # BUDGET, not a part: the EAO 82-6121.2000 (series drawing: 60 behind the panel) does not fit.
+    # At x0 the left carrier arm stands at x 42.5, so a key may have at most 32 mm behind the
+    # wall plus its wire; 30 leaves 2.5 mm. Buy to this (docs/OFFBOARD_PARTS.md #10).
+    "key":     (((30.0, 30.0),), CABLE_ALLOWANCE),
+    "usbc":    (((16.0, 30.0),), CABLE_ALLOWANCE),  # MEASURE generic IP67 panel extension, no datasheet
+    "sma":     (((9.2, 10.0),), CABLE_ALLOWANCE),   # MEASURE GSM-IPX/SMA-150 bulkhead: 8 mm AF nut across corners
+    "buzzer":  (((43.0, 32.0),), CABLE_ALLOWANCE),  # MEASURE BZ-38 (PK35N29EPQ), TME Ø43 x 32 overall, all assumed inside
+    # VISATON K 50 (2901): Ø50 x 17 overall, 2.7 front frame + 14.3 behind (TME, Farnell,
+    # toutlehautparleur). Behind the frame the basket passes the 45 mm front-mount cutout. Its
+    # tabs sit on the basket rim, so the wires leave sideways: no axial allowance.
+    "speaker": (((50.0, 2.7), (45.0, 14.3)), 0.0),
+}
 BUSHING_FLANGE = 4.0          # ring thickness. A ring, not a barrel: the wall is 3 mm of
                               # PS/ABS with a hole in it, and the ring is what stops it cracking
                               # and what seats the O-ring. There is no room for a barrel because

@@ -28,7 +28,10 @@ MATERIAL_BY_PROCESS = {
     "fdm": "FDM PETG, black",
     "sla": "SLA 9000R resin, black",
 }
-MATERIAL = MATERIAL_BY_PROCESS.get(P.PROCESS, MATERIAL_BY_PROCESS["mjf"])
+if P.PROCESS not in MATERIAL_BY_PROCESS:
+    raise SystemExit(f"MECH_PROCESS={P.PROCESS} prints at home, there is nothing to quote; "
+                     "set MECH_PROCESS=mjf|fdm|sla for a JLC3DP package")
+MATERIAL = MATERIAL_BY_PROCESS[P.PROCESS]
 
 # (order, file stem, qty, note). Order is the row order on the sheet and the filename prefix,
 # so the quote lines up with the drawing.
