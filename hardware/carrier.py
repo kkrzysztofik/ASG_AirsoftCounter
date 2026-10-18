@@ -193,6 +193,19 @@ HEADER_POWER = {"J2.1": "GND", "J3.1": "GND", "J3.2": "+3V3", "J3.3": "+3V3"}
 HEADER_NC = {"J2.2", "J2.3", "J2.4"}  # 5V charger input, Vext x2: must stay unconnected
 
 
+def heltec_pin_names():
+    """Header pin -> name on the local:Heltec_V4_J2/J3 symbols (gen_sch checks the symbols against this)."""
+    role = {44: "GPIO44 RX", 43: "GPIO43 TX", None: "RST"}
+    nc = {"J2.2": "5V in", "J2.3": "Ve", "J2.4": "Ve"}
+    out = {}
+    for h in ("J2", "J3"):
+        for n in range(1, 19):
+            p = f"{h}.{n}"
+            out[p] = (HEADER_POWER[p].lstrip("+") if p in HEADER_POWER else nc.get(p)
+                      or role.get(HELTEC_GPIO[p], f"GPIO{HELTEC_GPIO[p]}"))
+    return out
+
+
 # Build variants: one board, fewer parts populated. The pin map never changes (everything
 # slow already sits behind the U2 expander), so a variant is just a BOM/CPL without a module's refs.
 # GPS, enclosure and the other off-board parts are not on the board: they only matter for cost.

@@ -204,7 +204,12 @@ def bounds_box(pts):
 
 # --- Schematic items ---
 
+UID_PREFIX = ""  # set per child sheet so wires/labels/junctions keyed by net stay unique across files
+
+
 def uid(key):
+    if UID_PREFIX and not key.startswith(("sym/", "pin/")):
+        key = UID_PREFIX + key
     return q(str(uuid.uuid5(NS, key)))
 
 
@@ -252,6 +257,7 @@ class Sheet:
         self.clashes = []
         self.items, self.symbols, self.lib_ids = [], [], set()
         self.nports = 0
+        self.nflags = 0
 
     def mark(self, cells, owner, check=True):
         for c in cells:
@@ -280,10 +286,12 @@ class Sheet:
 
 # --- Parts ---
 
-def place_part(sh, ref, x, y, rot, mirror, fields):
-    value, lib_id, fp = design.PARTS[ref]
+def place_part(sh, ref, x, y, rot, mirror, fields, part=None, nets=None, offboard=False):
+    """Place `ref` (design.PARTS, or `part` = (value, lib_id, footprint) for an off-board symbol)."""
+    value, lib_id, fp = part or design.PARTS[ref]
     sym = flat_symbol(*lib_id.split(":"))
-    pin_net = {p.split(".")[1]: n for n, m in design.NETS.items() for p in m if p.split(".")[0] == ref}
+    nets = design.NETS if nets is None else nets
+    pin_net = {p.split(".")[1]: n for n, m in nets.items() for p in m if p.split(".")[0] == ref}
     bad = set(pin_net) - set(pins_of(sym))
     if bad:
         raise SystemExit(f"{ref}: pins {sorted(bad)} not in symbol {lib_id} (has {sorted(pins_of(sym))})")
@@ -357,8 +365,8 @@ def place_part(sh, ref, x, y, rot, mirror, fields):
     sh.lib_ids.add(lib_id)
     sh.symbols.append(["symbol", ["lib_id", q(lib_id)], at(x, y, rot), *([["mirror", mirror]] if mirror else []),
                        ["unit", "1"], ["exclude_from_sim", "no"],
-                       ["in_bom", "no" if dnp or lib_bom == "no" or ref in _NOT_ASSEMBLED else "yes"],
-                       ["on_board", "yes"], ["dnp", "yes" if dnp else "no"],
+                       ["in_bom", "no" if offboard or dnp or lib_bom == "no" or ref in _NOT_ASSEMBLED else "yes"],
+                       ["on_board", "no" if offboard else "yes"], ["dnp", "yes" if dnp else "no"],
                        ["uuid", uid(f"sym/{ref}")], *props,
                        *[["pin", q(n), ["uuid", uid(f"pin/{ref}/{n}")]] for n in pins_of(sym)],
                        instances(sh, ref)])
@@ -674,9 +682,9 @@ def segments(edges, stops):
 PAPERS = [("A3", 420, 297), ("A2", 594, 420), ("A1", 841, 594)]
 
 
-def paper_for(w, h):
+def paper_for(w, h, papers=PAPERS):
     """Smallest sheet whose frame holds every block, clear of the bottom title block."""
-    for name, pw, ph in PAPERS:
+    for name, pw, ph in papers:
         if w <= pw - 15 and h <= ph - 45:
             return name
     raise SystemExit(f"schematic content {w:.0f}x{h:.0f} mm does not fit on A1")
@@ -699,37 +707,49 @@ def schematic():
             ["sheet_instances", ["path", q("/"), ["page", q("1")]]], ["embedded_fonts", "no"]], sh.root, sh.clashes
 
 
-def build_sheet(sh, blocks, exits):
+def label_fits(sh, net, c, s, bound):
+    """Would label_on_pin find room for a `net` label off the pin at c (stub direction s)?"""
+    d = DIRS_OF[s]
+    return any(sh.free({add(c, s, k) for k in range(1, n + 1)} | glabel_cells(net, add(c, s, n), d), net, bound)
+               for n in (2, 4, 6))
+
+
+def build_sheet(sh, blocks, exits, nets=None, pre=None):
     """Place, port, label, route and name `blocks` on sheet `sh`; returns (wires and junctions, width, height).
 
     Net members whose part is not in `blocks` belong to another sheet. A net in `exits` leaves this sheet:
     each of its groups here gets a hierarchical label (flat mode passes no exits, so every block-crossing
-    net is joined by global labels, as before)."""
+    net is joined by global labels, as before). `nets` defaults to design.NETS; `pre(sh)` runs after the
+    parts are placed and returns {ref: block index} for extra terminals it put in sh.pins (sheet pins,
+    off-board symbols)."""
+    nets = design.NETS if nets is None else nets
     block_of, bounds = {}, []
     for i, b in enumerate(blocks):
         (bx, by), (bw, bh) = b["at"], b["size"]
         bounds.append((round(bx / STEP) + 1, round(by / STEP) + 1, round((bx + bw) / STEP) - 1,
                        round((by + bh) / STEP) - 1))
-        tx, ty = bx + 2.54, by + 5.08
-        sh.mark(box_cells((tx, ty - 1.3, tx + len(b["title"]) * 1.7, ty + 0.3)), f"title {i}")
-        sh.items.append(["rectangle", ["start", num(bx), num(by)], ["end", num(bx + bw), num(by + bh)],
-                         ["stroke", ["width", "0"], ["type", "dash"]], ["fill", ["type", "none"]],
-                         ["uuid", uid(f"block/{i}")]])
-        sh.items.append(["text", q(b["title"]), ["exclude_from_sim", "no"], at(tx, ty),
-                         ["effects", ["font", ["size", "2", "2"], ["bold", "yes"]], ["justify", "left", "bottom"]],
-                         ["uuid", uid(f"title/{i}")]])
+        if b.get("title"):  # the root sheet's single block has no frame
+            tx, ty = bx + 2.54, by + 5.08
+            sh.mark(box_cells((tx, ty - 1.3, tx + len(b["title"]) * 1.7, ty + 0.3)), f"title {i}")
+            sh.items.append(["rectangle", ["start", num(bx), num(by)], ["end", num(bx + bw), num(by + bh)],
+                             ["stroke", ["width", "0"], ["type", "dash"]], ["fill", ["type", "none"]],
+                             ["uuid", uid(f"block/{i}")]])
+            sh.items.append(["text", q(b["title"]), ["exclude_from_sim", "no"], at(tx, ty),
+                             ["effects", ["font", ["size", "2", "2"], ["bold", "yes"]], ["justify", "left", "bottom"]],
+                             ["uuid", uid(f"title/{i}")]])
         for ref, (dx, dy, rot, mirror) in b["parts"].items():
-            sh.pins |= place_part(sh, ref, bx + dx, by + dy, rot, mirror, b.get("fields", {}))
+            sh.pins |= place_part(sh, ref, bx + dx, by + dy, rot, mirror, b.get("fields", {}), nets=nets)
             block_of[ref] = i
-    nflags = 0
+    if pre:
+        block_of |= pre(sh)
     for _i, b in enumerate(blocks):
         for net, dx, dy in b.get("flags", []):
-            nflags += 1
-            flag(sh, net, gk(b["at"][0] + dx, b["at"][1] + dy), nflags)
+            sh.nflags += 1
+            flag(sh, net, gk(b["at"][0] + dx, b["at"][1] + dy), sh.nflags)
 
     # per net: pins grouped by block
     groups = collections.defaultdict(lambda: collections.defaultdict(list))
-    for net, members in design.NETS.items():
+    for net, members in nets.items():
         for p in members:
             if p.split(".")[0] in block_of:
                 groups[net][block_of[p.split(".")[0]]].append(p)
@@ -754,6 +774,8 @@ def build_sheet(sh, blocks, exits):
             if net not in blocks[i].get("wired", ()):
                 rail_ports(sh, net, pins, bounds[i])
     # a lone pin of a multi-block net gets its label on a stub
+    seed = {}
+
     def crossing(net, by_block):
         return net not in design.RAILS and (len(by_block) > 1 or net in exits)
 
@@ -765,6 +787,11 @@ def build_sheet(sh, blocks, exits):
                 c, s = sh.pins[pins[0]]
                 kind = "hier" if net in exits else "global"
                 terms[(net, i)].append((label_on_pin(sh, net, c, s, bounds[i], kind), s))
+            elif not terms[(net, i)] and net in exits:  # untagged multi-pin group leaving the sheet
+                fits = [p for p in sorted(pins) if label_fits(sh, net, *sh.pins[p], bounds[i])]
+                c, s = sh.pins[(fits or sorted(pins))[0]]
+                terms[(net, i)].append((label_on_pin(sh, net, c, s, bounds[i], "hier"), s))
+                seed[(net, i)] = c  # route from the labelled pin: its stub is wire the tree must grow from
     for net, by_block in groups.items():
         for i in by_block:
             if crossing(net, by_block) and not terms[(net, i)]:
@@ -778,6 +805,8 @@ def build_sheet(sh, blocks, exits):
             if net not in design.RAILS or net in blocks[i].get("wired", ())]
     for net, i in sorted(todo, key=lambda t: (spread(*t), t[0], t[1])):
         ts = [sh.pins[p][0] for p in groups[net][i]] + [c for c, _ in terms[(net, i)]]
+        if (net, i) in seed:
+            ts.insert(0, seed[(net, i)])
         route(sh, net, list(dict.fromkeys(ts)), bounds[i])
     # name one-block nets
     for net, by_block in groups.items():
@@ -803,6 +832,216 @@ def build_sheet(sh, blocks, exits):
     w = max(b["at"][0] + b["size"][0] for b in blocks)
     h = max(b["at"][1] + b["size"][1] for b in blocks)
     return body, w, h
+
+
+# --- Hierarchical mode (board module defines SHEETS / ROOT / OFFBOARD) ---
+
+MARGIN = 12.7  # where a sheet's content starts (inside the drawing frame)
+PAPERS_HIER = [("A4", 297, 210), *PAPERS]
+
+
+def root_refs():
+    return set(design.ROOT["parts"]) if hasattr(design, "SHEETS") else set(design.PARTS)
+
+
+def sheet_of(ref):
+    """Sheet name a board part is drawn on: "root" in flat mode and for ROOT parts."""
+    if not hasattr(design, "SHEETS") or ref in design.ROOT["parts"]:
+        return "root"
+    for name, (_title, idx) in design.SHEETS.items():
+        if any(ref in design.BLOCKS[i]["parts"] for i in idx):
+            return name
+    raise SystemExit(f"{ref} is on no sheet")
+
+
+def sheet_uuid(name):
+    return str(uuid.uuid5(NS, f"sheet/{name}"))
+
+
+def sheet_blocks(name):
+    """The sheet's BLOCKS without the root parts, shifted so the content starts at MARGIN."""
+    _title, idx = design.SHEETS[name]
+    roots, out = root_refs(), []
+    for i in idx:
+        b = design.BLOCKS[i]
+        parts = {r: v for r, v in b["parts"].items() if r not in roots}
+        here = {n for n, m in design.NETS.items() for p in m if p.split(".")[0] in parts}
+        out.append({**b, "parts": parts, "tags": {n: t for n, t in b.get("tags", {}).items() if n in here}})
+    x0, y0 = min(b["at"][0] for b in out), min(b["at"][1] for b in out)
+    return [{**b, "at": (b["at"][0] - x0 + MARGIN, b["at"][1] - y0 + MARGIN)} for b in out]
+
+
+def exits_of(name):
+    """Signal nets with pins on sheet `name` and anywhere else (another sheet or the root)."""
+    out = set()
+    for net, members in design.NETS.items():
+        where = {sheet_of(p.split(".")[0]) for p in members}
+        if net not in design.RAILS and name in where and len(where) > 1:
+            out.add(net)
+    return out
+
+
+def check_heltec_names():
+    """The named Heltec header symbols must match the module's pin map (they were drawn once, via Konnect)."""
+    want = getattr(design, "heltec_pin_names", None)
+    if not want:
+        return
+    want = want()
+    for h in ("J2", "J3"):
+        lib_id = design.PARTS[h][1]
+        if not lib_id.startswith("local:Heltec_V4"):
+            continue
+        got = {f"{h}.{unq(child(pin, 'number')[1])}": unq(child(pin, "name")[1])
+               for b in unit_bodies(flat_symbol(*lib_id.split(":"))) for pin in kids(b, "pin")}
+        bad = sorted(p for p in got if got[p] != want.get(p))
+        if bad:
+            raise SystemExit(f"{lib_id} pin names differ from heltec_pin_names(): {[(p, got[p], want.get(p)) for p in bad]}")
+
+
+def sheet_file(name):
+    return f"{design.NAME}-{name}.kicad_sch"
+
+
+def child_sheet(name, page_counters):
+    """(tree, hierarchical labels, clashes) of function sheet `name`."""
+    global UID_PREFIX
+    UID_PREFIX = f"sheet/{name}/"
+    try:
+        sh = Sheet(path=(sheet_uuid(name),))
+        sh.nports, sh.nflags = page_counters
+        body, w, h = build_sheet(sh, sheet_blocks(name), exits_of(name))
+        page_counters[:] = [sh.nports, sh.nflags]
+        head = [["lib_symbols", *[embedded(i) for i in sorted(sh.lib_ids)]]]
+        tree = ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")], ["generator_version", q("9.0")],
+                ["uuid", uid(f"file/{name}")], ["paper", q(paper_for(w, h, PAPERS_HIER))],
+                ["title_block", ["title", q(f"{design.TITLE}: {design.SHEETS[name][0]}")]], *head, *body,
+                *sh.items, *sh.symbols, ["embedded_fonts", "no"]]
+    finally:
+        UID_PREFIX = ""
+    return tree, sh.hier, sh.clashes
+
+
+def root_nets(hier):
+    """Nets drawn on the root: ROOT part pins, off-board pins (on their connector pin's net) and sheet pins."""
+    roots, out = root_refs(), {}
+    off_on = collections.defaultdict(list)
+    for x, (_v, _lib, conn, pin_map, _cable, _at) in getattr(design, "OFFBOARD", {}).items():
+        for own, cpin in pin_map.items():
+            off_on[f"{conn}.{cpin}"].append(f"{x}.{own}")
+    for net, members in design.NETS.items():
+        m = [p for p in members if p.split(".")[0] in roots]
+        m += [x for p in members for x in off_on.get(p, [])]
+        m += [f"@{name}.{net}" for name, labels in hier.items() if any(n == net for n, _c, _d in labels)]
+        if m:
+            out[net] = m
+    return out
+
+
+def sheet_boxes(sh, hier, nets, origin):
+    """Draw the sheet boxes on the root; their pins become router terminals ("@<sheet>.<net>")."""
+    refs = {}
+    centre = {}
+    for name, (x, y, w, h) in design.ROOT["sheets"].items():
+        centre[name] = (x + w / 2, y + h / 2)
+
+    def target(name, net):  # where the rest of the net sits on the root: decides the box side and order
+        pts = [(c[0] * STEP, c[1] * STEP) for p in nets[net] if not p.startswith(f"@{name}.") and p in sh.pins
+               for c in [sh.pins[p][0]]]
+        pts += [centre[p.split(".")[0][1:]] for p in nets[net] if p.startswith("@") and not p.startswith(f"@{name}.")]
+        return (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)) if pts else centre[name]
+
+    for page, (name, (x, y, w, h)) in enumerate(design.ROOT["sheets"].items(), start=2):
+        pins = sorted({n for n, _c, _d in hier[name]})
+        left = sorted((n for n in pins if target(name, n)[0] < centre[name][0]), key=lambda n: target(name, n)[1])
+        right = sorted((n for n in pins if n not in left), key=lambda n: target(name, n)[1])
+        h = max(h, (max(len(left), len(right)) + 1) * 2.54)
+        bx, by = x - MARGIN + origin[0], y - MARGIN + origin[1]
+        sh.mark(box_cells((bx, by - 2.5, bx + w, by + h + 2.5), 0.3), f"sheet {name}")
+        items = []
+        for side, names in (("L", left), ("R", right)):
+            for k, net in enumerate(names, start=1):
+                c = gk(bx if side == "L" else bx + w, by + k * 2.54)
+                s_ = DIRS[side]
+                sh.hard.pop(c, None)
+                sh.pins[f"@{name}.{net}"] = (c, s_)
+                sh.term[c] = (net, s_)
+                for kk in (1, 2):
+                    sh.zone[add(c, s_, kk)] = net
+                items.append(["pin", q(net), "passive", at(c[0] * STEP, c[1] * STEP, 180 if side == "L" else 0),
+                              ["uuid", uid(f"sheetpin/{name}/{net}")],
+                              font(["justify", "left" if side == "L" else "right"])])
+        refs[f"@{name}"] = 0
+        sh.items.append(["sheet", at(bx, by)[:3], ["size", num(w), num(h)], ["exclude_from_sim", "no"],
+                         ["in_bom", "yes"], ["on_board", "yes"], ["dnp", "no"], ["fields_autoplaced", "yes"],
+                         ["stroke", ["width", "0.1524"], ["type", "solid"]], ["fill", ["color", "0", "0", "0", "0.0000"]],
+                         ["uuid", q(sheet_uuid(name))],
+                         ["property", q("Sheetname"), q(design.SHEETS[name][0]), at(bx, by - 0.7),
+                          font(["justify", "left", "bottom"])],
+                         ["property", q("Sheetfile"), q(sheet_file(name)), at(bx, by + h + 0.6),
+                          font(["justify", "left", "top"], ["hide", "yes"])],
+                         *items,
+                         ["instances", ["project", q(design.NAME), ["path", q(f"/{sh.root}"), ["page", q(str(page))]]]]])
+    return refs
+
+
+def place_offboard(sh, nets, origin):
+    """Off-board symbols beyond their connectors, with a cable note under each."""
+    refs = {}
+    for x_ref, (value, lib_id, _conn, _pins, cable, (x, y, rot, mirror)) in getattr(design, "OFFBOARD", {}).items():
+        px, py = x - MARGIN + origin[0], y - MARGIN + origin[1]
+        pins = place_part(sh, x_ref, px, py, rot, mirror, {}, part=(value, lib_id, ""), nets=nets, offboard=True)
+        sh.pins |= pins
+        refs[x_ref] = 0
+        ys = [c[1] * STEP for c, _s in pins.values()]
+        tx, ty = px, max(ys) + 6.35
+        sh.mark(box_cells(text_box(tx, ty, cable, True, "center")), f"cable {x_ref}")
+        sh.items.append(["text", q(cable), ["exclude_from_sim", "no"], at(tx, ty),
+                         ["effects", ["font", ["size", "1.27", "1.27"], ["italic", "yes"]]],
+                         ["uuid", uid(f"cable/{x_ref}")]])
+    return refs
+
+
+def root_sheet(hier, counters):
+    sh = Sheet()
+    sh.nports, sh.nflags = counters
+    origin = (MARGIN, MARGIN)
+    w, h = design.ROOT["size"]
+    nets = root_nets(hier)
+    title, (ox, oy, ow, oh) = design.ROOT["outline"]
+    sh.items.append(["rectangle", ["start", num(ox), num(oy)], ["end", num(ox + ow), num(oy + oh)],
+                     ["stroke", ["width", "0.254"], ["type", "dash_dot"]], ["fill", ["type", "none"]],
+                     ["uuid", uid("outline")]])
+    sh.items.append(["text", q(title), ["exclude_from_sim", "no"], at(ox + 2.54, oy + 5.08),
+                     ["effects", ["font", ["size", "2", "2"], ["bold", "yes"]], ["justify", "left", "bottom"]],
+                     ["uuid", uid("outline/title")]])
+    sh.mark(box_cells((ox + 2.54, oy + 3.8, ox + 2.54 + len(title) * 1.7, oy + 5.4)), "outline title")
+    block = {"title": None, "at": origin, "size": (w, h),
+             "parts": {r: (x - MARGIN, y - MARGIN, rot, mir) for r, (x, y, rot, mir) in design.ROOT["parts"].items()}}
+
+    def pre(sh_):
+        return place_offboard(sh_, nets, origin) | sheet_boxes(sh_, hier, nets, origin)
+
+    body, bw, bh = build_sheet(sh, [block], set(), nets=nets, pre=pre)
+    head = [["lib_symbols", *[embedded(i) for i in sorted(sh.lib_ids)]]]
+    tree = ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")], ["generator_version", q("9.0")],
+            ["uuid", q(sh.root)], ["paper", q(paper_for(bw, bh, PAPERS_HIER))],
+            ["title_block", ["title", q(f"{design.TITLE}: system")]], *head, *body, *sh.items, *sh.symbols,
+            ["sheet_instances", ["path", q("/"), ["page", q("1")]]], ["embedded_fonts", "no"]]
+    return tree, sh.root, sh.clashes
+
+
+def hierarchy():
+    """[(file name, tree)], root uuid, clashes: the function sheets, then the root that draws their boxes."""
+    check_heltec_names()
+    counters, files, hier, clashes = [0, 0], [], {}, []
+    for name in design.SHEETS:
+        tree, labels, cl = child_sheet(name, counters)
+        files.append((sheet_file(name), tree))
+        hier[name] = labels
+        clashes += [f"[{name}] {c}" for c in cl]
+    tree, root, cl = root_sheet(hier, counters)
+    clashes += [f"[root] {c}" for c in cl]
+    return [(f"{design.NAME}.kicad_sch", tree), *files], root, clashes
 
 
 # KiCad 9 default ERC pin conflict matrix (0 ok, 1 warning, 2 error), rows/columns: input, output,
@@ -866,18 +1105,26 @@ def project(root):
 
 def main():
     design.check()
-    sch, root, clashes = schematic()
-    if clashes:  # keep the broken sheet for inspection, out of the tree
+    if hasattr(design, "SHEETS"):
+        files, root, clashes = hierarchy()
+    else:
+        sch, root, clashes = schematic()
+        files = [(f"{design.NAME}.kicad_sch", sch)]
+    if clashes:  # keep the broken sheets for inspection, out of the tree
         (HERE / "build").mkdir(exist_ok=True)
-        (HERE / "build" / f"{design.NAME}_bad.kicad_sch").write_text(dump(sch) + "\n")
+        for fname, tree in files:
+            (HERE / "build" / fname.replace(".kicad_sch", "_bad.kicad_sch")).write_text(dump(tree) + "\n")
         first = {}
         for m in clashes:  # one line per kind of problem, at its first spot
             first.setdefault(m.split(" at ")[0], m)
-        raise SystemExit(f"layout problems (sheet in build/{design.NAME}_bad.kicad_sch):\n  "
+        raise SystemExit(f"layout problems (sheets in build/{design.NAME}*_bad.kicad_sch):\n  "
                          + "\n  ".join(sorted(first.values())))
-    (KICAD / f"{design.NAME}.kicad_sch").write_text(dump(sch) + "\n")
+    for stale in KICAD.glob(f"{design.NAME}-*.kicad_sch"):  # sheets a renamed/removed SHEETS entry left
+        stale.unlink()
+    for fname, tree in files:
+        (KICAD / fname).write_text(dump(tree) + "\n")
     (KICAD / f"{design.NAME}.kicad_pro").write_text(json.dumps(project(root), indent=2) + "\n")
-    print(f"wrote kicad/{design.NAME}.kicad_sch, kicad/{design.NAME}.kicad_pro")
+    print(f"wrote {', '.join('kicad/' + f for f, _ in files)}, kicad/{design.NAME}.kicad_pro")
 
 
 if __name__ == "__main__":

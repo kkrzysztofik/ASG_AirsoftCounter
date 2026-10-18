@@ -21,6 +21,7 @@ HEADER_NC = carrier.HEADER_NC
 HELTEC_GPIO = carrier.HELTEC_GPIO
 FORBIDDEN_GPIO = carrier.FORBIDDEN_GPIO
 EXPECTED_GPIO = carrier.EXPECTED_GPIO
+heltec_pin_names = carrier.heltec_pin_names
 
 TSSOP20 = "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm"
 SOIC8 = "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
@@ -226,6 +227,7 @@ ROOT = {
         "audio": (279.4, 203.2, 38.1, 38.1), "debug": (88.9, 177.8, 38.1, 38.1),
     },
     "outline": ("Heltec WiFi LoRa 32 V4 (plugs into J2/J3)", (165.1, 30.48, 101.6, 104.14)),
+    "size": (391.16, 236.22),  # root content from (12.7, 12.7): fits A3
 }
 # Off-board parts, drawn on the root beyond their connector, never on the board or in a BOM:
 # ref -> (value, symbol, connector, {own pin: connector pin}, cable note, (x, y, rot, mirror)).

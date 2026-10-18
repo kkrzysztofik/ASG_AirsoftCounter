@@ -18,12 +18,14 @@ ZIP = $(FAB)/$(BOARD)_gerbers_jlcpcb.zip
 all: check fab
 
 # gen_sch writes the KiCad 9 schematic format; `sch upgrade` has KiCad's own writer convert it to the
-# installed version (the netlist check right after verifies the result).
+# installed version (the netlist check right after verifies the result). A hierarchical board also has
+# one kicad/<board>-<sheet>.kicad_sch per function sheet (the dash keeps carrier-* off carrier_tme-*).
 sch:
 	mkdir -p build
 	$(PY) $(BOARD_PY)
 	$(PY) gen_sch.py
-	kicad-cli sch upgrade kicad/$(BOARD).kicad_sch
+	for f in kicad/$(BOARD).kicad_sch kicad/$(BOARD)-*.kicad_sch; do \
+		if [ -e "$$f" ]; then kicad-cli sch upgrade "$$f" || exit 1; fi; done
 	kicad-cli sch export netlist --format kicadxml -o build/$(BOARD).xml kicad/$(BOARD).kicad_sch
 	$(PY) check_netlist.py build/$(BOARD).xml
 
