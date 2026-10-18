@@ -176,6 +176,19 @@ NETS = {
     "BTN_B_SW": ["J_BTN_B1.1", "R_PUB1.2", "C_BB1.1", "R_SB1.1"], "BTN_B_IN": ["R_SB1.2", "U2.5"],
 }
 
+# --- Hierarchical schematic symbols -------------------------------------------------------------
+# The Heltec headers get named-pin symbols (Heltec V4 pinout); same value and footprint, so nothing
+# changes on the board or in the JLC BOM/CPL. gen_sch.check_heltec_names() checks them against
+# heltec_pin_names() below.
+PARTS["J2"] = (PARTS["J2"][0], "local:Heltec_V4_J2", PARTS["J2"][2])
+PARTS["J3"] = (PARTS["J3"][0], "local:Heltec_V4_J3", PARTS["J3"][2])
+# Root-sheet cable connectors use 5.08 mm-pitch symbols (same pins and footprints): the half row between
+# cables holds each rail's power port, which does not fit at 2.54 mm.
+for _r in ("J_PWR1", "J_HBAT1", "J_LCD1", "J_NFC1", "J_BTN_R1", "J_BTN_B1", "J_BUZ1", "J_SPK1"):
+    _v, _sym, _fp = PARTS[_r]
+    PARTS[_r] = (_v, f"local:Conn_W_{_sym[-2:]}", _fp)
+
+
 # Heltec header pin -> ESP32 GPIO (V4 pin map). Only pins we use or must avoid.
 HELTEC_GPIO = {
     "J3.12": 1, "J3.13": 2, "J3.14": 3, "J3.15": 4, "J3.16": 5, "J3.17": 6, "J3.18": 7,
@@ -269,12 +282,13 @@ BLOCKS = [
                "C_BULK1": (58.42, 31.75, 0, None), "C_BULK2": (71.12, 31.75, 0, None),
                "C_5V1": (83.82, 31.75, 0, None), "C_5V2": (96.52, 31.75, 0, None)},
      "flags": [("GND", 7.62, 55.88), ("VBAT_SW", 30.48, 55.88), ("+5V", 53.34, 55.88)]},
-    {"title": "I2S speaker amp", "at": (208.28, 12.7), "size": (104.14, 63.5),
-     "parts": {"U3": (55.88, 38.1, 0, None), "R_SD1": (25.4, 40.64, 90, None),
-               "R_SDPD1": (17.78, 45.72, 0, None),
-               "C_AMP1": (68.58, 17.78, 0, None), "C_AMP2": (81.28, 17.78, 0, None),
-               "J_SPK1": (96.52, 30.48, 0, "x")},
-     "tags": {"AMP_SD": [(13.97, 40.64, "L")]}},
+    # Audio sheet (hierarchical mode): U3 and J_SPK1 are drawn on the root, next to the Heltec and the
+    # speaker connector; this sheet holds the amp-side passives. Left to right: AMP_SD in (expander) ->
+    # series R_SD1 with R_SDPD1 pull-down -> AMP_SD_R out (U3 CTRL), then C_AMP1/C_AMP2 on VBAT_SW.
+    {"title": "NS4168 supply and shutdown", "at": (208.28, 12.7), "size": (104.14, 63.5),
+     "parts": {"R_SD1": (33.02, 25.4, 90, None), "R_SDPD1": (25.4, 33.02, 0, None),
+               "C_AMP1": (63.5, 25.4, 0, None), "C_AMP2": (85.09, 25.4, 0, None)},
+     "tags": {"AMP_SD": [(12.7, 25.4, "L")]}},
     {"title": "Heltec V4 headers", "at": (317.5, 12.7), "size": (86.36, 76.2),
      "parts": {"J2": (30.48, 38.1, 0, None), "J3": (73.66, 38.1, 0, None)},
      "flags": [("+3V3", 40.64, 68.58)]},
@@ -313,6 +327,112 @@ BLOCKS = [
      "parts": {"H1": (7.62, 15.24, 0, None), "H2": (17.78, 15.24, 0, None),
                "H3": (27.94, 15.24, 0, None), "H4": (38.1, 15.24, 0, None)}},
 ]
+# Hierarchical mode draws J_BUZ1 and D_FLY1 on the root, so BUZ_K leaves the drivers sheet: tag it right
+# of the drain/diode node (an auto label on the drain points straight into Q_BZ1's own pin).
+BLOCKS[5]["tags"]["BUZ_K"] = [(175.26, 27.94, "R")]
+
+
+# --- Hierarchical schematic (docs/plans/2026-10-18-hierarchical-schematics-design.md) ---
+# Function sheets: name -> (title, BLOCKS indexes). A block's parts land on that sheet, except the ROOT
+# parts, which gen_sch draws on the root sheet instead. Drawn on the root beside their connectors, where
+# they sit on the board: the power-entry caps, the bring-up headers and pads, D_FLY1 (across the buzzer),
+# the I2C level shifter with the bus pull-ups (the bus itself is drawn on the root), and U3 beside
+# J_SPK1 (PLACE puts them 9 mm apart). Each rail drawn on the root then has its own bulk cap there, and
+# the audio sheet keeps the amp-side passives (R_SD1/R_SDPD1 on AMP_SD, C_AMP1/C_AMP2 on VBAT_SW).
+SHEETS = {
+    "expander": ("GPIO expander (0x20), button inputs", [4]),
+    "drivers": ("Low-side drivers: button LEDs, buzzer", [5]),
+    "audio": ("NS4168 supply and shutdown", [1]),
+}
+# Root (system) sheet: {ref: (x, y, rot, mirror)} in root coordinates, sheet boxes {name: (x, y, w, h)},
+# and the outline drawn round J2/J3 so they read as one module.
+ROOT = {
+    "parts": {
+        "J2": (190.5, 76.2, 0, None), "J3": (241.3, 76.2, 0, None),
+        # Connector pins face their off-board part: left-side connectors as drawn (pins left), right-side
+        # ones mirrored (pins right); the cable gap between holds the rail ports.
+        "J_PWR1": (81.28, 50.8, 0, None), "J_HBAT1": (81.28, 88.9, 0, None),
+        "J_LCD1": (337.82, 45.72, 0, "y"), "J_NFC1": (337.82, 76.2, 0, "y"),
+        "J_BTN_R1": (337.82, 106.68, 0, "y"), "J_BTN_B1": (337.82, 137.16, 0, "y"),
+        "J_BUZ1": (337.82, 165.1, 0, "y"), "J_SPK1": (337.82, 190.5, 0, "y"),
+        # The NS4168 (U3) beside J_SPK1: I2S comes in from J2, SPK± leave for J_SPK1, and AMP_SD_R
+        # comes from the audio sheet. Its VBAT_SW port clears the drivers sheet box above it.
+        "U3": (297.18, 220.98, 0, None),
+        "H1": (25.4, 238.76, 0, None), "H2": (35.56, 238.76, 0, None),
+        "H3": (45.72, 238.76, 0, None), "H4": (55.88, 238.76, 0, None),
+        # power entry: pack-rail bulk and the +5V reservoir beside J_PWR1, the NFC bulk beside J_NFC1
+        "C_BULK1": (106.68, 50.8, 0, None), "C_BULK2": (116.84, 50.8, 0, None),
+        "C_5V1": (127.0, 50.8, 0, None), "C_5V2": (137.16, 50.8, 0, None),
+        "C_NFC1": (314.96, 88.9, 0, None),
+        # bring-up: UART / I2C headers and rail test pads, pins towards the Heltec
+        "J_UART1": (101.6, 182.88, 0, "y"), "J_I2C1": (101.6, 203.2, 0, "y"),
+        "TP_3V3": (129.54, 182.88, 0, None), "TP_5V": (139.7, 182.88, 0, None),
+        "TP_VSW": (129.54, 200.66, 0, None), "TP_GND": (139.7, 200.66, 0, None),
+        # I2C level shifter and bus pull-ups (the flat block-3 layout, moved beside J_LCD1)
+        "R_SDA3": (283.21, 44.45, 0, None), "Q_SDA1": (295.91, 45.72, 270, None), "R_SDA5": (312.42, 44.45, 0, None),
+        "R_SCL3": (283.21, 67.31, 0, None), "Q_SCL1": (295.91, 68.58, 270, None), "R_SCL5": (312.42, 67.31, 0, None),
+        "D_FLY1": (325.12, 160.02, 270, None),
+    },
+    "flags": [("GND", 106.68, 68.58), ("VBAT_SW", 121.92, 68.58), ("+5V", 137.16, 68.58),
+              ("+3V3", 152.4, 68.58)],
+    # The 2.54 mm headers (Heltec, debug) take rail ports along their stubs, which stay in the pin's own
+    # row; the cable connectors' rail ports hang off their cables instead (gen_sch.tee_port).
+    "port_modes": {r: "along" for r in ("J2", "J3", "J_UART1", "J_I2C1")},
+    "sheets": {
+        "expander": (271.78, 101.6, 38.1, 50.8), "drivers": (271.78, 160.02, 38.1, 38.1),
+        "audio": (203.2, 165.1, 50.8, 25.4),
+    },
+    "outline": ("Heltec WiFi LoRa 32 V4 (plugs into J2/J3)", (165.1, 30.48, 101.6, 104.14)),
+    "size": (391.16, 236.22),  # root content from (12.7, 12.7): fits A3
+}
+# Off-board parts, drawn on the root beyond their connector, never on the board or in a BOM:
+# ref -> (value, symbol, connector, {own pin: connector pin}, cable note, (x, y, rot, mirror)).
+_PINS4 = {"1": "1", "2": "2", "3": "3", "4": "4"}
+OFFBOARD = {
+    "#X_PACK": ("Pack board (P5)", "local:Pack_Link_6", "J_PWR1",
+               {str(i): str(i) for i in range(1, 7)}, "XH-6", (27.94, 50.8, 0, "y")),
+    "#X_HBAT": ("Heltec V4 battery", "local:Conn_W_02", "J_HBAT1",
+               {"1": "1", "2": "2"}, "XH-2 to the module's SH1.25", (40.64, 88.9, 0, "y")),
+    "#X_LCD": ("LCD 1602 + PCF8574", "local:Module_I2C_4", "J_LCD1", _PINS4, "XH-4", (386.08, 45.72, 0, None)),
+    "#X_NFC": ("PN532 (I2C)", "local:Module_I2C_4", "J_NFC1", _PINS4, "XH-4", (386.08, 76.2, 0, None)),
+    "#X_BTN_R": ("ONPOW LAS1-AGQ-11E/R/6V", "local:Button_LED_4", "J_BTN_R1", _PINS4, "XH-4",
+                (386.08, 106.68, 0, None)),
+    "#X_BTN_B": ("ONPOW LAS1-AGQ-11E/B/6V", "local:Button_LED_4", "J_BTN_B1", _PINS4, "XH-4",
+                (386.08, 137.16, 0, None)),
+    "#X_BUZ": ("BZ-38 buzzer", "Device:Buzzer", "J_BUZ1", {"1": "1", "2": "2"}, "XH-2", (386.08, 165.1, 0, None)),
+    "#X_SPK": ("VISATON K 50, 8 ohm", "Device:Speaker", "J_SPK1", {"1": "1", "2": "2"},
+              "XH-2, BTL: neither side is GND", (386.08, 190.5, 0, None)),
+}
+
+
+def check_sheets(m):
+    """Every board part is drawn exactly once: on the root, or in one block of one sheet."""
+    in_sheets = [r for _t, idx in m.SHEETS.values() for i in idx for r in m.BLOCKS[i]["parts"] if r not in m.ROOT["parts"]]
+    drawn = in_sheets + list(m.ROOT["parts"])
+    twice = sorted({r for r in drawn if drawn.count(r) > 1})
+    assert not twice, f"drawn twice: {twice}"
+    assert set(drawn) == set(m.PARTS), f"not drawn: {sorted(set(m.PARTS) - set(drawn))}, " \
+                                       f"unknown: {sorted(set(drawn) - set(m.PARTS))}"
+    assert m.ROOT["sheets"].keys() == m.SHEETS.keys(), "ROOT['sheets'] must place every sheet"
+
+
+def check_header(m):
+    """The Heltec header checks (from carrier.check), reading module m."""
+    pins = [p for members in m.NETS.values() for p in members]
+    net_of = {p: net for net, mem in m.NETS.items() for p in mem}
+    for p, net in HEADER_POWER.items():
+        assert net_of.get(p) == net, f"{p} must be on {net}, is on {net_of.get(p)}"
+    for p in pins:
+        if p.split(".")[0] not in ("J2", "J3"):
+            continue
+        assert p not in HEADER_NC, f"{p} must stay unconnected"
+        assert p in HELTEC_GPIO or p in HEADER_POWER, f"{p} is not a known header pin"
+        if p in HELTEC_GPIO:
+            g = HELTEC_GPIO[p]
+            name = f"GPIO{g}" if g is not None else "RST"
+            assert g not in FORBIDDEN_GPIO, f"{p} is {name}, reserved on V4"
+    got = sorted((n, HELTEC_GPIO[p]) for n, mem in m.NETS.items() for p in mem if p in HELTEC_GPIO)
+    assert got == sorted(EXPECTED_GPIO.items()), got
 
 
 W, H, CORNER = 90.0, 60.0, 2.0
@@ -402,23 +522,12 @@ def check():
     import sys
 
     import board  # pyright: ignore[reportMissingImports]
-    board.check_structure(sys.modules[__name__])
-    # Carrier specifics: every Heltec header pin known/mapped, no reserved GPIO, a variant loads an input.
-    pins = [p for members in NETS.values() for p in members]
-    net_of = {p: net for net, m in NETS.items() for p in m}
-    for p, net in HEADER_POWER.items():
-        assert net_of.get(p) == net, f"{p} must be on {net}, is on {net_of.get(p)}"
-    for p in pins:
-        if p.split(".")[0] not in ("J2", "J3"):
-            continue
-        assert p not in HEADER_NC, f"{p} must stay unconnected"
-        assert p in HELTEC_GPIO or p in HEADER_POWER, f"{p} is not a known header pin"
-        if p in HELTEC_GPIO:
-            g = HELTEC_GPIO[p]
-            name = f"GPIO{g}" if g is not None else "RST"
-            assert g not in FORBIDDEN_GPIO, f"{p} is {name}, reserved on V4"
-    got = sorted((n, HELTEC_GPIO[p]) for n, m in NETS.items() for p in m if p in HELTEC_GPIO)
-    assert got == sorted(EXPECTED_GPIO.items()), got
+    this = sys.modules[__name__]
+    board.check_structure(this)
+    # Carrier specifics: every Heltec header pin known/mapped, no reserved GPIO, a variant loads an input,
+    # and the hierarchical layout draws every part exactly once.
+    check_header(this)
+    check_sheets(this)
     for v, mods in VARIANTS.items():
         assert mods & {"buttons", "rfid"}, f"variant {v} has no input (needs buttons or rfid)"
     print(f"design ok: {len(PARTS)} parts, {len(NETS)} nets, variants {sorted(VARIANTS)}")
