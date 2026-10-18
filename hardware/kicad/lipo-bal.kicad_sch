@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "199fe6e9-31be-5cd5-b2f2-c50c7a6817b9")
-	(paper "A4")
+	(paper "A5")
 	(title_block
 		(title "AirsoftCounter v2 LiPo: Balance lead dividers")
 	)

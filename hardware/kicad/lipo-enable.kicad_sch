@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "f846518e-11d6-5a49-b7fb-e23eedada18b")
-	(paper "A4")
+	(paper "A5")
 	(title_block
 		(title "AirsoftCounter v2 LiPo: Key enable and MCU kill")
 	)
