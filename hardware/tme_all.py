@@ -13,6 +13,8 @@ board, so name one build per board; the default is the TME hand-build set. Budge
 /usr/bin/python3 tme_all.py [board ...]   (after `make boards`; default carrier_tme pack_tme lipo_tme)
 Another set writes fab/tme_bom_all-<board>-<board>-....csv, e.g. the XIAO build:
   /usr/bin/python3 tme_all.py carrier_tme pack_xiao lipo_xiao
+board:N orders N of that board (spares and rounding apply to the total): carrier_tme:5 pack_xiao:5
+writes fab/tme_bom_all-carrier_tme-x5-pack_xiao-x5.csv.
 """
 import math
 import sys
@@ -51,11 +53,14 @@ def order(symbol, n):
 
 def main():
     boards = sys.argv[1:] or DEFAULT
-    boms = [FAB / b / "tme_bom.csv" for b in boards]
+    counts = [(b.partition(":")[0], int(b.partition(":")[2] or 1)) for b in boards]
+    boms = [FAB / b / "tme_bom.csv" for b, _ in counts]
     missing = [str(p) for p in boms if not p.is_file()]
     if missing:
         raise SystemExit(f"tme_all: missing {', '.join(missing)} (run `make boards` first)")
-    merged = merge([p.read_text() for p in boms], boms)
+    merged = merge([p.read_text() for p, (_, n) in zip(boms, counts, strict=True) for _ in range(n)],
+                   [p for p, (_, n) in zip(boms, counts, strict=True) for _ in range(n)])
+    boards = [b.replace(":", "-x") for b in boards]
     merged = "".join(f"{s};{order(s, int(n))}\n" for s, n in (l.rsplit(";", 1) for l in merged.splitlines()))
     out = OUT if boards == DEFAULT else OUT.with_name(f"{OUT.stem}-{'-'.join(boards)}.csv")
     out.write_text(merged)
