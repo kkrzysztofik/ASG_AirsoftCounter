@@ -42,6 +42,11 @@ PARTS |= {
     "U_AMP": ("PAM8302AADCR", "Amplifier_Audio:PAM8302AAD", SOIC8),
 }
 
+# The Heltec headers get named-pin symbols (Heltec V4 pinout); same value and footprint, so nothing
+# changes on the board or in the TME list.
+PARTS["J2"] = (carrier.PARTS["J2"][0], "local:Heltec_V4_J2", carrier.PARTS["J2"][2])
+PARTS["J3"] = (carrier.PARTS["J3"][0], "local:Heltec_V4_J3", carrier.PARTS["J3"][2])
+
 NETS = {n: [p for p in mem if not p.startswith("U3.")] for n, mem in carrier.NETS.items()}
 NETS["I2S_BCLK"] += ["U_DAC.13"]
 NETS["I2S_LRCLK"] += ["U_DAC.15"]
