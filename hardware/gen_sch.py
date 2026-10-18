@@ -752,11 +752,22 @@ PAPERS = [("A3", 420, 297), ("A2", 594, 420), ("A1", 841, 594)]
 
 
 def paper_for(w, h, papers=PAPERS):
-    """Smallest sheet whose frame holds every block, clear of the bottom title block."""
-    for name, pw, ph in papers:
+    """Smallest sheet whose frame holds every block, clear of the bottom title block.
+
+    An entry is (name, width, height) or (name, width, height, portrait). Returns (name, portrait).
+    """
+    for entry in papers:
+        name, pw, ph = entry[:3]
+        portrait = bool(entry[3]) if len(entry) > 3 else False
         if w <= pw - 15 and h <= ph - 45:
-            return name
+            return name, portrait
     raise SystemExit(f"schematic content {w:.0f}x{h:.0f} mm does not fit on A1")
+
+
+def paper_node(papers, w, h):
+    """The `paper` node for a sheet: `(paper "A4")`, or `(paper "A4" portrait)`."""
+    name, portrait = paper_for(w, h, papers)
+    return ["paper", q(name), "portrait"] if portrait else ["paper", q(name)]
 
 
 def schematic():
@@ -771,7 +782,7 @@ def schematic():
     body, w, h = build_sheet(sh, design.BLOCKS, set())
     head = [["lib_symbols", *[embedded(i) for i in sorted(sh.lib_ids)]]]
     return ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")], ["generator_version", q("9.0")],
-            ["uuid", q(sh.root)], ["paper", q(paper_for(w, h))],
+            ["uuid", q(sh.root)], paper_node(PAPERS, w, h),
             ["title_block", ["title", q(design.TITLE)]], *head, *body, *sh.items, *sh.symbols,
             ["sheet_instances", ["path", q("/"), ["page", q("1")]]], ["embedded_fonts", "no"]], sh.root, sh.clashes
 
@@ -921,10 +932,14 @@ def build_sheet(sh, blocks, exits, nets=None, pre=None, cables=()):
 # --- Hierarchical mode (board module defines SHEETS / ROOT / OFFBOARD) ---
 
 MARGIN = 12.7  # where a sheet's content starts (inside the drawing frame)
-# A function sheet holds one function, so most are small: A5 down from A4 lifts the small ones from
-# ~30% to ~70% of the frame. Text is drawn at absolute size, so a smaller frame removes blank margin
-# and nothing else. The root needs A3, which the flat papers below still supply.
-PAPERS_HIER = [("A5", 210, 148), ("A4", 297, 210), *PAPERS]
+# A function sheet holds one function, so most are small, and many are taller than they are wide: A5
+# then A4, each landscape first and portrait second, lift them from ~30% to 50-78% of the frame. Text is
+# drawn at absolute size, so a smaller frame removes blank margin and nothing else. The root needs A3,
+# which the flat papers below still supply.
+PAPERS_HIER = [(name, pw, ph, False)
+               for name, pw, ph in [("A5", 210, 148), ("A4", 297, 210), *PAPERS]]
+PAPERS_HIER += [(name, ph, pw, True) for name, pw, ph, _p in list(PAPERS_HIER)]
+PAPERS_HIER.sort(key=lambda e: (e[1] * e[2], e[3]))  # smallest area first, landscape before portrait
 
 
 def root_refs():
@@ -1033,7 +1048,7 @@ def child_sheet(name, page_counters):
         page_counters[:] = [sh.nports, sh.nflags]
         head = [["lib_symbols", *[embedded(i) for i in sorted(sh.lib_ids)]]]
         tree = ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")], ["generator_version", q("9.0")],
-                ["uuid", uid(f"file/{name}")], ["paper", q(paper_for(w, h, PAPERS_HIER))],
+                ["uuid", uid(f"file/{name}")], paper_node(PAPERS_HIER, w, h),
                 ["title_block", ["title", q(f"{design.TITLE}: {design.SHEETS[name][0]}")]], *head, *body,
                 *sh.items, *sh.symbols, ["embedded_fonts", "no"]]
     finally:
@@ -1150,7 +1165,7 @@ def root_sheet(hier, counters):
     body, bw, bh = build_sheet(sh, [block], set(), nets=nets, pre=pre, cables=cables)
     head = [["lib_symbols", *[embedded(i) for i in sorted(sh.lib_ids)]]]
     tree = ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")], ["generator_version", q("9.0")],
-            ["uuid", q(sh.root)], ["paper", q(paper_for(bw, bh, PAPERS_HIER))],
+            ["uuid", q(sh.root)], paper_node(PAPERS_HIER, bw, bh),
             ["title_block", ["title", q(f"{design.TITLE}: system")]], *head, *body, *sh.items, *sh.symbols,
             ["sheet_instances", ["path", q("/"), ["page", q("1")]]], ["embedded_fonts", "no"]]
     return tree, sh.root, sh.clashes
