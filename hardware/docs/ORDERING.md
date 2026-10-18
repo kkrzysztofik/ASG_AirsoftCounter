@@ -279,7 +279,14 @@ BH-18650-A6AJ012) and bead NTCs, plus the off-board parts in `fab/offboard/`.
 - The **USB4085** USB-C and the **6x6 tact switches** are through-hole and must clear the bottom-side
   holders; the pack places them in the holder-free strips. Check `fab/<board>_tme/print_1to1.pdf`
   (F.Fab + silk, with the QFN pin-1 marker) before soldering.
-- The LQFP-32 L072 and the VSSOP-10 INA226s are leaded and drag-solderable.
+- The LQFP-32 L072 and the VSSOP-10 (MSOP-10 footprint) INA226s are leaded and drag-solderable.
+
+**Schematic.** `fab/carrier_tme/schematic.pdf` is multi-page: page 1 is the system sheet (the Heltec
+V4 with named pins, every connector, and the off-board parts it plugs into: pack board, LCD, PN532,
+buttons, buzzer, speaker, with the cable type), pages 2-7 one function each (power, I2C shifter,
+expander + buttons, LED/buzzer drivers, DAC + amp, debug). The off-board `X_*` symbols are
+documentation only: not on the board, not in any BOM. pack_tme, lipo_tme and the JLC boards are still
+single-sheet.
 
 **Board facts.** Same outline, holes and 2-layer stack as the JLC originals; the pack keeps 0.8 mm
 power traces except `+5V`, which is 0.25 mm (82 mA peak) so the MCP1640's fine VOUT pad takes it.

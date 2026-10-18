@@ -1,6 +1,9 @@
 # Hierarchical schematics: design (pilot: carrier_tme)
 
-Date: 2026-10-18. Status: approved.
+Date: 2026-10-18. Status: implemented on carrier_tme (commits 3599472..9863e20); carrier, pack and lipo
+still flat. Deviation from §3: off-board rail pins get their own power port facing the connector's
+across the cable gap (ports pointing along the stub fit the 2.54 mm pin pitch; rail cable wires did
+not), signal pins are wired connector to module.
 
 ## Problem
 
