@@ -7,12 +7,13 @@ divider); docs/PARTS_REVIEW.md (5.1 V rail); design doc (PN532 polling ~20 mA). 
 marked EST is a guess: replace it with a measurement once the board exists (USB meter or INA219 in
 the J_PWR1 lead). Measure LCD_IDLE_5V and HELTEC_RX first.
 
-    /usr/bin/python3 power_budget.py [--tme]
+    /usr/bin/python3 power_budget.py [--tme | --xiao]
 """
 import sys
 from math import ceil
 
-TME = "--tme" in sys.argv[1:]   # hand-build boards: L072 + 4x INA226 + PCM5100A/PAM8302A
+XIAO = "--xiao" in sys.argv[1:]  # hand-build with the pack MCU on a XIAO ESP32-S3 (pack_xiao)
+TME = XIAO or "--tme" in sys.argv[1:]   # hand-build boards: L072 + 4x INA226 + PCM5100A/PAM8302A
 
 CELLS_MAH = 4 * 3350  # 4x Samsung INR18650-35E in parallel (the pack board). 3350 mAh is the
                       # datasheet minimum (rated 3250 at 0.2 C to 2.65 V); 3400 is only the typical
@@ -79,7 +80,11 @@ BOOST_IDLE = 1.0  # EST: MT3608/MCP1640 switching at near-zero load
 # ~4.5 uA, XC6206 Iq ~1 uA, plus the 4 x 1M gate resistors (4.2 V / 1M = 4.2 uA each) while the
 # switches are on. Cell self-discharge (~1-3 %/month) dominates this after about a year.
 # TME: the L072's Stop IDD is 0.43 uA typ (DS10690 Table 37) and each INA226 0.5 uA in shutdown.
-MCU_STOP_MA = 0.00043 if TME else 0.085
+# XIAO: Seeed's 14 uA deep sleep is at 3.8 V into BAT; EST for the 3V3-pad keep-alive, measure it.
+MCU_STOP_MA = 0.014 if XIAO else 0.00043 if TME else 0.085
+# XIAO run feed is the boost: ESP32-S3 ~40 mA at 3.3 V (radio off) through its ~90 % buck = ~29 mA
+# at 5 V while polling (EST); light sleep between polls when parked (EST). Measure both.
+XIAO_RUN_5V, XIAO_IDLE_5V = 30.0, 2.0
 MON_IQ_MA = 4 * 0.0005 if TME else 0.005
 PACK_IQ_MA = MCU_STOP_MA + MON_IQ_MA + 0.0045 + 0.001 + 4 * 0.0042
 # Cell branch series resistance (5 A fuse + 20 mOhm shunt + back-to-back AO3401A + track) ~150 mOhm
@@ -106,6 +111,8 @@ def scenario(deluxe, game, backlight, status_s=30, clip_duty=0.05, opt=False):
         ma["Amp (on only for clips)"] = (AMP_ON + AMP_PLAYING) * clip_duty if game else 0.0
         if TME:
             ma["DAC standby"] = DAC_STANDBY
+    if XIAO:
+        ma["Pack MCU (XIAO via boost)"] = from_5v(XIAO_RUN_5V)
     five = LCD_IDLE_5V + (LCD_ON_5V - LCD_IDLE_5V) * backlight
     if game:
         five += (1 if opt else 2) * LED_RING_5V + BUZZER_5V * READY_BUZZ_DUTY  # opt: one ring lit
@@ -119,6 +126,8 @@ PARKED = {"Heltec deep sleep": HELTEC_SLEEP, "PN532 module idle": NFC_IDLE,
           "LCD idle via boost": from_5v(LCD_IDLE_5V) + BOOST_IDLE}
 if TME:
     PARKED["DAC standby"] = DAC_STANDBY
+if XIAO:
+    PARKED["Pack MCU (XIAO light sleep)"] = from_5v(XIAO_IDLE_5V)
 GAME_H, DAYS = 10, 2  # a weekend: two 10 h game days and the night between them parked
 NIGHT_H = 12
 AGED = 0.8  # cells at 80 % of rated capacity (end of the 35E's rated cycle life)
@@ -144,7 +153,10 @@ def show(name, ma):
 def main():
     t = lora_airtime_s(40, 9)
     _, duty = lora_avg(30)
-    print(f"model: {'TME hand-build (L072 + INA226 + PCM5100A/PAM8302A)' if TME else 'JLC (C071 + PAC1934 + NS4168)'}")
+    model = ('TME hand-build (XIAO pack MCU + INA226 + PCM5100A/PAM8302A)' if XIAO else
+             'TME hand-build (L072 + INA226 + PCM5100A/PAM8302A)' if TME else
+             'JLC (C071 + PAC1934 + NS4168)')
+    print(f"model: {model}")
     print(f"STATUS 40 B at SF9/125 kHz: {t * 1000:.0f} ms on air, {100 * duty:.1f} % duty at 30 s "
           f"(sub-band limit 10 %)")
     show("Deluxe, game running, backlight on", scenario(True, True, 1.0))

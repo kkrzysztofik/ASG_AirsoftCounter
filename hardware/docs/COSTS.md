@@ -56,6 +56,18 @@ local admin menu. Dropping the speaker also drops the only Extended-part setup f
   thickness and boss spacing unknown: do a 1:1 mock-up with one box before ordering more.
 - **USB-C:** IP67 only while capped or mated; open while charging or flashing. Accepted.
 
+## XIAO boards (pack_xiao, lipo_xiao) — delta vs the `_tme` boards
+
+Cost-neutral on paper, strongly positive on assembly: no QFP/QFN rework, no ST-Link, the module
+is reusable. Per board, against `pack_tme`/`lipo_tme` (`fab/*_xiao/tme_bom.csv`):
+
+| Line | Delta | Basis |
+|---|---|---|
+| STM32L072KZT6 | −~€4.60 | V: TME schema top (the `_tme` BOM line) |
+| L072 support parts (boot/NRST/decoupling, SWD + BOOT test pads, LED + R, `J_UART1` on pack) | −~€0.50 | ~ |
+| 1N5819HW-7-F, 2x (run-feed diodes into the module's 5 V pad) | +~€0.20 | V: already a TME line, pack has 7 total |
+| Seeed XIAO ESP32-S3 | +~€4.4 | ~ Botland, **confirm SKU and price at ordering** (`OFFBOARD_PARTS.md`) |
+
 ## Open items
 
 - **Red 6 V ONPOW button** (LAS1-AGQ-11E/R/6V, Deluxe): no stocked listing found. Options: ask TME/Piekarz/AVT

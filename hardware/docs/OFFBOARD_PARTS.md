@@ -91,3 +91,9 @@ pigtails below are single-ended (bare tinned ends), 26 AWG, 20 cm: solder and he
 
 Per device: 2 x 6-pin, 4 x 4-pin, 4 x 2-pin pigtails, plus the XT60 lead for the LiPo build; about 25 zł
 with spares. Before the first plug-in, **meter every lead pin 1 to pin 1**: cheap pigtails use random colours.
+
+## XIAO hand-build boards (pack_xiao, lipo_xiao)
+
+| Part | Qty | Shop | Code | URL | Notes |
+|---|---|---|---|---|---|
+| Seeed Studio XIAO ESP32-S3 — **base**, not Sense, not Plus | 1 per board | Botland | fill in at ordering | fill in at ordering | ~€4.4 (design doc). **Buy 2 + 1 spare.** The Sense wastes ~€3 on a mic/IMU/camera nobody reads and sleeps at 3 mA instead of 14 µA; the C3 sibling has one I2C and is not the carrier's silicon. Solder: the 14 edge castellations come out with an iron and 0.5 mm sn — flood the pad, feed solder into the gap, do not park the iron on the module. The bottom pads used on `pack_xiao` (pad 16 = MTDO/`NTC_PWR`, pad 20 = MTCK/`SDA_INT`) sit under the module: pre-tin module pad and board pad, hot air ~280 °C, verify with a meter before gluing. **BAT+ (pad 23) must not be soldered to anything** — the module's charge FET back-drives ~3.3 V there and the pack would fight the board's charger (design doc, "3V3 pad back-drive"). The module's BOOT/RESET buttons stay reachable by a paperclip before gluing the inserts; first flash is buttonless over USB. The enclosure window shows the module's GPIO21 LED (design doc: insert revision note). Symbol/footprint from Seeed-Studio/OPL_Kicad_Library (CC BY-SA 4.0). |
