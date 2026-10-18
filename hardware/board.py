@@ -1,6 +1,6 @@
 """Pick the board module the generators work on: BOARD=<name> loads <name>.py: carrier (default),
 pack, lipo (the 2S/3S LiPo power board), or the hand-built TME variants carrier_tme / pack_tme /
-lipo_tme (nothing machine-placed).
+lipo_tme, or the XIAO variants pack_xiao / lipo_xiao (nothing machine-placed).
 
 Every generator imports the board as `from board import design`, so the same code
 builds either board from its own data module.

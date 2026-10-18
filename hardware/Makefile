@@ -1,6 +1,6 @@
 # shellcheck disable=SC1009,SC1050,SC1064,SC1065,SC1072,SC1073  # GNU make, not shell: shellcheck misparses conditional directives
 # Full rebuild of one board: design check -> schematic -> netlist parity -> placed board ->
-# autoroute -> ERC/DRC -> fab package. BOARD=carrier (default), pack, lipo or a *_tme board
+# autoroute -> ERC/DRC -> fab package. BOARD=carrier (default), pack, lipo or a *_tme / *_xiao board
 # selects the board module (board.py) and every output name; all of it regenerates from that
 # module. route.py needs the unrouted board, so pcb always runs first. Intermediates and ERC/DRC
 # reports go to build/.
@@ -46,7 +46,7 @@ check: route
 # print_1to1.pdf leaves out F.Cu: the GND pour would print solid black and hide the labels;
 # pads come from the F.Fab sketch instead.
 # jlc.py writes the JLCPCB assembly BOM + CPL ($(FAB)/jlc_*.csv) and checks them against the zip;
-# a *_tme board is hand-built, so it has no JLC files and tme.py writes its list straight from the
+# a *_tme or *_xiao board is hand-built, so it has no JLC files and tme.py writes its list straight from the
 # module instead ($(FAB)/tme_bom.csv).
 fab: check
 	rm -rf $(FAB)/gerbers $(ZIP) $(FAB)/jlc_*.csv
@@ -56,7 +56,7 @@ fab: check
 		--generate-map --map-format gerberx2 -o $(FAB)/gerbers/ kicad/$(BOARD).kicad_pcb
 	zip -jqX $(ZIP) $(FAB)/gerbers/* -x '*drl_map*' '*.gbrjob'
 	$(PY) check_gerbers.py $(ZIP) || { rm -f $(ZIP); exit 1; }
-ifeq ($(filter %_tme,$(BOARD)),)
+ifeq ($(filter %_tme %_xiao,$(BOARD)),)
 	$(PY) jlc.py
 endif
 	$(PY) tme.py
@@ -76,6 +76,8 @@ boards:
 	$(MAKE) BOARD=carrier_tme all
 	$(MAKE) BOARD=pack_tme all
 	$(MAKE) BOARD=lipo_tme all
+	$(MAKE) BOARD=pack_xiao all
+	$(MAKE) BOARD=lipo_xiao all
 
 # Printed insert for the Pawbol S-BOX 416-P. check.py is deliberately run on the system
 # python3: it is the half of the checking that has to work with no CAD stack installed.

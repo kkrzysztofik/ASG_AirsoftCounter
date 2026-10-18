@@ -101,7 +101,7 @@ def from_lcsc(lcsc_table, keys):
 def main():
     boards = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     board_name = os.environ.get("BOARD", "")
-    if board_name.endswith("_tme"):
+    if board_name.endswith(("_tme", "_xiao")):
         qty = {}
         for r, (v, sym, fp) in board.design.PARTS.items():
             if sym != "Mechanical:MountingHole" and r not in board.design.DNP | board.design.NOT_TME:
