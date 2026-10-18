@@ -282,13 +282,18 @@ BLOCKS = [
                "C_BULK1": (58.42, 31.75, 0, None), "C_BULK2": (71.12, 31.75, 0, None),
                "C_5V1": (83.82, 31.75, 0, None), "C_5V2": (96.52, 31.75, 0, None)},
      "flags": [("GND", 7.62, 55.88), ("VBAT_SW", 30.48, 55.88), ("+5V", 53.34, 55.88)]},
-    # Audio sheet (hierarchical mode): U3 and J_SPK1 are drawn on the root, next to the Heltec and the
-    # speaker connector; this sheet holds the amp-side passives. Left to right: AMP_SD in (expander) ->
-    # series R_SD1 with R_SDPD1 pull-down -> AMP_SD_R out (U3 CTRL), then C_AMP1/C_AMP2 on VBAT_SW.
-    {"title": "NS4168 supply and shutdown", "at": (208.28, 12.7), "size": (104.14, 63.5),
-     "parts": {"R_SD1": (33.02, 25.4, 90, None), "R_SDPD1": (25.4, 33.02, 0, None),
-               "C_AMP1": (63.5, 25.4, 0, None), "C_AMP2": (85.09, 25.4, 0, None)},
-     "tags": {"AMP_SD": [(12.7, 25.4, "L")]}},
+    # Audio sheet (hierarchical mode): the whole NS4168 circuit along its signal path. I2S in on the
+    # left, U3, SPK+/- out on the right (to J_SPK1 on the root, where the off-board speaker hangs off
+    # it), and AMP_SD entering at the bottom through the series R_SD1 with R_SDPD1 to GND. AMP_SD_R
+    # (R_SD1.2 -> U3.1 CTRL) is internal to this sheet; C_AMP1/C_AMP2 sit beside U3's VDD pin.
+    {"title": "NS4168 I2S amp", "at": (208.28, 12.7), "size": (111.76, 63.5),
+     "parts": {"U3": (71.12, 43.18, 0, None),
+               "C_AMP1": (45.72, 20.32, 0, None), "C_AMP2": (58.42, 20.32, 0, None),
+               "R_SD1": (45.72, 55.88, 90, None), "R_SDPD1": (35.56, 63.5, 0, None)},
+     "tags": {"I2S_DIN": [(15.24, 35.56, "L")], "I2S_BCLK": [(15.24, 38.1, "L")],
+              "I2S_LRCLK": [(15.24, 40.64, "L")],
+              "SPK_P": [(93.98, 35.56, "R")], "SPK_N": [(93.98, 38.1, "R")],
+              "AMP_SD": [(15.24, 55.88, "L")]}},
     {"title": "Heltec V4 headers", "at": (317.5, 12.7), "size": (86.36, 76.2),
      "parts": {"J2": (30.48, 38.1, 0, None), "J3": (73.66, 38.1, 0, None)},
      "flags": [("+3V3", 40.64, 68.58)]},
@@ -336,13 +341,12 @@ BLOCKS[5]["tags"]["BUZ_K"] = [(175.26, 27.94, "R")]
 # Function sheets: name -> (title, BLOCKS indexes). A block's parts land on that sheet, except the ROOT
 # parts, which gen_sch draws on the root sheet instead. Drawn on the root beside their connectors, where
 # they sit on the board: the power-entry caps, the bring-up headers and pads, D_FLY1 (across the buzzer),
-# the I2C level shifter with the bus pull-ups (the bus itself is drawn on the root), and U3 beside
-# J_SPK1 (PLACE puts them 9 mm apart). Each rail drawn on the root then has its own bulk cap there, and
-# the audio sheet keeps the amp-side passives (R_SD1/R_SDPD1 on AMP_SD, C_AMP1/C_AMP2 on VBAT_SW).
+# and the I2C level shifter with the bus pull-ups (the bus itself is drawn on the root). Each rail drawn
+# on the root then has its own bulk cap there; the audio sheet draws U3 with its own VBAT_SW caps.
 SHEETS = {
     "expander": ("GPIO expander (0x20), button inputs", [4]),
     "drivers": ("Low-side drivers: button LEDs, buzzer", [5]),
-    "audio": ("NS4168 supply and shutdown", [1]),
+    "audio": ("NS4168 I2S amp", [1]),
 }
 # Root (system) sheet: {ref: (x, y, rot, mirror)} in root coordinates, sheet boxes {name: (x, y, w, h)},
 # and the outline drawn round J2/J3 so they read as one module.
@@ -355,9 +359,6 @@ ROOT = {
         "J_LCD1": (337.82, 45.72, 0, "y"), "J_NFC1": (337.82, 76.2, 0, "y"),
         "J_BTN_R1": (337.82, 106.68, 0, "y"), "J_BTN_B1": (337.82, 137.16, 0, "y"),
         "J_BUZ1": (337.82, 165.1, 0, "y"), "J_SPK1": (337.82, 190.5, 0, "y"),
-        # The NS4168 (U3) beside J_SPK1: I2S comes in from J2, SPK± leave for J_SPK1, and AMP_SD_R
-        # comes from the audio sheet. Its VBAT_SW port clears the drivers sheet box above it.
-        "U3": (297.18, 220.98, 0, None),
         "H1": (25.4, 238.76, 0, None), "H2": (35.56, 238.76, 0, None),
         "H3": (45.72, 238.76, 0, None), "H4": (55.88, 238.76, 0, None),
         # power entry: pack-rail bulk and the +5V reservoir beside J_PWR1, the NFC bulk beside J_NFC1

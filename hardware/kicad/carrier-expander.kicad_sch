@@ -3,7 +3,7 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "0f8b0105-c00e-5d48-9126-75ff87f9ef2c")
-	(paper "A4")
+	(paper "A5")
 	(title_block
 		(title "AirsoftCounter v2 carrier: GPIO expander (0x20), button inputs")
 	)
