@@ -38,8 +38,8 @@ def check_structure(m):
     # Off-board parts are schematic documentation only: they may hang off a connector pin, nothing else.
     on_net = set(pins)
     for ref, (_v, _sym, conn, pin_map, _cable, _at) in getattr(m, "OFFBOARD", {}).items():
-        assert ref.startswith("X_") and ref not in m.PARTS, f"OFFBOARD {ref}: needs an X_ ref not in PARTS"
-        assert conn in m.PARTS and m.PARTS[conn][1].startswith("Connector"), \
+        assert ref.startswith("#X_") and ref not in m.PARTS, f"OFFBOARD {ref}: needs a virtual #X_ ref not in PARTS"
+        assert conn in m.PARTS and (m.PARTS[conn][1].startswith("Connector") or ":Conn_" in m.PARTS[conn][1]), \
             f"OFFBOARD {ref}: {conn} is not a connector part"
         stray = sorted(p for p in pin_map.values() if f"{conn}.{p}" not in on_net)
         assert not stray, f"OFFBOARD {ref}: {conn} pins {stray} are not on a net"
@@ -94,7 +94,7 @@ if __name__ == "__main__":
                                      assembled=lambda v="x": [], OFFBOARD=offboard)
 
     def off(conn, pins):
-        return {"X_A": ("thing", "Device:Speaker", conn, pins, "cable", (0, 0, 0, None))}
+        return {"#X_A": ("thing", "Device:Speaker", conn, pins, "cable", (0, 0, 0, None))}
 
     check_structure(off_ns(off("J1", {"1": "1", "2": "2"})))   # off-board part on a connector passes
     for bad, why in ((off("R1", {"1": "1"}), "not a connector"), (off("J1", {"1": "3"}), "not on a net")):

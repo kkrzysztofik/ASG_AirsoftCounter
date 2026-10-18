@@ -47,6 +47,11 @@ PARTS |= {
 # changes on the board or in the TME list.
 PARTS["J2"] = (carrier.PARTS["J2"][0], "local:Heltec_V4_J2", carrier.PARTS["J2"][2])
 PARTS["J3"] = (carrier.PARTS["J3"][0], "local:Heltec_V4_J3", carrier.PARTS["J3"][2])
+# Root-sheet cable connectors use 5.08 mm-pitch symbols (same pins and footprints): the half row between
+# cables holds each rail's power port, which does not fit at 2.54 mm.
+for _r in ("J_PWR1", "J_HBAT1", "J_LCD1", "J_NFC1", "J_BTN_R1", "J_BTN_B1", "J_BUZ1", "J_SPK1"):
+    _v, _sym, _fp = PARTS[_r]
+    PARTS[_r] = (_v, f"local:Conn_W_{_sym[-2:]}", _fp)
 
 NETS = {n: [p for p in mem if not p.startswith("U3.")] for n, mem in carrier.NETS.items()}
 NETS["I2S_BCLK"] += ["U_DAC.13"]
@@ -137,9 +142,6 @@ BLOCKS = _copy_blocks()
 # Drivers: J_BUZ1 moved to the root sheet, so BUZ_K leaves the sheet; tag it right of the drain/diode
 # node (an auto label on D_FLY1's anode points straight into Q_BZ1's drain).
 BLOCKS[5]["tags"]["BUZ_K"] = [(175.26, 27.94, "R")]
-# The +3V3 PWR_FLAG lived in the Heltec header block, which is not a sheet (J2/J3 are on the root). It
-# goes on the I2C sheet, next to +3V3 parts: alone on the power sheet ERC calls its port unconnected.
-BLOCKS[3]["flags"] = [("+3V3", 76.2, 66.04)]
 # Block 1 was the NS4168 amp; it now holds the DAC, its caps and the PAM8302A amp.
 BLOCKS[1] = {
     # Signal flow left to right: I2S in -> DAC (each cap beside its own pin) -> output RC -> coupling C and
@@ -197,13 +199,13 @@ PLACE |= {
 # --- Hierarchical schematic (docs/plans/2026-10-18-hierarchical-schematics-design.md) ---
 # Function sheets: name -> (title, BLOCKS indexes). A block's parts land on that sheet, except the ROOT parts
 # (connectors, Heltec headers, holes), which gen_sch draws on the root sheet instead.
+# Drawn on the root beside their connectors, where they sit on the board: the power-entry caps, the
+# bring-up headers and pads, D_FLY1 (across the buzzer), and the I2C level shifter with the bus pull-ups
+# (the bus itself is drawn on the root). Each rail on the root then has its own bulk cap there.
 SHEETS = {
-    "power": ("Power: pack rail bulk, +5V reservoir", [0]),
-    "i2c": ("I2C level shifter, NFC bulk", [3]),
     "expander": ("GPIO expander (0x20), button inputs", [4]),
     "drivers": ("Low-side drivers: button LEDs, buzzer", [5]),
     "audio": ("I2S DAC and speaker amp", [1]),
-    "debug": ("Debug: UART, I2C, test pads", [6]),
 }
 # Root (system) sheet: {ref: (x, y, rot, mirror)} in root coordinates, sheet boxes {name: (x, y, w, h)},
 # and the outline drawn round J2/J3 so they read as one module.
@@ -213,16 +215,32 @@ ROOT = {
         # Connector pins face their off-board part: left-side connectors as drawn (pins left), right-side
         # ones mirrored (pins right); the cable gap between holds the rail ports.
         "J_PWR1": (81.28, 50.8, 0, None), "J_HBAT1": (81.28, 88.9, 0, None),
-        "J_LCD1": (337.82, 50.8, 0, "y"), "J_NFC1": (337.82, 76.2, 0, "y"),
-        "J_BTN_R1": (337.82, 101.6, 0, "y"), "J_BTN_B1": (337.82, 127.0, 0, "y"),
-        "J_BUZ1": (337.82, 152.4, 0, "y"), "J_SPK1": (337.82, 177.8, 0, "y"),
+        "J_LCD1": (337.82, 45.72, 0, "y"), "J_NFC1": (337.82, 76.2, 0, "y"),
+        "J_BTN_R1": (337.82, 106.68, 0, "y"), "J_BTN_B1": (337.82, 137.16, 0, "y"),
+        "J_BUZ1": (337.82, 165.1, 0, "y"), "J_SPK1": (337.82, 190.5, 0, "y"),
         "H1": (25.4, 238.76, 0, None), "H2": (35.56, 238.76, 0, None),
         "H3": (45.72, 238.76, 0, None), "H4": (55.88, 238.76, 0, None),
+        # power entry: pack-rail bulk and the +5V reservoir beside J_PWR1, the NFC bulk beside J_NFC1
+        "C_BULK1": (106.68, 50.8, 0, None), "C_BULK2": (116.84, 50.8, 0, None),
+        "C_5V1": (127.0, 50.8, 0, None), "C_5V2": (137.16, 50.8, 0, None),
+        "C_NFC1": (314.96, 88.9, 0, None),
+        # bring-up: UART / I2C headers and rail test pads, pins towards the Heltec
+        "J_UART1": (101.6, 182.88, 0, "y"), "J_I2C1": (101.6, 203.2, 0, "y"),
+        "TP_3V3": (129.54, 182.88, 0, None), "TP_5V": (139.7, 182.88, 0, None),
+        "TP_VSW": (129.54, 200.66, 0, None), "TP_GND": (139.7, 200.66, 0, None),
+        # I2C level shifter and bus pull-ups (the flat block-3 layout, moved beside J_LCD1)
+        "R_SDA3": (283.21, 44.45, 0, None), "Q_SDA1": (295.91, 45.72, 270, None), "R_SDA5": (312.42, 44.45, 0, None),
+        "R_SCL3": (283.21, 67.31, 0, None), "Q_SCL1": (295.91, 68.58, 270, None), "R_SCL5": (312.42, 67.31, 0, None),
+        "D_FLY1": (325.12, 160.02, 270, None),
     },
+    "flags": [("GND", 106.68, 68.58), ("VBAT_SW", 121.92, 68.58), ("+5V", 137.16, 68.58),
+              ("+3V3", 152.4, 68.58)],
+    # The 2.54 mm headers (Heltec, debug) take rail ports along their stubs, which stay in the pin's own
+    # row; the cable connectors' rail ports hang off their cables instead (gen_sch.tee_port).
+    "port_modes": {r: "along" for r in ("J2", "J3", "J_UART1", "J_I2C1")},
     "sheets": {
-        "power": (99.06, 38.1, 38.1, 25.4), "i2c": (279.4, 38.1, 38.1, 38.1),
-        "expander": (279.4, 91.44, 38.1, 50.8), "drivers": (279.4, 152.4, 38.1, 38.1),
-        "audio": (203.2, 165.1, 50.8, 25.4), "debug": (88.9, 177.8, 38.1, 38.1),
+        "expander": (271.78, 101.6, 38.1, 50.8), "drivers": (271.78, 160.02, 38.1, 38.1),
+        "audio": (203.2, 165.1, 50.8, 25.4),
     },
     "outline": ("Heltec WiFi LoRa 32 V4 (plugs into J2/J3)", (165.1, 30.48, 101.6, 104.14)),
     "size": (391.16, 236.22),  # root content from (12.7, 12.7): fits A3
@@ -231,19 +249,19 @@ ROOT = {
 # ref -> (value, symbol, connector, {own pin: connector pin}, cable note, (x, y, rot, mirror)).
 _PINS4 = {"1": "1", "2": "2", "3": "3", "4": "4"}
 OFFBOARD = {
-    "X_PACK": ("Pack board (P5)", "local:Pack_Link_6", "J_PWR1",
+    "#X_PACK": ("Pack board (P5)", "local:Pack_Link_6", "J_PWR1",
                {str(i): str(i) for i in range(1, 7)}, "XH-6", (27.94, 50.8, 0, "y")),
-    "X_HBAT": ("Heltec V4 battery", "Connector_Generic:Conn_01x02", "J_HBAT1",
+    "#X_HBAT": ("Heltec V4 battery", "local:Conn_W_02", "J_HBAT1",
                {"1": "1", "2": "2"}, "XH-2 to the module's SH1.25", (40.64, 88.9, 0, "y")),
-    "X_LCD": ("LCD 1602 + PCF8574", "local:Module_I2C_4", "J_LCD1", _PINS4, "XH-4", (386.08, 50.8, 0, None)),
-    "X_NFC": ("PN532 (I2C)", "local:Module_I2C_4", "J_NFC1", _PINS4, "XH-4", (386.08, 76.2, 0, None)),
-    "X_BTN_R": ("ONPOW LAS1-AGQ-11E/R/6V", "local:Button_LED_4", "J_BTN_R1", _PINS4, "XH-4",
-                (386.08, 101.6, 0, None)),
-    "X_BTN_B": ("ONPOW LAS1-AGQ-11E/B/6V", "local:Button_LED_4", "J_BTN_B1", _PINS4, "XH-4",
-                (386.08, 127.0, 0, None)),
-    "X_BUZ": ("BZ-38 buzzer", "Device:Buzzer", "J_BUZ1", {"1": "1", "2": "2"}, "XH-2", (386.08, 152.4, 0, None)),
-    "X_SPK": ("VISATON K 50, 8 ohm", "Device:Speaker", "J_SPK1", {"1": "1", "2": "2"},
-              "XH-2, BTL: neither side is GND", (386.08, 177.8, 0, None)),
+    "#X_LCD": ("LCD 1602 + PCF8574", "local:Module_I2C_4", "J_LCD1", _PINS4, "XH-4", (386.08, 45.72, 0, None)),
+    "#X_NFC": ("PN532 (I2C)", "local:Module_I2C_4", "J_NFC1", _PINS4, "XH-4", (386.08, 76.2, 0, None)),
+    "#X_BTN_R": ("ONPOW LAS1-AGQ-11E/R/6V", "local:Button_LED_4", "J_BTN_R1", _PINS4, "XH-4",
+                (386.08, 106.68, 0, None)),
+    "#X_BTN_B": ("ONPOW LAS1-AGQ-11E/B/6V", "local:Button_LED_4", "J_BTN_B1", _PINS4, "XH-4",
+                (386.08, 137.16, 0, None)),
+    "#X_BUZ": ("BZ-38 buzzer", "Device:Buzzer", "J_BUZ1", {"1": "1", "2": "2"}, "XH-2", (386.08, 165.1, 0, None)),
+    "#X_SPK": ("VISATON K 50, 8 ohm", "Device:Speaker", "J_SPK1", {"1": "1", "2": "2"},
+              "XH-2, BTL: neither side is GND", (386.08, 190.5, 0, None)),
 }
 
 

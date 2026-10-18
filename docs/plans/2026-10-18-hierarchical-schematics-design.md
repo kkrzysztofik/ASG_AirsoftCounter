@@ -1,9 +1,16 @@
 # Hierarchical schematics: design (pilot: carrier_tme)
 
-Date: 2026-10-18. Status: implemented on carrier_tme (commits 3599472..9863e20); carrier, pack and lipo
-still flat. Deviation from §3: off-board rail pins get their own power port facing the connector's
-across the cable gap (ports pointing along the stub fit the 2.54 mm pin pitch; rail cable wires did
-not), signal pins are wired connector to module.
+Date: 2026-10-18. Status: implemented on carrier_tme; carrier, pack and lipo still flat.
+
+Changes from the approved design, made to clear the review findings (each sheet is audited on its own):
+- Power-entry caps, the bring-up headers and pads, D_FLY1 and the I2C level shifter with the bus
+  pull-ups are drawn on the root beside their connectors (where they sit on the board), so the root
+  rails have their bulk caps and the I2C bus its pull-ups on the same sheet. Function sheets: expander,
+  drivers, audio.
+- Off-board parts use virtual `#X_*` references (out of the netlist and BOMs, like `#PWR`).
+- Root cable connectors and off-board modules are drawn at 5.08 mm pitch (schematic only). Every
+  off-board pin is a cable wire to its connector pin; a rail's power port hangs off its cable.
+- J2 pin 2 is named "CHG IN" (a "5V" name reads as a supply pin to the decoupling audit).
 
 ## Problem
 

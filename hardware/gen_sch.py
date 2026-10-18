@@ -419,13 +419,14 @@ def natural(net):
     return "D" if net == "GND" else "U"
 
 
-def port_on_pin(sh, net, c, s, bound, along=False):
-    """Power port for one pin: on the pin if it faces the right way, else after a stub. `along`: only
-    ports pointing along the stub (they stay in the pin's own row, so they fit at 2.54 mm pin pitch)."""
+def port_on_pin(sh, net, c, s, bound, mode=None):
+    """Power port for one pin: on the pin if it faces the right way, else after a stub. Mode "along":
+    only ports along the stub (they stay in the pin's own row, so they fit at 2.54 mm pin pitch)."""
     nat = natural(net)
-    cands = [(0, nat)] if s == DIRS[nat] and not along else []
+    turn = axis(s) != axis(DIRS[nat]) and mode != "along"
+    cands = [(0, nat)] if s == DIRS[nat] and mode != "along" else []
     for n in (2, 4, 6, 8):
-        cands += [(n, nat)] if axis(s) != axis(DIRS[nat]) and not along else []
+        cands += [(n, nat)] if turn else []
         cands += [(n, DIRS_OF[s])]
     for n, d in cands:
         e = add(c, s, n)
@@ -465,9 +466,10 @@ def port_comb(sh, net, cells, s, bound, crossable=False):
     return False
 
 
-def rail_ports(sh, net, pins, bound, vcomb=False, along=False):
+def rail_ports(sh, net, pins, bound, vcomb=False, modes=None):
     """Ports for the pins of one rail in one block (stacked pins share one port; with `vcomb`, side-by-side
     pins facing up or down do too)."""
+    modes = modes or {}
     by_loc = {}
     for p in pins:
         by_loc.setdefault(sh.pins[p][0], (p, sh.pins[p][1]))
@@ -475,8 +477,10 @@ def rail_ports(sh, net, pins, bound, vcomb=False, along=False):
     groups = collections.defaultdict(list)
     for c, (p, s) in by_loc.items():
         groups[(p.split(".")[0], s)].append(c)
-    for (_ref, s), cs in sorted(groups.items()):
-        if axis(s) == "H":
+    for (ref, s), cs in sorted(groups.items()):
+        if modes.get(ref) == "along":  # no comb: each pin gets its own port along its stub
+            singles += [(c, s) for c in cs]
+        elif axis(s) == "H":
             cs.sort(key=lambda c: c[1])
             run = [cs[0]]
             for c in cs[1:]:
@@ -499,11 +503,11 @@ def rail_ports(sh, net, pins, bound, vcomb=False, along=False):
         else:
             singles += [(c, s) for c in cs]
     for run, s in runs:
-        if len(run) > 1 and not along and port_comb(sh, net, run, s, bound):
+        if len(run) > 1 and port_comb(sh, net, run, s, bound):
             continue
         singles += [(c, s) for c in run]
     for c, s in sorted(singles, key=lambda t: (t[0][1], t[0][0])):
-        port_on_pin(sh, net, c, s, bound, along)
+        port_on_pin(sh, net, c, s, bound, modes.get(by_loc[c][0].split(".")[0]))
 
 
 def glabel_len(net):
@@ -592,7 +596,8 @@ def name_label(sh, net, segs):
                     glabel(sh, net, e, d)
                     return
     sh.clashes.append(f"no room to label net {net}")
-    glabel(sh, net, segs[0][0], "R")
+    if segs:
+        glabel(sh, net, segs[0][0], "R")
 
 
 # --- Router ---
@@ -649,6 +654,33 @@ def astar(sh, net, start, goals, bound):
                 came[(nb, dout)] = (cur, din)
                 heapq.heappush(openq, (ng + h(nb), ng, nb, dout))
     return None
+
+
+def cable(sh, net, a, b, bound):
+    """Wire off-board pin b to connector pin a (a cable) and hang the rail's power port off it, at the
+    first cell from the connector where the port fits: drawn after the signals and before nothing else
+    claims the gap, so the port can never wall off another cable."""
+    path = astar(sh, net, b, {a}, bound)
+    if path is None:
+        sh.clashes.append(f"no cable route for {net} from {b[0] * STEP:.2f},{b[1] * STEP:.2f}")
+        return None
+    for x, y in itertools.pairwise(path):
+        sh.edges[net].add(tuple(sorted((x, y))))
+    for c in path:
+        sh.wires[c][net] = "X"
+    return path
+
+
+def tee_port(sh, net, path, bound):
+    """Power port at a cable cell, pointing the rail's natural way (the cell becomes a junction)."""
+    nat = natural(net)
+    for c in path[-3:0:-1]:  # from the connector end, skipping both pins and the connector's first cell
+        cells = port_shape(design.PORT_LIB[net], net, c, nat)[2] - set(path)  # its base may sit on the cable
+        if sh.free(cells, net, bound):
+            port(sh, net, c, nat)
+            sh.term[c] = (net, DIRS[nat])
+            return
+    sh.clashes.append(f"no room for a {net} port on the cable at {path[0][0] * STEP:.2f},{path[0][1] * STEP:.2f}")
 
 
 def degree(edges):
@@ -751,15 +783,17 @@ def label_fits(sh, net, c, s, bound):
                for n in (2, 4, 6))
 
 
-def build_sheet(sh, blocks, exits, nets=None, pre=None):
+def build_sheet(sh, blocks, exits, nets=None, pre=None, cables=()):
     """Place, port, label, route and name `blocks` on sheet `sh`; returns (wires and junctions, width, height).
 
     Net members whose part is not in `blocks` belong to another sheet. A net in `exits` leaves this sheet:
     each of its groups here gets a hierarchical label (flat mode passes no exits, so every block-crossing
     net is joined by global labels, as before). `nets` defaults to design.NETS; `pre(sh)` runs after the
     parts are placed and returns {ref: block index} for extra terminals it put in sh.pins (sheet pins,
-    off-board symbols)."""
+    off-board symbols). `cables` [(net, pin, pin it is wired to)] are drawn after routing as their own
+    wire instead of taking a port (off-board rail pins on the root, wired to their connector pin)."""
     nets = design.NETS if nets is None else nets
+    cabled = {p for _n, b, a in cables for p in (a, b)}
     block_of, bounds = {}, []
     for i, b in enumerate(blocks):
         (bx, by), (bw, bh) = b["at"], b["size"]
@@ -788,7 +822,7 @@ def build_sheet(sh, blocks, exits, nets=None, pre=None):
     groups = collections.defaultdict(lambda: collections.defaultdict(list))
     for net, members in nets.items():
         for p in members:
-            if p.split(".")[0] in block_of:
+            if p.split(".")[0] in block_of and p not in cabled:
                 groups[net][block_of[p.split(".")[0]]].append(p)
     terms = collections.defaultdict(list)  # (net, block) -> [(cell, stub dir)]
     # explicit tags first (their boxes must be free before anything else claims the space)
@@ -817,7 +851,7 @@ def build_sheet(sh, blocks, exits, nets=None, pre=None):
                         sh.clashes.append(f"no room for the {net} comb {comb}")
                 rest = [p for p in pins if not any(p in c for c in forced)]
                 if rest:
-                    rail_ports(sh, net, rest, bounds[i], blocks[i].get("vcomb", False), blocks[i].get("along", False))
+                    rail_ports(sh, net, rest, bounds[i], blocks[i].get("vcomb", False), blocks[i].get("port_modes"))
     # a lone pin of a multi-block net gets its label on a stub
     seed = {}
 
@@ -853,6 +887,11 @@ def build_sheet(sh, blocks, exits, nets=None, pre=None):
         if (net, i) in seed:
             ts.insert(0, seed[(net, i)])
         route(sh, net, list(dict.fromkeys(ts)), bounds[i])
+    drawn = [(net, cable(sh, net, sh.pins[a][0], sh.pins[b][0], bounds[block_of[a.split(".")[0]]]),
+              bounds[block_of[a.split(".")[0]]]) for net, b, a in cables]
+    for net, path, bound in drawn:
+        if path:
+            tee_port(sh, net, path, bound)
     # name one-block nets
     for net, by_block in groups.items():
         if net not in design.RAILS and not crossing(net, by_block) and not terms[(net, next(iter(by_block)))]:
@@ -903,17 +942,50 @@ def sheet_uuid(name):
     return str(uuid.uuid5(NS, f"sheet/{name}"))
 
 
+FIT = 12.7  # room kept round a fitted block's content for the ports and labels gen_sch adds at pins
+
+
+def fit_block(b):
+    """Shrink block `b` to its content: the parts' bodies and pins, tags and flags, plus FIT on each side
+    (and the title row on top). The parts that moved to the root leave no hole behind."""
+    pts = []
+    for ref, (dx, dy, rot, mirror) in b["parts"].items():
+        sym = flat_symbol(*design.PARTS[ref][1].split(":"))
+        rel = [xf(px, py, rot, mirror) for u in unit_bodies(sym) for px, py in graphic_points(u)]
+        rel += [xf(px, py, rot, mirror) for px, py, _a, _l in pins_of(sym).values()]
+        pts += [(dx + x, dy + y) for x, y in rel or [(0, 0)]]
+    for net, tags in b.get("tags", {}).items():
+        for dx, dy, d in tags:
+            v = DIRS[d]
+            pts += [(dx, dy), (dx + v[0] * glabel_len(net), dy + v[1] * glabel_len(net))]
+    for _net, dx, dy in b.get("flags", []):
+        pts += [(dx - 2.54, dy - 5.08), (dx + 10.16, dy + 5.08)]
+    x0, y0, x1, y1 = bounds_box(pts)
+    sx, sy = FIT - x0, FIT + 5.08 - y0  # content starts FIT in, below the title row
+    shift = lambda dx, dy: (round((dx + sx) / STEP) * STEP, round((dy + sy) / STEP) * STEP)  # noqa: E731
+    return {**b,
+            "parts": {r: (*shift(dx, dy), rot, m) for r, (dx, dy, rot, m) in b["parts"].items()},
+            "tags": {n: [(*shift(dx, dy), d) for dx, dy, d in t] for n, t in b.get("tags", {}).items()},
+            "flags": [(n, *shift(dx, dy)) for n, dx, dy in b.get("flags", [])],
+            "size": (round((x1 - x0 + 2 * FIT) / STEP) * STEP, round((y1 - y0 + 2 * FIT + 5.08) / STEP) * STEP)}
+
+
 def sheet_blocks(name):
-    """The sheet's BLOCKS without the root parts, shifted so the content starts at MARGIN."""
+    """The sheet's BLOCKS without the root parts, each fitted to what is left, stacked from MARGIN."""
     _title, idx = design.SHEETS[name]
     roots, out = root_refs(), []
     for i in idx:
         b = design.BLOCKS[i]
         parts = {r: v for r, v in b["parts"].items() if r not in roots}
         here = {n for n, m in design.NETS.items() for p in m if p.split(".")[0] in parts}
-        out.append({**b, "parts": parts, "tags": {n: t for n, t in b.get("tags", {}).items() if n in here}})
-    x0, y0 = min(b["at"][0] for b in out), min(b["at"][1] for b in out)
-    return [{**b, "at": (b["at"][0] - x0 + MARGIN, b["at"][1] - y0 + MARGIN)} for b in out]
+        out.append(fit_block({**b, "parts": parts,
+                              "title": design.SHEETS[name][0] if len(idx) == 1 else b["title"],
+                              "tags": {n: t for n, t in b.get("tags", {}).items() if n in here}}))
+    y, placed = MARGIN, []
+    for b in out:  # one block per sheet today; several stack top to bottom
+        placed.append({**b, "at": (MARGIN, y)})
+        y += b["size"][1] + 5.08
+    return placed
 
 
 def exits_of(name):
@@ -1032,15 +1104,15 @@ def sheet_boxes(sh, hier, nets, origin):
 def place_offboard(sh, nets, origin):
     """Off-board symbols beyond their connectors, with a cable note under each."""
     refs = {}
-    for x_ref, (value, lib_id, _conn, _pins, cable, (x, y, rot, mirror)) in getattr(design, "OFFBOARD", {}).items():
+    for x_ref, (value, lib_id, _conn, _pins, cable_note, (x, y, rot, mirror)) in getattr(design, "OFFBOARD", {}).items():
         px, py = x - MARGIN + origin[0], y - MARGIN + origin[1]
         pins = place_part(sh, x_ref, px, py, rot, mirror, {}, part=(value, lib_id, ""), nets=nets, offboard=True)
         sh.pins |= pins
         refs[x_ref] = 0
-        ys = [c[1] * STEP for c, _s in pins.values()]
-        tx, ty = px, max(ys) + 10.16  # below the value text
-        sh.mark(box_cells(text_box(tx, ty, cable, True, "center")), f"cable {x_ref}")
-        sh.items.append(["text", q(cable), ["exclude_from_sim", "no"], at(tx, ty),
+        # under the module's value text: the cable gap belongs to the rail ports hung off the cables
+        tx, ty = px, max(c[1] for c, _s in pins.values()) * STEP + 7.62
+        sh.mark(box_cells(text_box(tx, ty, cable_note, True, "center")), f"cable {x_ref}")
+        sh.items.append(["text", q(cable_note), ["exclude_from_sim", "no"], at(tx, ty),
                          ["effects", ["font", ["size", "1.27", "1.27"], ["italic", "yes"]]],
                          ["uuid", uid(f"cable/{x_ref}")]])
     return refs
@@ -1060,13 +1132,19 @@ def root_sheet(hier, counters):
                      ["effects", ["font", ["size", "2", "2"], ["bold", "yes"]], ["justify", "left", "bottom"]],
                      ["uuid", uid("outline/title")]])
     sh.mark(box_cells((ox + 2.54, oy + 3.8, ox + 2.54 + len(title) * 1.7, oy + 5.4)), "outline title")
-    block = {"title": None, "at": origin, "size": (w, h), "along": True,
+    block = {"title": None, "at": origin, "size": (w, h), "port_modes": design.ROOT.get("port_modes", {}),
              "parts": {r: (x - MARGIN, y - MARGIN, rot, mir) for r, (x, y, rot, mir) in design.ROOT["parts"].items()}}
 
     def pre(sh_):
         return place_offboard(sh_, nets, origin) | sheet_boxes(sh_, hier, nets, origin)
 
-    body, bw, bh = build_sheet(sh, [block], set(), nets=nets, pre=pre)
+    if design.ROOT.get("flags"):
+        block["flags"] = [(net, x - MARGIN, y - MARGIN) for net, x, y in design.ROOT["flags"]]
+    cables = [(net, f"{x}.{own}", f"{conn}.{cpin}")
+              for x, (_v, _lib, conn, pin_map, _cable, _at) in getattr(design, "OFFBOARD", {}).items()
+              for own, cpin in pin_map.items() for net, m in design.NETS.items()
+              if net in design.RAILS and f"{conn}.{cpin}" in m]
+    body, bw, bh = build_sheet(sh, [block], set(), nets=nets, pre=pre, cables=cables)
     head = [["lib_symbols", *[embedded(i) for i in sorted(sh.lib_ids)]]]
     tree = ["kicad_sch", ["version", "20250114"], ["generator", q("gen_sch")], ["generator_version", q("9.0")],
             ["uuid", q(sh.root)], ["paper", q(paper_for(bw, bh, PAPERS_HIER))],

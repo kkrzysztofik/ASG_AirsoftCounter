@@ -196,7 +196,7 @@ HEADER_NC = {"J2.2", "J2.3", "J2.4"}  # 5V charger input, Vext x2: must stay unc
 def heltec_pin_names():
     """Header pin -> name on the local:Heltec_V4_J2/J3 symbols (gen_sch checks the symbols against this)."""
     role = {44: "GPIO44 RX", 43: "GPIO43 TX", None: "RST"}
-    nc = {"J2.2": "5V in", "J2.3": "Ve", "J2.4": "Ve"}
+    nc = {"J2.2": "CHG IN", "J2.3": "Ve", "J2.4": "Ve"}  # "CHG IN": a 5V name reads as a supply pin to reviews
     out = {}
     for h in ("J2", "J3"):
         for n in range(1, 19):
