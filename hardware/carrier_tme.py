@@ -134,45 +134,41 @@ def _copy_blocks():
 
 
 BLOCKS = _copy_blocks()
+# Drivers: J_BUZ1 moved to the root sheet, so BUZ_K leaves the sheet; tag it right of the drain/diode
+# node (an auto label on D_FLY1's anode points straight into Q_BZ1's drain).
+BLOCKS[5]["tags"]["BUZ_K"] = [(175.26, 27.94, "R")]
+# The +3V3 PWR_FLAG lived in the Heltec header block, which is not a sheet (J2/J3 are on the root). It
+# goes on the I2C sheet, next to +3V3 parts: alone on the power sheet ERC calls its port unconnected.
+BLOCKS[3]["flags"] = [("+3V3", 76.2, 66.04)]
 # Block 1 was the NS4168 amp; it now holds the DAC, its caps and the PAM8302A amp.
 BLOCKS[1] = {
-    "title": "I2S DAC and speaker amp", "at": (403.86, 12.7), "size": (152.4, 152.4),
+    # Signal flow left to right: I2S in -> DAC (each cap beside its own pin) -> output RC -> coupling C and
+    # input R -> amp -> speaker. The L chain runs on y=35.56 (into IN+), R on y=50.8 (into IN-); AMP_SD
+    # enters at XSMT and runs under the DAC to R_SD1 / R_SDPD1 below the amp's SD pin. Only nets that
+    # leave the sheet are tagged; internal nets are named on their own wires.
+    "title": "I2S DAC and speaker amp", "at": (403.86, 12.7), "size": (182.88, 91.44), "vcomb": True,
+    # The DAC's grounded config pins (SCK, FLT, DEMP, FMT) share one crossable GND wire: XSMT sits between
+    # them and its AMP_SD wire crosses it.
+    "combs": [["U_DAC.12", "U_DAC.11", "U_DAC.10", "U_DAC.16"]],
     "parts": {
-        # Rows 25.4 mm apart and 12.7 mm between 2-pin parts: enough margin for wire routing.
-        # The two ICs sit 23 mm apart so their pin zones stay clear.
-        "C_DVDD": (25.4, 25.4, 0, None), "C_DAVDD": (38.1, 25.4, 0, None),
-        "C_DCPV": (50.8, 25.4, 0, None), "C_DBULK": (63.5, 25.4, 0, None),
-        "C_DCP": (76.2, 25.4, 0, None), "C_DNEG": (88.9, 25.4, 0, None),
-        "C_DLDO": (101.6, 25.4, 0, None), "C_OL": (114.3, 25.4, 0, None),
-        "C_OR": (127.0, 25.4, 0, None),
-        "U_DAC": (55.88, 50.8, 0, None),
-        "U_AMP": (101.6, 50.8, 0, None),
-        "R_OL": (25.4, 76.2, 0, None), "R_OR": (38.1, 76.2, 0, None),
-        "C_INP": (50.8, 76.2, 0, None), "C_INN": (63.5, 76.2, 0, None),
-        "R_INP": (76.2, 76.2, 0, None), "R_INN": (88.9, 76.2, 0, None),
-        "C_AMP1": (101.6, 76.2, 0, None), "C_AMP2": (114.3, 76.2, 0, None),
-        "R_SD1": (127.0, 76.2, 0, None), "R_SDPD1": (139.7, 63.5, 0, None),
+        "C_DCPV": (35.56, 17.78, 0, None), "C_DVDD": (45.72, 17.78, 0, None),
+        "C_DAVDD": (55.88, 17.78, 0, None), "C_DBULK": (66.04, 17.78, 0, None),
+        "U_DAC": (50.8, 50.8, 0, None),
+        "C_DCP": (78.74, 52.07, 0, None), "C_DNEG": (78.74, 67.31, 0, None), "C_DLDO": (88.9, 64.77, 0, None),
+        "R_OL": (81.28, 30.48, 90, None), "C_OL": (90.17, 34.29, 0, None),
+        "C_INP": (99.06, 30.48, 90, None), "R_INP": (111.76, 30.48, 90, None),
+        "R_OR": (81.28, 45.72, 90, None), "C_OR": (90.17, 49.53, 0, None),
+        "C_INN": (99.06, 45.72, 90, None), "R_INN": (111.76, 45.72, 90, None),
+        "U_AMP": (132.08, 35.56, 0, None),
+        "R_SD1": (124.46, 57.15, 180, None), "R_SDPD1": (116.84, 69.85, 0, None),
+        "C_AMP1": (152.4, 58.42, 0, None), "C_AMP2": (165.1, 58.42, 0, None),
         "J_SPK1": (139.7, 88.9, 0, "x"),
     },
-    # Every net that leaves its pin pair is tagged explicitly in the free column at x=15.24:
-    # the DAC-to-amp nets are too short for gen_sch's labeler to find a straight run, so
-    # auto-naming them is not reliable. +3V3/GND are wired here because the DAC's three supply
-    # pins are 2.54 mm apart and cannot each take their own power port.
     "tags": {
-        "I2S_BCLK": [(15.24, 10.16, "L")], "I2S_LRCLK": [(15.24, 15.24, "L")],
-        "I2S_DIN": [(15.24, 20.32, "L")],
-        "+3V3": [(15.24, 25.4, "L")], "GND": [(15.24, 30.48, "L")],
-        "DAC_CAPP": [(15.24, 35.56, "L")], "DAC_CAPM": [(15.24, 40.64, "L")],
-        "DAC_VNEG": [(15.24, 45.72, "L")], "DAC_LDOO": [(15.24, 50.8, "L")],
-        "DAC_OL": [(15.24, 55.88, "L")], "DAC_OR": [(15.24, 60.96, "L")],
-        "AUD_L": [(15.24, 66.04, "L")], "AUD_R": [(15.24, 71.12, "L")],
-        "AMP_INP_C": [(15.24, 76.2, "L")], "AMP_INN_C": [(15.24, 81.28, "L")],
-        "AMP_INP": [(15.24, 86.36, "L")], "AMP_INN": [(15.24, 91.44, "L")],
-        "AMP_SD_R": [(15.24, 96.52, "L")], "SPK_P": [(15.24, 101.6, "L")],
-        "SPK_N": [(15.24, 106.68, "L")],
-        "AMP_SD": [(149.86, 76.2, "L")],
+        "I2S_LRCLK": [(15.24, 40.64, "L")], "I2S_DIN": [(15.24, 43.18, "L")], "I2S_BCLK": [(15.24, 45.72, "L")],
+        "AMP_SD": [(15.24, 58.42, "L")],
+        "SPK_P": [(152.4, 30.48, "R")], "SPK_N": [(152.4, 35.56, "R")],
     },
-    "wired": {"+3V3", "GND"},
 }
 
 PLACE = {r: v for r, v in carrier.PLACE.items() if r != "U3"}
@@ -214,17 +210,19 @@ SHEETS = {
 ROOT = {
     "parts": {
         "J2": (190.5, 76.2, 0, None), "J3": (241.3, 76.2, 0, None),
-        "J_PWR1": (63.5, 50.8, 0, "y"), "J_HBAT1": (63.5, 88.9, 0, "y"),
-        "J_LCD1": (342.9, 50.8, 0, None), "J_NFC1": (342.9, 76.2, 0, None),
-        "J_BTN_R1": (342.9, 101.6, 0, None), "J_BTN_B1": (342.9, 127.0, 0, None),
-        "J_BUZ1": (342.9, 152.4, 0, None), "J_SPK1": (342.9, 177.8, 0, None),
-        "H1": (25.4, 254.0, 0, None), "H2": (35.56, 254.0, 0, None),
-        "H3": (45.72, 254.0, 0, None), "H4": (55.88, 254.0, 0, None),
+        # Connector pins face their off-board part: left-side connectors as drawn (pins left), right-side
+        # ones mirrored (pins right); the cable gap between holds the rail ports.
+        "J_PWR1": (81.28, 50.8, 0, None), "J_HBAT1": (81.28, 88.9, 0, None),
+        "J_LCD1": (337.82, 50.8, 0, "y"), "J_NFC1": (337.82, 76.2, 0, "y"),
+        "J_BTN_R1": (337.82, 101.6, 0, "y"), "J_BTN_B1": (337.82, 127.0, 0, "y"),
+        "J_BUZ1": (337.82, 152.4, 0, "y"), "J_SPK1": (337.82, 177.8, 0, "y"),
+        "H1": (25.4, 238.76, 0, None), "H2": (35.56, 238.76, 0, None),
+        "H3": (45.72, 238.76, 0, None), "H4": (55.88, 238.76, 0, None),
     },
     "sheets": {
-        "power": (88.9, 38.1, 38.1, 25.4), "i2c": (279.4, 38.1, 38.1, 38.1),
+        "power": (99.06, 38.1, 38.1, 25.4), "i2c": (279.4, 38.1, 38.1, 38.1),
         "expander": (279.4, 91.44, 38.1, 50.8), "drivers": (279.4, 152.4, 38.1, 38.1),
-        "audio": (279.4, 203.2, 38.1, 38.1), "debug": (88.9, 177.8, 38.1, 38.1),
+        "audio": (203.2, 165.1, 50.8, 25.4), "debug": (88.9, 177.8, 38.1, 38.1),
     },
     "outline": ("Heltec WiFi LoRa 32 V4 (plugs into J2/J3)", (165.1, 30.48, 101.6, 104.14)),
     "size": (391.16, 236.22),  # root content from (12.7, 12.7): fits A3
@@ -234,18 +232,18 @@ ROOT = {
 _PINS4 = {"1": "1", "2": "2", "3": "3", "4": "4"}
 OFFBOARD = {
     "X_PACK": ("Pack board (P5)", "local:Pack_Link_6", "J_PWR1",
-               {str(i): str(i) for i in range(1, 7)}, "XH-6", (25.4, 50.8, 0, None)),
-    "X_HBAT": ("Heltec V4 battery input (SH1.25)", "Connector_Generic:Conn_01x02", "J_HBAT1",
-               {"1": "1", "2": "2"}, "XH-2 to SH1.25", (25.4, 88.9, 0, None)),
-    "X_LCD": ("LCD 1602 + PCF8574", "local:Module_I2C_4", "J_LCD1", _PINS4, "XH-4", (381.0, 50.8, 0, "y")),
-    "X_NFC": ("PN532 (I2C)", "local:Module_I2C_4", "J_NFC1", _PINS4, "XH-4", (381.0, 76.2, 0, "y")),
+               {str(i): str(i) for i in range(1, 7)}, "XH-6", (27.94, 50.8, 0, "y")),
+    "X_HBAT": ("Heltec V4 battery", "Connector_Generic:Conn_01x02", "J_HBAT1",
+               {"1": "1", "2": "2"}, "XH-2 to the module's SH1.25", (40.64, 88.9, 0, "y")),
+    "X_LCD": ("LCD 1602 + PCF8574", "local:Module_I2C_4", "J_LCD1", _PINS4, "XH-4", (386.08, 50.8, 0, None)),
+    "X_NFC": ("PN532 (I2C)", "local:Module_I2C_4", "J_NFC1", _PINS4, "XH-4", (386.08, 76.2, 0, None)),
     "X_BTN_R": ("ONPOW LAS1-AGQ-11E/R/6V", "local:Button_LED_4", "J_BTN_R1", _PINS4, "XH-4",
-                (381.0, 101.6, 0, "y")),
+                (386.08, 101.6, 0, None)),
     "X_BTN_B": ("ONPOW LAS1-AGQ-11E/B/6V", "local:Button_LED_4", "J_BTN_B1", _PINS4, "XH-4",
-                (381.0, 127.0, 0, "y")),
-    "X_BUZ": ("BZ-38 buzzer", "Device:Buzzer", "J_BUZ1", {"1": "1", "2": "2"}, "XH-2", (381.0, 152.4, 0, None)),
+                (386.08, 127.0, 0, None)),
+    "X_BUZ": ("BZ-38 buzzer", "Device:Buzzer", "J_BUZ1", {"1": "1", "2": "2"}, "XH-2", (386.08, 152.4, 0, None)),
     "X_SPK": ("VISATON K 50, 8 ohm", "Device:Speaker", "J_SPK1", {"1": "1", "2": "2"},
-              "XH-2, BTL: neither side is GND", (381.0, 177.8, 0, None)),
+              "XH-2, BTL: neither side is GND", (386.08, 177.8, 0, None)),
 }
 
 

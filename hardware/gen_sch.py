@@ -419,12 +419,13 @@ def natural(net):
     return "D" if net == "GND" else "U"
 
 
-def port_on_pin(sh, net, c, s, bound):
-    """Power port for one pin: on the pin if it faces the right way, else after a stub."""
+def port_on_pin(sh, net, c, s, bound, along=False):
+    """Power port for one pin: on the pin if it faces the right way, else after a stub. `along`: only
+    ports pointing along the stub (they stay in the pin's own row, so they fit at 2.54 mm pin pitch)."""
     nat = natural(net)
-    cands = [(0, nat)] if s == DIRS[nat] else []
+    cands = [(0, nat)] if s == DIRS[nat] and not along else []
     for n in (2, 4, 6, 8):
-        cands += [(n, nat)] if axis(s) != axis(DIRS[nat]) else []
+        cands += [(n, nat)] if axis(s) != axis(DIRS[nat]) and not along else []
         cands += [(n, DIRS_OF[s])]
     for n, d in cands:
         e = add(c, s, n)
@@ -437,25 +438,36 @@ def port_on_pin(sh, net, c, s, bound):
     port(sh, net, c, DIRS_OF[s])
 
 
-def port_comb(sh, net, cells, s, bound):
-    """Adjacent same-rail pins facing sideways: stubs to one vertical wire, one port at its end."""
+def port_comb(sh, net, cells, s, bound, crossable=False):
+    """Adjacent same-rail pins: stubs to one wire across their ends, one port at its end (sideways pins
+    join on a vertical wire, port at the end the rail points to; up/down pins on a horizontal one)."""
     nat = DIRS[natural(net)]
-    cells = sorted(cells, key=lambda c: c[1] * nat[1])
+    cells = sorted(cells, key=lambda c: c[1] * nat[1]) if axis(s) == "H" else sorted(cells)
     for n in (2, 4):
         ends = [add(c, s, n) for c in cells]
         need = {add(c, s, k) for c in cells for k in range(1, n + 1)}
-        need |= {(ends[0][0], j) for j in range(min(e[1] for e in ends), max(e[1] for e in ends) + 1)}
+        if axis(s) == "H":
+            need |= {(ends[0][0], j) for j in range(min(e[1] for e in ends), max(e[1] for e in ends) + 1)}
+        else:
+            need |= {(i, ends[0][1]) for i in range(min(e[0] for e in ends), max(e[0] for e in ends) + 1)}
         if sh.free(need | port_shape(design.PORT_LIB[net], net, ends[-1], natural(net))[2], net, bound):
             for c, e in zip(cells, ends, strict=True):
                 sh.stub(net, c, e)
             sh.stub(net, ends[0], ends[-1])
+            if crossable:  # where no stub joins, the shared wire is a straight run another net may cross
+                a = "V" if axis(s) == "H" else "H"
+                for c in set(sh.wires) - set(ends):
+                    if sh.wires[c].get(net) and min(ends) < c < max(ends) and \
+                            (c[0] == ends[0][0] if a == "V" else c[1] == ends[0][1]):
+                        sh.wires[c][net] = a
             port(sh, net, ends[-1], natural(net))
             return True
     return False
 
 
-def rail_ports(sh, net, pins, bound):
-    """Ports for the pins of one rail in one block (stacked pins share one port)."""
+def rail_ports(sh, net, pins, bound, vcomb=False, along=False):
+    """Ports for the pins of one rail in one block (stacked pins share one port; with `vcomb`, side-by-side
+    pins facing up or down do too)."""
     by_loc = {}
     for p in pins:
         by_loc.setdefault(sh.pins[p][0], (p, sh.pins[p][1]))
@@ -474,14 +486,24 @@ def rail_ports(sh, net, pins, bound):
                     runs.append((run, s))
                     run = [c]
             runs.append((run, s))
+        elif vcomb:
+            cs.sort()
+            run = [cs[0]]
+            for c in cs[1:]:
+                if c[0] - run[-1][0] == 2 and c[1] == run[-1][1]:
+                    run.append(c)
+                else:
+                    runs.append((run, s))
+                    run = [c]
+            runs.append((run, s))
         else:
             singles += [(c, s) for c in cs]
     for run, s in runs:
-        if len(run) > 1 and port_comb(sh, net, run, s, bound):
+        if len(run) > 1 and not along and port_comb(sh, net, run, s, bound):
             continue
         singles += [(c, s) for c in run]
     for c, s in sorted(singles, key=lambda t: (t[0][1], t[0][0])):
-        port_on_pin(sh, net, c, s, bound)
+        port_on_pin(sh, net, c, s, bound, along)
 
 
 def glabel_len(net):
@@ -554,6 +576,21 @@ def name_label(sh, net, segs):
                     all(x not in sh.hard and not sh.wires.get(x) and x not in sh.term for x in beside):
                 glabel(sh, net, run[0], DIRS_OF[d])
                 return
+    # No straight run long enough (a short pin-to-pin net): hang the label off the wire on a stub
+    cells = sorted({c for a, b in segs for c in (a, b)} | {c for a, b in sh.edges[net] for c in (a, b)})
+    for c in cells:
+        if c in sh.term:
+            continue
+        for d in ("U", "D", "L", "R"):
+            v = DIRS[d]
+            for n in (2, 3):
+                e = add(c, v, n)
+                stub = {add(c, v, k) for k in range(1, n + 1)}
+                if all(not sh.wires.get(x) for x in stub) and \
+                        sh.free(stub | glabel_cells(net, e, d), net, (-10**6, -10**6, 10**6, 10**6)):
+                    sh.stub(net, c, e)
+                    glabel(sh, net, e, d)
+                    return
     sh.clashes.append(f"no room to label net {net}")
     glabel(sh, net, segs[0][0], "R")
 
@@ -772,7 +809,15 @@ def build_sheet(sh, blocks, exits, nets=None, pre=None):
     for net in design.RAILS:
         for i, pins in sorted(groups[net].items()):
             if net not in blocks[i].get("wired", ()):
-                rail_ports(sh, net, pins, bounds[i])
+                # explicit combs: same-side rail pins with other pins between them share one crossable wire
+                forced = [c for c in blocks[i].get("combs", []) if set(c) <= set(pins)]
+                for comb in forced:
+                    cells = [sh.pins[p][0] for p in comb]
+                    if not port_comb(sh, net, cells, sh.pins[comb[0]][1], bounds[i], crossable=True):
+                        sh.clashes.append(f"no room for the {net} comb {comb}")
+                rest = [p for p in pins if not any(p in c for c in forced)]
+                if rest:
+                    rail_ports(sh, net, rest, bounds[i], blocks[i].get("vcomb", False), blocks[i].get("along", False))
     # a lone pin of a multi-block net gets its label on a stub
     seed = {}
 
@@ -993,7 +1038,7 @@ def place_offboard(sh, nets, origin):
         sh.pins |= pins
         refs[x_ref] = 0
         ys = [c[1] * STEP for c, _s in pins.values()]
-        tx, ty = px, max(ys) + 6.35
+        tx, ty = px, max(ys) + 10.16  # below the value text
         sh.mark(box_cells(text_box(tx, ty, cable, True, "center")), f"cable {x_ref}")
         sh.items.append(["text", q(cable), ["exclude_from_sim", "no"], at(tx, ty),
                          ["effects", ["font", ["size", "1.27", "1.27"], ["italic", "yes"]]],
@@ -1015,7 +1060,7 @@ def root_sheet(hier, counters):
                      ["effects", ["font", ["size", "2", "2"], ["bold", "yes"]], ["justify", "left", "bottom"]],
                      ["uuid", uid("outline/title")]])
     sh.mark(box_cells((ox + 2.54, oy + 3.8, ox + 2.54 + len(title) * 1.7, oy + 5.4)), "outline title")
-    block = {"title": None, "at": origin, "size": (w, h),
+    block = {"title": None, "at": origin, "size": (w, h), "along": True,
              "parts": {r: (x - MARGIN, y - MARGIN, rot, mir) for r, (x, y, rot, mir) in design.ROOT["parts"].items()}}
 
     def pre(sh_):
