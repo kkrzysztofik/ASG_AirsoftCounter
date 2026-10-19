@@ -20,7 +20,7 @@ NAME = "pack_xiao"
 TITLE = "AirsoftCounter v2 pack (XIAO hand-build)"
 
 # _THB: bottom pads 16/20 (the only ones used) are plated holes, soldered with an iron from the back
-XIAO = ("XIAO ESP32-S3", "local:XIAO_ESP32S3", "local:XIAO_ESP32S3_SMD_THB")
+XIAO = ("XIAO ESP32-S3", "local:XIAO_ESP32S3", "xiao:XIAO_ESP32S3_SMD_THB")
 B5819W = ("B5819W", *pack.B5819W)
 _GONE = {"C_MCU3", "C_VDDA", "R_BOOT", "C_NRST", "TP_NRST", "TP_SWDIO", "TP_SWCLK", "SW_BOOT",
          "SW_RST", "J_UART1", "R_ALERT", "R_INT_CHG", "R_LED_MCU", "LED_MCU"}
@@ -31,7 +31,10 @@ PARTS["D_M1"] = B5819W   # run feed from the boost (key on)
 PARTS["D_M2"] = B5819W   # run feed from USB VBUS (cable in); the charger keeps the raw VBUS
 for _i in range(1, 5):
     PARTS[f"R_PD{_i}"] = ("4k7", *pack.R0805)
-    PARTS[f"R_GS{_i}"] = ("240k", *pack.R0805)   # P-FET gate pull-up: 17 uA while closed; shares carrier_tme's 240k tape   # 0.3 V against a 45k boot pull-up (D7 = U0RXD)
+    PARTS[f"R_GS{_i}"] = ("240k", *pack.R0805)   # P-FET gate pull-up: 17 uA while closed; shares carrier_tme's 240k tape
+# Boost caps see 5 V at most: a 16 V 22 uF (~13 uF at 5 V each) for a third of the 25 V part's price.
+for _r in ("C_IN1", "C_OUT1", "C_OUT2"):
+    PARTS[_r] = ("22uF 16V", *PARTS[_r][1:])   # 0.3 V against a 45k boot pull-up (D7 = U0RXD)
 
 # XIAO pins (symbol = footprint numbers): 1-11 D0..D10, 12 3V3, 13 GND, 14 5V (VBUS),
 # 15 MTDI, 16 MTDO (GPIO40), 17 EN, 18 GND, 19 MTMS, 20 MTCK (GPIO39), 21/22 USB, 23 BAT+, 24 GND, 25 PAD.
@@ -68,6 +71,7 @@ _KEYS = {(v, fp) for r, (v, sym, fp) in PARTS.items()
          if sym != "Mechanical:MountingHole" and r not in DNP | NOT_TME}
 TME = {k: s for k, s in pack_tme.TME.items() if k in _KEYS}   # B5819W and 4k7 are already on the list
 TME[("240k", pack.R0805[1])] = "SMD0805-240K-1%"   # R_GS1..4, carrier_tme's tape
+TME[("22uF 16V", pack.C1206)] = "CL31A226MOCLNNC"  # Samsung 22 uF 16 V X5R 1206
 MODULES, VARIANTS = {}, {"standard": set()}
 
 
@@ -88,6 +92,7 @@ W, H, CORNER = pack_tme.W, 112.0, pack_tme.CORNER
 # board's margin, at board y 96: the strip clears them by a notch (left post, x -0.5) and a round
 # cutout (inner post, x 82.5). check_posts() holds them to mech/params with POST_CLEAR to spare.
 POST_CLEAR = 1.0
+KIID_SEED = 2   # gen_pcb: footprint order the autorouter sees; seed 1 leaves one connection unrouted
 NOTCH_BL = (5.0, 90.0)
 CUTOUTS = [(82.5, 96.0, 10.0)]
 NETCLASS_POWER, NETCLASS_EXPECT = pack_tme.NETCLASS_POWER, pack_tme.NETCLASS_EXPECT

@@ -48,8 +48,13 @@ def unconnected_nets():
 def footprint(board, ref, nets):
     value, _, fpid = design.PARTS[ref]
     lib, name = fpid.split(":")
-    # "local" is the project footprint library (fp-lib-table) for parts KiCad does not ship
-    fp = pcbnew.FootprintLoad(str(gen_sch.KICAD / "local.pretty" if lib == "local" else FPDIR / f"{lib}.pretty"), name)
+    # project footprint libraries (fp-lib-table: local, xiao) live in kicad/, the rest are KiCad's.
+    # Loading a library parses ALL its footprints, which draws on the seeded KIID sequence (main): a
+    # footprint added to a library renumbers every board using it, reorders its save file, and can
+    # flip the autorouter's result. New footprints go in their own library unless every board using
+    # that library is re-routed anyway.
+    proj = gen_sch.KICAD / f"{lib}.pretty"
+    fp = pcbnew.FootprintLoad(str(proj if proj.is_dir() else FPDIR / f"{lib}.pretty"), name)
     if fp is None:
         raise SystemExit(f"{ref}: footprint {fpid} not found")
     fp.SetFPID(pcbnew.LIB_ID(lib, name))
@@ -207,7 +212,10 @@ def label(board, fp, name, pins):
 def build():
     design.check()
     assert design.PLACE.keys() == design.PARTS.keys(), design.PLACE.keys() ^ design.PARTS.keys()
-    pcbnew.KIID.SeedGenerator(1)  # deterministic uuids across runs
+    # deterministic uuids across runs. They set the footprint order in the saved board and so in the DSN,
+    # and Freerouting's result depends on that order: a board that leaves a connection unrouted can pick
+    # another KIID_SEED (a routing knob, nothing else changes).
+    pcbnew.KIID.SeedGenerator(getattr(design, "KIID_SEED", 1))
     board = pcbnew.BOARD()
     board.SetCopperLayerCount(2)
     # design rules are not stored in .kicad_pcb: they come from {design.NAME}.kicad_pro (checked in verify)

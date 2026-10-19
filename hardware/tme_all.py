@@ -29,7 +29,7 @@ ORDER = {"SMD0805-": (100, 100), "SMD1206-": (100, 100), "C1F-": (5, 1)}
 # Small passives get +10 %, at least +5: easy to lose, cheap to over-buy.
 SPARE = ("SMD0805-", "SMD1206-", "CL21", "CC0805")
 # Bigger or dearer parts are not lost to the tweezers as easily: +10 % only, no minimum.
-SPARE_PCT = ("CL31", "NTCS")
+SPARE_PCT = ("CL31", "NTCS", "NCU")
 
 
 def merge(texts, names=None):

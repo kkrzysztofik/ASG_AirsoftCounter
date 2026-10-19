@@ -5,8 +5,9 @@ Source: github.com/Seeed-Studio/OPL_Kicad_Library, folder "Seeed Studio XIAO Ser
 (symbol XIAO-ESP32-S3-SMD, footprint XIAO-ESP32-S3-SMD.kicad_mod). Copied, not redrawn; the
 footprint's User.2 artwork (~2500 shapes, ~500 KB) is dropped. Re-running replaces both.
 
-Also writes XIAO_ESP32S3_SMD_THB (derived from the imported footprint, no source needed): the bottom
-pads in THB_PADS become plated holes, so an iron reaches them from the board's back (pack_xiao).
+Also writes kicad/xiao.pretty/XIAO_ESP32S3_SMD_THB (derived from the imported footprint, no source
+needed): the bottom pads in THB_PADS become plated holes, so an iron reaches them from the board's
+back (pack_xiao). Its own library: see gen_pcb.footprint on why local.pretty must not grow.
 
 Run: /usr/bin/python3 tools/import_xiao.py [path to "Seeed Studio XIAO Series Library"]
 (without a path: only the _THB variant is rewritten from the local footprint)
@@ -91,12 +92,12 @@ def thb_variant():
             '(layers "F.Cu" "F.Mask" "F.Paste")', f'(drill {THB_DRILL})\n\t\t(layers "*.Cu" "*.Mask")')
         assert new.count("thru_hole") == new.count("drill") == 1, pad
         text = text.replace(pad, new)
-    (KICAD / "local.pretty" / f"{FP_THB}.kicad_mod").write_text(text)
+    (KICAD / "xiao.pretty" / f"{FP_THB}.kicad_mod").write_text(text)
 
 
 def check():
-    for name, holes in ((FP, set()), (FP_THB, set(THB_PADS))):
-        fp = pcbnew.FootprintLoad(str(KICAD / "local.pretty"), name)
+    for lib, name, holes in (("local", FP, set()), ("xiao", FP_THB, set(THB_PADS))):
+        fp = pcbnew.FootprintLoad(str(KICAD / f"{lib}.pretty"), name)
         pads = sorted(p.GetNumber() for p in fp.Pads())
         assert pads == sorted(PINS), f"{name} pads: {pads}"
         got = {p.GetNumber() for p in fp.Pads() if p.HasHole()}

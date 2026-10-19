@@ -64,7 +64,7 @@ TME |= {
     ("MCP1640T-I/CHY", SOT23_6): "MCP1640T-I/CHY",
     ("3u3", pack.LRN6045): "SRN6045-3R3Y",          # plain SRN6045, Isat 5 A; fits the TA pads
     ("24k", R0805[1]): "SMD0805-24K-1%",
-    ("10k NTC 0603", R0805[1]): "NTCS0603E3103FLT",
+    ("10k NTC 0603", R0805[1]): "NCU18XH103J6SRB",   # Murata 10k B3380 5 % (thresholds ~+-1.5 C; F6 = 1 %)
 }
 MODULES, VARIANTS = {}, {"standard": set()}
 

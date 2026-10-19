@@ -27,7 +27,7 @@ FAB = HERE / "fab" / board.NAME
 # Royalohm resistors use TME's cut-tape SMD0805-*/SMD1206-* symbols (0805S8F/1206S4J, 100 pcs): the
 # 0805W8F.../1206W4F... symbols are the same parts sold only as 5000 pcs reels (checked 2026-10-02).
 TME = {
-    "C105362": "ERJ8BWFR010V",          # sub: Panasonic 10 mOhm 1206 0.5 W 1 % (PSA FMF06FTHR010 not at TME)
+    "C105362": "MBR1206B5FR010S",       # sub: Wayon 10 mOhm 1206 1 % alloy (was Panasonic ERJ8BWFR010V, 4x the price)
     "C12891": "CL31A226KAHNNNE",
     "C144395": "B4B-XH-A (LF)(SN)",
     "C144397": "B6B-XH-A",
@@ -70,7 +70,7 @@ TME = {
     "C5446": "XC6206P332MR-G",
     "C623960": "PAC1934T-I/JQ",
     "C703084": "DFE322520FD-1R5M=P2",   # sub: Murata 1.5 uH 1210, 2.0 mm tall (the 1.2 mm one is not at TME)
-    "C7420339": "BSS138LT1G",           # onsemi SOT-23
+    "C7420339": "BSS138A-TP",           # MCC SOT-23, G=1 S=2 D=3 (was onsemi BSS138LT1G)
     "C783615": "TCA9534PWR",
     "C81598": "1N4148W-DIO",            # Diotec SOD-123
     "C84256": "KP-2012EC",              # sub: Kingbright red 0805
@@ -88,8 +88,9 @@ OTHER = {
 }
 # Hand-soldered parts (NOT_ASSEMBLED, so not in the JLC BOM) that TME sells, per board (FAB dir name).
 HAND = {
-    # TH_CHG: 10k B3435 NTC. TME has no 0805 one; the 0603 hand-solders onto the 0805 pads.
-    "pack": [("NTCS0603E3103FLT", 1)],
+    # TH_CHG: 10k NTC (B3380, the TS network was sized for B3435: ~1 C off). TME has no 0805 one;
+    # the 0603 hand-solders onto the 0805 pads.
+    "pack": [("NCU18XH103J6SRB", 1)],
 }
 
 

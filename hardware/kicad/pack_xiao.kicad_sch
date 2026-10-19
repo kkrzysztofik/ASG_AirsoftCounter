@@ -4627,7 +4627,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF 25V"
+		(property "Value" "22uF 16V"
 			(at 206.375 38.1 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4708,7 +4708,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF 25V"
+		(property "Value" "22uF 16V"
 			(at 127.635 53.34 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5960,7 +5960,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF 25V"
+		(property "Value" "22uF 16V"
 			(at 216.535 48.26 0)
 			(show_name no)
 			(do_not_autoplace no)
