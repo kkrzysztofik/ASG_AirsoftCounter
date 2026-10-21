@@ -29,6 +29,9 @@ Replaces the "Radio protocol" section and milestone 7 (HQ USB-serial bridge) of
 | Keys | App generates; typed into each device's WiFi page; companion gets it over BLE in a setup window | LoRa pairing (sniffable), compiled-in key |
 | Full log dump | LoRa only (`LOG_GET`) | WiFi page download, BLE on every device |
 | Companion off | PRG soft off (deep sleep) + inline hard switch | Hard switch only |
+| BLE auth | HMAC-SHA256 challenge-response (built into Android and Rust) | AES-CMAC (not in Android providers, hand-written Kotlin) |
+| Device key storage | plain flash; rekey on loss | flash encryption + secure boot (explicitly denied: eFuse burns, brick risk) |
+| LoRa AES | software `aes` + `ccm` | S3 hardware AES (no CCM mode, no measurable gain) |
 
 ## Part 1: Architecture and LoRa frame
 
@@ -72,6 +75,14 @@ Overhead 13 B. Max LoRa payload 255 B.
 - **Crypto:** AES-128-CCM, one network key. Nonce = `net_id | src | ctr`, zero-padded to 13 B. AAD =
   header without `hop`. A 4 B tag is ~1 in 4·10⁹ per forgery try against a duty-limited channel
   (LoRaWAN uses the same MIC size).
+- **Software AES** (RustCrypto `aes` + `ccm`), the same code in host tests and on the device. The S3's
+  AES accelerator is not used: CCM is not a hardware mode, and ~30 block ops per 239 B frame take tens
+  of µs against 1189 ms airtime. `ponytail:` software AES; put esp-hal's hardware AES behind the same
+  trait if profiling ever shows crypto.
+- **Key storage: flash encryption and secure boot are explicitly NOT used** (user decision 2026-10-21:
+  one-way eFuse burns that complicate reflashing and can brick boards). Consequence: anyone holding a
+  device can read the network key with `esptool`. Mitigation: a lost or stolen device means generating
+  a new key in the app and re-entering it on every device's WiFi page and the companion.
 - **Replay window:** per `src`, highest `ctr` + 32-bit bitmap (relayed copies arrive out of order).
   It also drops relay duplicates, since a relay keeps `ctr` unchanged.
 - **Counter persistence:** senders save `ctr` every 256 frames and skip ahead 256 on boot (LoRaWAN
@@ -311,7 +322,7 @@ with the optimized one.
 
 | App → companion | Body | Reply |
 |---|---|---|
-| `AUTH` | `cmac(K_ble, challenge)[16]` | `INFO` or disconnect |
+| `AUTH` | `HMAC-SHA256(K_ble, challenge)[0..16]` | `INFO` or disconnect |
 | `SET_NET` | `net_id, key[16], sf, tx_dbm` | `RESULT`; only in the setup window or when authenticated with the old key |
 | `SEND` | `dst, type, body` (a Part 2 payload) | `RESULT{req_id, ok / timeout / busy / bad, detail}` |
 | `SYNC` | none | cached last STATUS per device, then the buffered RX frames |
@@ -323,7 +334,10 @@ with the optimized one.
 | `RESULT` | outcome of a `SEND` |
 | `INFO` | firmware version, battery mV, airtime %, queue depths |
 
-- **Auth:** `K_ble = AES(key, "ASG-BLE-v1")` (key separation from LoRa CCM). Nothing but `AUTH` (and
+- **Auth:** `K_ble = HMAC-SHA256(key, "ASG-BLE-v1")`, `AUTH = HMAC-SHA256(K_ble, challenge)` truncated
+  to 16 B (key separation from LoRa CCM). HMAC-SHA256 is built into Android (`Mac.getInstance
+  ("HmacSHA256")`) and is `hmac` + `sha2` in Rust; Android's default providers have neither AES-CCM nor
+  AES-CMAC, so the app needs no hand-written crypto (it never does CCM; the companion does). Nothing but `AUTH` (and
   `SET_NET` in the setup window) is accepted before a valid `AUTH`. No BLE pairing is needed from the
   stack; BLE traffic is unencrypted, which is acceptable (STATUS is on the LoRa air anyway; commands
   need auth).
