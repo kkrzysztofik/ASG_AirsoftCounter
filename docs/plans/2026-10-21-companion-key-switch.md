@@ -2,7 +2,7 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Lengthen the Heltec V4 companion case 20 mm at the antenna end and cut a D-hole in the front
+**Goal:** Lengthen the Heltec V4 companion case 20 mm at the antenna end and cut a double-D hole in the front
 plate for the Blow SWT-06357 key switch, keeping the 13.5 mm antenna bay.
 
 **Architecture:** There is one stdlib-plus-mesh script, `hardware/companion/modify_case.py` (it replaces
@@ -41,7 +41,7 @@ Expected: `free dia ... -> 13.49` for y 3..36 and `side wall beside the bore: 2.
 # ///
 """Modify the mesh-only Heltec V4 companion case 3MF:
 - antenna side: stretch the left wall outward and bore the bay for a 12.5 mm antenna base;
-- key switch: lengthen the antenna end and cut a D-hole in the front plate.
+- key switch: lengthen the antenna end and cut a double-D hole in the front plate.
 usage: modify_case.py IN.3mf OUT.3mf"""
 import re, sys, zipfile, numpy as np, trimesh, manifold3d as mf
 from lxml import etree
@@ -177,6 +177,7 @@ LENGTHEN_Y = 20.0
 KEY_X, KEY_Y = 8.0, SPLIT_Y + LENGTHEN_Y / 2
 KEY_ROUND, KEY_FLATS, KEY_CLEAR = 11.2, 10.5, 0.2
 KEY_DEPTH, KEY_COLLAR = 15.9, 14.0
+KEY_GRIP = 2.0                   # push-in, locking tab grips a 2 mm panel (measured)
 PLATE_UNDER = 9.58               # front-plate underside at SPLIT_Y; its top is FK's max z
 GROOVE_FILL_X = (-5.0, 21.0)     # decorative 1 mm grooves on the plate top, filled flat in the new strip
 ```
@@ -203,6 +204,7 @@ print(f'key switch: body clash {clash:.2f} mm3, hole first hit {hole}, seat z {m
 assert clash < 0.01, 'switch body hits the case'
 assert hole is None or hole < PLATE_UNDER - 1, 'key hole not open'
 assert all(s is not None and abs(s - top) < 0.02 for s in seat), 'collar seat / wall around the hole not flat full-thickness plate'
+assert abs(top - PLATE_UNDER - KEY_GRIP) < 0.1, f'plate {top - PLATE_UNDER:.2f} mm, the locking tab grips {KEY_GRIP} mm'
 ```
 
 **Step 3: Run it and confirm it fails**
@@ -213,7 +215,7 @@ and (8, 30.5) lands in the busy pocket region (130 mm² of material in the scan)
 
 ---
 
-### Task 3: Lengthen, fill the grooves, cut the D-hole
+### Task 3: Lengthen, fill the grooves, cut the double-D hole
 
 **Files:**
 - Modify: `hardware/companion/modify_case.py` (`modify()`, a new `key_hole()`, `BAY_YS`, the bounds assertion)
@@ -222,7 +224,7 @@ and (8, 30.5) lands in the busy pocket region (130 mm² of material in the scan)
 
 ```python
 def key_hole():
-    """Double-D through the front plate; flats normal to x stop the switch turning."""
+    """Double-D through the front plate: round top/bottom, flats left/right (normal to x) stop it turning."""
     r, h = (KEY_ROUND + KEY_CLEAR) / 2, (KEY_FLATS + KEY_CLEAR) / 2
     z0 = PLATE_UNDER - 1.0
     cyl = mf.Manifold.cylinder(6.0, r, circular_segments=96).translate((KEY_X, KEY_Y, z0))
@@ -272,7 +274,7 @@ and widen `GROOVE_FILL_X`.
 
 ```bash
 rtk git add hardware/companion/modify_case.py
-rtk git commit -m "feat(companion): lengthen case 20 mm and add key-switch D-hole" -- hardware/companion/modify_case.py
+rtk git commit -m "feat(companion): lengthen case 20 mm and add key-switch double-D hole" -- hardware/companion/modify_case.py
 ```
 
 ---
@@ -285,7 +287,7 @@ both shells (BK shifted by -8.14). The `/tmp/cmpwork/*.py` helpers from the desi
 `view.py`, `ysec.py`, `xyfull.py`; point them at `/tmp/keyout`.
 
 Expected:
-- D-hole at (8, 30.5) with its flats facing ±x;
+- double-D hole at (8, 30.5) with its flats facing ±x (left/right);
 - the top flat over x -5..21 in the new strip, with the original grooves before y 20.5 and the vents
   moved to y 43..50;
 - no walls inside the Ø14 column below the plate;
@@ -298,9 +300,9 @@ mesh-repair warnings, and that the FK and BK print orientations still lie flat o
 
 ### Task 5: Physical test-fit (manual, before the full print)
 
-1. Measure the switch's thread length and nut. The design doc lists them as MEASURE, and the
-   plate is 2 mm. If the thread is too short to clamp 2 mm plus the nut, the plate needs a local
-   counterbore from inside.
-2. In Bambu Studio, cut FK at y 18 and y 44 and print only that ring. Check that the switch drops in
-   and doesn't turn, the nut tightens, and the key turns freely.
+1. The switch is push-in with a locking tab that grips 2 mm, which matches the plate (the script
+   asserts 2.0 ±0.1 mm). If the printed plate comes out thick and the tab will not snap, the fix is
+   a shallow pocket from inside around the hole, not a bigger hole.
+2. In Bambu Studio, cut FK at y 18 and y 44 and print only that ring. Check that the switch pushes in,
+   the tab snaps, it doesn't turn, and the key turns freely.
 3. Print the full FK + BK and check the antenna, battery, switch and wiring together.

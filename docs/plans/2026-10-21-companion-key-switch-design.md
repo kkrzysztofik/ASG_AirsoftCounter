@@ -20,10 +20,10 @@ no battery or board space.
 
 | Feature | Value |
 |---|---|
-| Barrel | double-D: 11.2 mm round, 10.5 mm across flats |
+| Barrel | double-D: 11.2 mm round, 10.5 mm across flats (flats left/right) |
 | Behind panel incl. terminals | 15.9 mm |
 | Front collar | 14 mm diameter (vendor page) |
-| Thread length, nut size | MEASURE (sets the maximum plate thickness) |
+| Mounting | push-in, locking tab, no thread or nut; the tab grips a 2 mm panel (measured) |
 
 ## Design
 
@@ -35,11 +35,13 @@ no battery or board space.
    rejected: an internal pocket hangs from the plate there (x -7..14, down to z -6.3), and extruding
    it would put walls through the switch. Both shells take the same shift, so the end screws still line
    up. Length becomes 84.4 -> 104.4 mm.
-2. **Hole.** A D-shaped hole (11.2 mm round, 10.5 mm across the flats, plus 0.2 mm clearance) through the
+2. **Hole.** A double-D hole (round top and bottom, flat left and right, i.e. flats facing ±x;
+   11.2 mm round, 10.5 mm across the flats, plus 0.2 mm clearance) through the
    front plate at (x +8, y +30.5), centred in the new strip. The section at y = 20.5 carries 1 mm-deep
    decorative grooves on the plate top (x about -4..20). Extruded, they would become 20 mm ribs under
-   the 14 mm collar, so the new strip is filled flat over x -5..21. The flat stops the switch turning
-   under the key. The collar sits on the outside and the nut clamps from inside the 2 mm plate.
+   the 14 mm collar, so the new strip is filled flat over x -5..21. The flats stop the switch turning
+   under the key. The switch pushes in from the front and its tab snaps behind the plate. The plate
+   must stay 2.0 mm thick at the hole, which it already is, so there is no thinning pocket.
 3. **Space behind.** The body reaches z -6.3, and BK's floor is at -12.3, so about 6 mm is left below
    for wires. A pouch can still run under the switch if it is 5 mm thick or less.
 4. **Wiring.** Battery + -> switch -> Heltec SH1.25 battery socket, the same as the carrier's J_KEY.
@@ -47,7 +49,7 @@ no battery or board space.
 ## Checks (in the script, failing on violation)
 
 - The switch envelope (14 mm diameter x 16.2 mm cylinder below the plate) does not intersect FK or BK.
-- At least 1.6 mm of plate around the D-hole, and the plate is no thicker than the switch's thread allows.
+- At least 1.6 mm of plate around the hole, and the plate there is 2.0 ±0.1 mm (the tab's grip).
 - The antenna bay is still clear at 13.5 mm over its full (now longer) length.
 - The hole is open, and the plate is flat at full height on a ring just outside the collar.
 - Each shell is one watertight body. Both shells get the identical transform, so the screw holes need
