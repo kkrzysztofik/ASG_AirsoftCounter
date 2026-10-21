@@ -3,7 +3,8 @@
 # ///
 """Modify the mesh-only Heltec V4 companion case 3MF:
 - antenna side: stretch the left wall outward and bore the bay for a 12.5 mm antenna base;
-- key switch: lengthen the antenna end and cut a double-D hole in the front plate.
+- key switch: lengthen the antenna end and cut a double-D hole in the front plate;
+- screws: raise the head seats in BK so an M2.5x12 fits the 3 front-shell pilots.
 usage: modify_case.py IN.3mf OUT.3mf"""
 import re, sys, zipfile, numpy as np, trimesh, manifold3d as mf
 from functools import reduce
@@ -29,6 +30,18 @@ KEY_DEPTH, KEY_COLLAR = 15.9, 14.0
 KEY_GRIP = 2.0                   # push-in, locking tab grips a 2 mm panel (measured)
 PLATE_UNDER = 9.58               # front-plate underside at SPLIT_Y; its top is FK's max z
 GROOVE_FILL_X = (-5.0, 21.0)     # decorative 1 mm grooves on the plate top, filled flat in the new strip
+
+# Case screws: M2.5 socket head from the back, self-tapping into blind pilots in FK.
+SCREWS = ((-21.03, -35.02), (-7.83, 35.81), (25.28, 35.82))  # Ø2.7 clearance centres, original frame
+SCREW_HEAD_D, SCREW_CLEAR_D = 4.5, 2.7
+SCREW_SEAT_Z = -3.64             # original head-pocket floor
+PILOT_END_Z = 5.92               # blind end of the Ø2.1 pilot in FK
+SCREW_LEN, SCREW_TIP_MARGIN = 12.0, 0.5
+NEW_SEAT_Z = PILOT_END_Z - SCREW_TIP_MARGIN - SCREW_LEN
+
+def screw_xy():
+    """Screw centres after the stretches (only y beyond SPLIT_Y moves; all are right of SPLIT_X)."""
+    return [(x, y + LENGTHEN_Y if y > SPLIT_Y else y) for x, y in SCREWS]
 
 NS = {'m': 'http://schemas.microsoft.com/3dmanufacturing/core/2015/02'}
 PARTS = {'3D/Objects/object_1.model': (0.0, True), '3D/Objects/object_7.model': (BK_DZ, False)}  # FK, BK
@@ -93,6 +106,12 @@ def modify(m, dz, fk):
         x0, x1 = GROOVE_FILL_X
         fill = mf.Manifold.cube((x1 - x0, LENGTHEN_Y, top - PLATE_UNDER - 0.5)).translate((x0, SPLIT_Y, PLATE_UNDER + 0.5))
         M = M + fill - key_hole()
+    else:
+        h = SCREW_SEAT_Z - NEW_SEAT_Z
+        for x, y in screw_xy():  # fill the bottom of each head pocket, keep the clearance hole
+            floor = mf.Manifold.cylinder(h + 0.01, SCREW_HEAD_D / 2 + 0.2, circular_segments=64).translate((x, y, NEW_SEAT_Z - dz))
+            clear = mf.Manifold.cylinder(h + 2.0, SCREW_CLEAR_D / 2, circular_segments=64).translate((x, y, NEW_SEAT_Z - dz - 1.0))
+            M = M + floor - clear
     return M
 
 def free_dia(meshes, y):
@@ -146,6 +165,19 @@ assert clash < 0.01, 'switch body hits the case'
 assert hole is None or hole < PLATE_UNDER - 1, 'key hole not open'
 assert all(s is not None and abs(s - top) < 0.02 for s in seat), 'collar seat / wall around the hole not flat full-thickness plate'
 assert abs(top - PLATE_UNDER - KEY_GRIP) < 0.1, f'plate {top - PLATE_UNDER:.2f} mm, the locking tab grips {KEY_GRIP} mm'
+
+def first_hit_up(mesh, x, y, z0):
+    loc, _, _ = mesh.ray.intersects_location([[x, y, z0]], [[0, 0, 1.0]])
+    return loc[:, 2].min() if len(loc) else None
+
+bk_n = after[1][0]
+for x, y in screw_xy():
+    seat = first_hit_up(bk_n, x + (SCREW_HEAD_D + SCREW_CLEAR_D) / 4, y, -30.0) + BK_DZ  # in the pocket, off the hole
+    tip = first_hit_up(fk_n, x, y, -1.0)                                                # blind end of the pilot
+    through = first_hit_up(bk_n, x, y, -30.0)                                            # None: clearance hole open
+    print(f'screw ({x:.1f},{y:.1f}): head seat z {seat:.2f}, pilot end {tip:.2f}, M2.5x{SCREW_LEN:g} tip margin {tip - seat - SCREW_LEN:.2f} mm, grip in FK {seat + SCREW_LEN + 2.14:.2f} mm')
+    assert abs(seat - NEW_SEAT_Z) < 0.05 and through is None, 'head seat or clearance hole wrong'
+    assert tip - seat - SCREW_LEN >= SCREW_TIP_MARGIN - 0.05, 'screw would bottom out'
 
 with zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED) as zo:
     for i in zin.infolist():
