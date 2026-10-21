@@ -43,7 +43,7 @@ def write_mesh(t, m):
     mesh = t.find('.//m:mesh', NS)
     for child in list(mesh): mesh.remove(child)
     vs = etree.SubElement(mesh, f'{{{NS["m"]}}}vertices')
-    for x, y, z in m.vertices: etree.SubElement(vs, f'{{{NS["m"]}}}vertex', x=f'{x:.6g}', y=f'{y:.6g}', z=f'{z:.6g}')
+    for x, y, z in m.vertices: etree.SubElement(vs, f'{{{NS["m"]}}}vertex', x=f'{x:.9g}', y=f'{y:.9g}', z=f'{z:.9g}')
     ts = etree.SubElement(mesh, f'{{{NS["m"]}}}triangles')
     for a, b, c in m.faces: etree.SubElement(ts, f'{{{NS["m"]}}}triangle', v1=str(a), v2=str(b), v3=str(c))
     return etree.tostring(t, xml_declaration=True, encoding='UTF-8')
