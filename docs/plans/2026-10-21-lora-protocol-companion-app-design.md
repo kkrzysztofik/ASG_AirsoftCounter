@@ -139,7 +139,7 @@ Overhead 13 B. Max LoRa payload 255 B.
 
 ### Device kinds and extensibility
 
-`type` is the message class only (12 used of 128, appendix). Device and event kinds live in the
+`type` is the message class only (13 used of 128, appendix). Device and event kinds live in the
 payload:
 
 - STATUS starts with `kind u8` (counter, flag, respawn, bomb, ...).
@@ -167,7 +167,8 @@ STATUS common part (22 B): `kind u8 · state u8 · flags u8 · batt_mV u16 · ga
 lat i32 · lon i32 · gps_age_s u8 · rssi i8 · snr i8 · last_event_id u16`
 
 - `state` (generic, per-kind mapping in the appendix): idle / ready / running / ended / fault.
-  `flags`: relay on, GPS fix, low battery, fault, game override (FLAG), config changed since boot.
+  `flags`: relay on, GPS fix, low battery, fault, game override (FLAG), config changed since boot,
+  time valid (Time sync).
 - `game_id` (R1): the device's current game (0 = none), so the app never compares one game's log with
   another's tail. +2 B always (simpler than an optional field; +0.7 % channel).
 - `game_s` (P2-11) wraps at 18.2 h; the app unwraps it with its receive time.
@@ -187,11 +188,12 @@ blue_hold_s u16`.
 | type | Payload | Frame | Airtime |
 |---|---|---|---|
 | `PING` | none; answered by ACK, then the device queues a STATUS (P2-2) | 13 B | 164.9 ms (288.8) |
-| `START` | `game_id u16, start_in_ms i32, mode u8` | 20 B | 185.3 ms (370.7) |
+| `START` | `game_id u16, start_in_ms i32, mode u8, unix_s u32, ms u16` | 26 B | 205.8 ms (411.6) |
 | `STOP`, `RESET` | none | 13 B | 164.9 ms (288.8) |
 | `CONFIG` | up to 8 × `(param_id u8, value i32)` | ≤ 53 B | ≤ 328.7 ms (616.4) |
 | `CONFIG_GET` (R11) | up to 8 × `param_id u8`; empty = all | ≤ 21 B | ≤ 185.3 ms (370.7) |
 | `FLAG` | R / N / B / AUTO | 14 B | 164.9 ms (288.8) |
+| `TIME` | `unix_s u32, ms u16` | 19 B | 185.3 ms (329.7) |
 | `LOG_GET` | `from_id u16, count u8` (1-16) | 16 B | 164.9 ms (329.7) |
 
 - **Every command is unicast** (R9); `dst = 0xFF` is unused. START, STOP and RESET to N devices are N
@@ -218,6 +220,29 @@ blue_hold_s u16`.
   the next command while an ACK is due misses the ACK. Commands are stop-and-wait (≈ 0.45 s each when
   direct), but a device that is in backoff does not block the others: the companion serves whichever
   command is due next. START-all to 10 healthy devices ≈ 4.5 s; failed attempts cost 2.5 s each.
+
+### Time sync
+
+Games never use wall-clock time (START is relative, every game timer is relative), so a wrong clock
+cannot break a game. UTC only puts log records on a real timeline (event log, stats, CSV).
+
+- **Source: the phone** (network / GPS time). The app sends `unix_ms` in `AUTH` and a BLE `TIME`
+  every 10 min while connected. The companion runs on its 40 MHz crystal (≤ ±36 ms / h) between
+  updates. After a reboot without a phone it has **no time** and sends none.
+- **START carries the companion's time** (`unix_s, ms`, +6 B, +20 ms airtime), so every device in a
+  game is synced at the start.
+- **`TIME` command** for devices outside a game: when a STATUS arrives with the *time valid* flag
+  clear, the companion sends one `TIME` (ACKed, unicast); then again every 6 h per device for drift.
+- **Stamping and correction:** the companion fills in the time after CAD succeeds, just before TX
+  (on every attempt). The device takes `t_tx_start = rx_done − airtime(len, SF)`; LoRa airtime is
+  deterministic, so a direct frame is accurate to a few ms. A relayed copy (`hop = 1`) carries the
+  relay's random 50-300 ms + CAD delay: it is accepted as **coarse** (± 0.5 s).
+- **Priority on the device:** GPS > companion direct > companion via relay. A worse source is ignored
+  while a better anchor from the same boot is younger than 6 h; a better one replaces it at once.
+  `time valid` = any anchor in this boot.
+- **Logged as `TIME_ANCHOR`** (Part 3) whenever an anchor is taken: first GPS fix, then hourly while
+  GPS holds; every accepted companion time.
+- `Not doing:` a periodic broadcast time beacon (airtime nobody needs).
 
 ### Channel load at the design point (P0-6)
 
@@ -260,7 +285,7 @@ Records are grouped by header records, so the 14 B record and 16 records per LOG
 | Header record | `extra[4]` | Meaning |
 |---|---|---|
 | `BOOT` | `boot_seq u16 · fw_ver u8 · proto_ver u8` | new `t_ms` origin; records after it until the next `BOOT` share it |
-| `GPS_ANCHOR` | `unix_s u32` | UTC at this record's `t_ms` (logged at the first fix of each boot, then hourly) |
+| `TIME_ANCHOR` | `unix_s u32` (`team` = source: 0 GPS, 1 companion direct, 2 via relay; `player` = ms) | UTC at this record's `t_ms` (Time sync, Part 2) |
 | `GAME_START` | `game_id u16 · mode u8 · flags u8` | opens a game segment; following records belong to `game_id` |
 | `GAME_END` | `game_id u16 · reason u8 · 0` | closes it (STOP, RESET) |
 
@@ -543,7 +568,8 @@ meter measures the input, not the cell (P2-26).
 
 | App → companion | Body | Reply |
 |---|---|---|
-| `AUTH` | `nonce_A[16], mac[16]` | `AUTH_OK` + `INFO`, or disconnect |
+| `AUTH` | `nonce_A[16], mac[16], unix_ms u64` | `AUTH_OK` + `INFO`, or disconnect |
+| `TIME` | `unix_ms u64` (every 10 min) | none |
 | `SET_NET` | `net_id, key[16], sf, antenna_gain_dBi, tx_dbm` | `RESULT` (paired + authenticated link, or the first-setup rule above) |
 | `SEND` | `dst, type, body` (a Part 2 payload) | `RESULT{seq, ok / timeout / busy / late / bad, detail, T for START}` |
 | `SYNC` | none | cached last STATUS per device, the buffered RX frames, then `SYNC_END` (A4) |
@@ -555,7 +581,7 @@ meter measures the input, not the cell (P2-26).
 | `RX` | `src, type, hop, rssi, snr, body` for every accepted STATUS / EVENT / LOG / CONFIG (ACKs are consumed) |
 | `RESULT` | outcome of a `SEND` |
 | `SYNC_END` | none |
-| `INFO` | firmware + protocol version, battery mV, airtime %, queue depths, granted MTU, duplicate-`src` warnings |
+| `INFO` | firmware + protocol version, battery mV, airtime %, queue depths, granted MTU, duplicate-`src` warnings, time valid + age |
 
 - **Generic bridge:** the companion handles `ctr`, crypto, replay windows, CAD, retries and the duty
   window, never kind-specific payloads. The one special case is START timing (Part 2).
@@ -596,6 +622,10 @@ meter measures the input, not the cell (P2-26).
 - **Kind table** `Kinds.kt`, one entry per kind: name, STATUS tail parser, event names, CONFIG params
   (id, label, range, default), a **score projection** (fold of the records into the score, not a second
   game engine). Unknown kinds show the common fields.
+- **UTC timeline:** each `BOOT` segment's `t_ms` maps to UTC through its `TIME_ANCHOR`s: the best
+  source wins, linear interpolation between two anchors. If a GPS anchor and a companion anchor in the
+  same segment differ by more than 2 s, the app warns that the phone's clock is wrong. Records in a
+  segment with no anchor are shown relative to its `BOOT` and marked "no time".
 - **Gap-fill:** per device compare the highest contiguous `event_id` with STATUS `last_event_id`;
   queue `LOG_GET` per hole, one at a time, progress on the device card. If the projected score differs
   from STATUS, the card shows ⚠ "log incomplete" until gap-fill finishes; ranges lost to a ring wrap are
@@ -643,6 +673,7 @@ Host tests in `firmware/core`:
 | Airtime + duty | matches `power_budget.py`'s self-check values (144 ms SF9 / 10 B); 10 % and 7 % limits; persisted window across a reboot |
 | Retry / backoff | fake clock: commands stop after 4 attempts, each after the ACK timeout; EVENT backoff caps at 60 s |
 | START timing | one T per `game_id`; signed late values; grace rejection; backdated game clock |
+| Time sync | airtime correction; relayed = coarse; source priority and 6 h ageing; app anchor mapping vectors |
 | Relay decision | allowlist by `src` and `dst`, hop, tag, window |
 | Event log | `sequential-storage` queue on mock flash: append, segments, reboot recovery, torn record, ring wrap, sector index, `LOG_GET` past tail and before head |
 | Mini simulation | 10 nodes + 2 relays + companion, design-point traffic, random loss, collisions and hidden nodes, half-duplex relays, discrete time. **Acceptance (P2-27):** every EVENT delivered (live or gap-fill) with no duplicates in the "app" table; every node ≤ 10 % duty (≤ 7 % LOG); ≥ 95 % of EVENTs ACKed within the 2.5 s timeout; also the companion-absent and relay-only scenarios |
@@ -661,6 +692,354 @@ Bench and field (needs V4s), each an exit criterion in the plans:
 - flash write / erase stall vs ACK timeout and BLE interval;
 - a range walk at SF9 and SF10 through forest, records per LOG frame 8 / 12 / 16;
 - companion current with an inline cell-lead meter, to replace the EST rows.
+
+## Part 9: Workflow diagrams
+
+Mermaid diagrams of every workflow in this design. They illustrate Parts 1-8; where a diagram and the
+text disagree, the text wins.
+
+### 9.1 System overview
+
+```mermaid
+flowchart LR
+    APP["Android app<br/>UI, Room log, map, key gen"]
+    COMP["Companion V4.3 + OLED<br/>crypto, ctr, retries, duty, buffers"]
+    R1["Relay device<br/>allowlist of up to 8 ids"]
+    D1["Field device 1<br/>game + flash log"]
+    D2["Field device 2"]
+    D3["Field device 3<br/>out of companion range"]
+    PHONE_TIME(["Phone clock"])
+    GPS(["GPS"])
+    APP <-->|"BLE GATT, paired + AUTH"| COMP
+    COMP <-->|"LoRa 869.525 MHz, AES-CCM"| D1
+    COMP <-->|"LoRa"| D2
+    COMP <-->|"LoRa"| R1
+    R1 <-->|"hop = 1 copies"| D3
+    PHONE_TIME -.->|"unix_ms in AUTH / TIME"| APP
+    GPS -.->|"TIME_ANCHOR source 0"| D1
+```
+
+### 9.2 Network setup and companion pairing
+
+```mermaid
+sequenceDiagram
+    actor Org as Organizer
+    participant App
+    participant Dev as Field device (WiFi page)
+    participant Comp as Companion
+    App->>App: SecureRandom net_id, key, plus SF
+    App-->>Org: text + QR, key fingerprint
+    loop each field device
+        Org->>Dev: admin card, WiFi setup
+        Org->>Dev: WPA2 per-device password, enter net_id, key, SF
+        Dev->>Dev: store in asg_cfg, key field write-only
+    end
+    Org->>Comp: Setup page, hold PRG 3 s
+    Comp-->>Org: OLED shows 6-digit passkey, PAROWANIE 60s
+    App->>Comp: LESC pairing request
+    Org->>App: types the passkey
+    App->>Comp: bond (OS), app pins this companion
+    Comp->>App: CHALLENGE nonce_C
+    App->>Comp: AUTH nonce_A, mac, unix_ms
+    Comp->>App: AUTH_OK mac, INFO
+    App->>Comp: SET_NET net_id, key, SF, antenna gain, tx_dbm
+    Comp-->>App: RESULT ok
+    Comp-->>Org: OLED Setup page shows the same key fingerprint
+```
+
+### 9.3 Pairing fallback: ECDH with a committed SAS
+
+Used only if the P4 smoke test shows `trouble-host` cannot do LESC passkey pairing.
+
+```mermaid
+sequenceDiagram
+    actor Org as Organizer
+    participant App
+    participant Comp as Companion
+    Org->>Comp: Setup page, hold PRG 3 s
+    Comp->>App: H(pk_C) commitment
+    App->>Comp: pk_A
+    Comp->>App: pk_C
+    App->>App: check H(pk_C), shared = ECDH(a, pk_C)
+    Comp->>Comp: shared = ECDH(c, pk_A)
+    App-->>Org: SAS = 6 digits of HMAC(shared, ASG-SAS, pk_A, pk_C)
+    Comp-->>Org: same SAS on the OLED
+    Org->>App: confirm they match
+    Note over App,Comp: session key = HMAC(shared, ASG-SESSION, ...), AES-GCM on every GATT message from here
+    App->>Comp: AUTH, then SET_NET, as in 9.2
+```
+
+### 9.4 Every BLE connection: AUTH, time, SYNC
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Comp as Companion
+    App->>Comp: connect to the bonded companion, encryption on
+    App->>Comp: requestMtu 247
+    Comp-->>App: MTU granted
+    alt MTU below 247
+        App->>App: error, disconnect
+    end
+    Comp->>App: CHALLENGE nonce_C
+    App->>Comp: AUTH nonce_A, mac_app, unix_ms
+    alt mac wrong
+        Comp-->>App: disconnect (the app retries once)
+    end
+    Comp->>Comp: set clock from unix_ms
+    Comp->>App: AUTH_OK mac_companion, INFO
+    App->>App: verify mac_companion
+    App->>Comp: SYNC
+    Comp->>App: RX cached STATUS per device (seq n, n+1, ...)
+    Comp->>App: RX buffered frames from the 256-entry ring
+    Comp->>App: SYNC_END
+    loop every 10 min while connected
+        App->>Comp: TIME unix_ms
+    end
+    Note over App,Comp: a gap in the companion seq makes the app SYNC again
+```
+
+### 9.5 Game START with one deadline
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Comp as Companion
+    participant D1 as Device 1
+    participant D2 as Device 2 (late)
+    App->>Comp: SEND START dst=1, game_id G, countdown 20 s
+    Comp->>Comp: first START for G, so T = now + 20 s
+    App->>Comp: SEND START dst=2, game_id G
+    Comp->>D1: START G, start_in_ms = T - now, unix time
+    D1->>D1: log GAME_START G and TIME_ANCHOR
+    D1-->>Comp: ACK ok
+    Comp-->>App: RESULT ok, T
+    Comp->>D2: START G, start_in_ms = T - now
+    Note over D2: frame lost
+    Comp->>Comp: ACK timeout 2.5 s, backoff, D1 commands may go meanwhile
+    Comp->>D2: START G, start_in_ms = -3000 (late)
+    alt late within START grace 30 s
+        D2->>D2: start now, game clock backdated 3 s
+        D2-->>Comp: ACK ok
+        Comp-->>App: RESULT ok, T
+    else later than grace
+        D2-->>Comp: ACK late, detail = seconds
+        Comp-->>App: RESULT late
+        App->>App: device marked failed, retry button
+    end
+```
+
+### 9.6 EVENT delivery: write first, then send, retry
+
+```mermaid
+sequenceDiagram
+    participant Dev as Device
+    participant Flash as Flash log
+    participant Comp as Companion
+    participant App
+    Dev->>Flash: append record (event_id 42)
+    Dev->>Comp: EVENT game_id, record 42 (ctr 100)
+    Note over Comp: frame lost
+    Dev->>Dev: ACK timeout 2.5 s, then backoff 2 s
+    Dev->>Comp: EVENT record 42 (new ctr 101)
+    Comp->>Comp: tag ok, replay window ok
+    Comp-->>Dev: ACK acked_ctr 101
+    Comp->>App: RX EVENT (or ring buffer if no phone)
+    App->>App: INSERT OR IGNORE (dev, 42)
+    Note over Dev,Comp: retries never stop for EVENTs, backoff caps at 60 s, the RAM queue holds 32 and the rest waits for gap-fill
+```
+
+### 9.7 Relay forwarding
+
+```mermaid
+sequenceDiagram
+    participant D3 as Device 3 (on relay list)
+    participant Rel as Relay
+    participant Comp as Companion
+    D3->>Rel: EVENT hop=0 (companion cannot hear it)
+    Rel->>Rel: checks pass (see 9.8)
+    Rel->>Rel: wait 50-300 ms, CAD
+    Rel->>Comp: same frame, hop=1, same ctr
+    Comp-->>Rel: ACK hop=0, dst=3
+    Rel->>Rel: dst 3 is on the list
+    Rel->>D3: ACK hop=1
+    Note over Comp,D3: a second copy of either frame is dropped by the replay window (same ctr)
+```
+
+### 9.8 Relay decision
+
+```mermaid
+flowchart TD
+    RX["Frame received"] --> N{"net_id matches?"}
+    N -- no --> DROP["Drop"]
+    N -- yes --> H{"hop = 0?"}
+    H -- no --> DROP
+    H -- yes --> T{"Tag valid?"}
+    T -- no --> DROP
+    T -- yes --> SELF{"src or dst is the relay itself?"}
+    SELF -- yes --> LOCAL["Handle locally, do not forward"]
+    SELF -- no --> L{"src or dst on the allowlist?"}
+    L -- no --> DROP
+    L -- yes --> W{"New in the replay window?"}
+    W -- no --> DROP
+    W -- yes --> FWD["Set hop = 1, wait 50-300 ms, CAD, send"]
+```
+
+### 9.9 Transmit path on every node
+
+```mermaid
+flowchart TD
+    Q["Pick the next frame by priority:<br/>ACK, command, EVENT, relay copy, LOG, STATUS"] --> D{"Fits the duty window?<br/>10 %, or 7 % for LOG"}
+    D -- no --> WAIT["Wait in the queue"] --> Q
+    D -- yes --> C{"CAD: channel free?"}
+    C -- yes --> STAMP["Stamp time if START or TIME"] --> TX["Transmit, charge airtime to the window"]
+    C -- no --> B{"Fewer than 8 tries?"}
+    B -- yes --> BO["Random backoff 100-600 ms"] --> C
+    B -- no --> K{"Is it a STATUS?"}
+    K -- yes --> DROP["Drop, the next STATUS replaces it"]
+    K -- no --> RQ["Requeue"] --> Q
+    TX --> A{"ACK requested?"}
+    A -- no --> DONE["Done"]
+    A -- yes --> TO{"ACK within 2.5 s?"}
+    TO -- yes --> DONE
+    TO -- no --> R{"Command with 4 attempts used?"}
+    R -- yes --> FAIL["RESULT timeout to the app"]
+    R -- no --> RB["Backoff, new ctr, requeue"] --> Q
+```
+
+### 9.10 Gap-fill and full dump
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Comp as Companion
+    participant Dev as Device
+    Dev->>Comp: STATUS last_event_id 120
+    Comp->>App: RX STATUS
+    App->>App: contiguous up to 97, hole 98-120
+    App->>Comp: SEND LOG_GET from 98, count 16
+    Comp->>Dev: LOG_GET 98, 16
+    alt duty window under 7 %
+        Dev->>Comp: LOG game_id, records 98-113
+        Comp->>App: RX LOG
+        App->>App: INSERT OR IGNORE, next request from 114
+    else 7 % or more used
+        Dev-->>Comp: ACK busy, retry s
+        Comp-->>App: RESULT busy
+    end
+    Note over Comp,Dev: no LOG within about 4.9 s means a new LOG_GET with a new ctr, 3 attempts
+    alt from_id older than the oldest record in flash
+        Dev->>Comp: LOG starting at the oldest record
+        App->>App: mark the skipped range lost (log wrapped)
+    else from_id past the tail
+        Dev->>Comp: LOG with 0 records
+    end
+```
+
+### 9.11 Time sync
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Comp as Companion
+    participant Dev as Device
+    App->>Comp: AUTH or TIME unix_ms (phone clock)
+    Comp->>Comp: clock valid, runs on its crystal
+    Dev->>Comp: STATUS, flag time valid = 0
+    Comp->>Comp: wait for CAD, then stamp unix_s, ms
+    Comp->>Dev: TIME unix_s, ms
+    Dev->>Dev: t_tx_start = rx_done - airtime(len, SF)
+    alt received direct (hop 0)
+        Dev->>Dev: anchor source 1, a few ms
+    else received via relay (hop 1)
+        Dev->>Dev: anchor source 2, coarse 0.5 s
+    end
+    Dev->>Dev: keep unless a better anchor under 6 h old exists (GPS is best)
+    Dev->>Dev: log TIME_ANCHOR
+    Dev-->>Comp: ACK ok
+    Note over Comp,Dev: START carries the same stamp, every 6 h a new TIME for drift
+    App->>App: map each BOOT segment t_ms to UTC from its anchors, warn if GPS and companion differ by over 2 s
+```
+
+### 9.12 Device boot and reboot recovery
+
+```mermaid
+flowchart TD
+    BOOT["Power on"] --> CFG["Load asg_cfg: key, net_id, SF, ctr, companion high-water, duty total"]
+    CFG --> SKIP["ctr += 512, charge the persisted duty to minute 0"]
+    SKIP --> SCAN["Scan asg_log: build the sector index, drop a torn last item"]
+    SCAN --> LOGB["Append BOOT boot_seq, fw, proto"]
+    LOGB --> OPEN{"Game segment open?"}
+    OPEN -- no --> IDLE["State idle"]
+    OPEN -- yes --> RES["Resume the game at the last logged game time"]
+    RES --> MIN{"Mining interval was running?"}
+    MIN -- yes --> ELAP["Count it as elapsed, state ready"]
+    MIN -- no --> SAME["Same state as before"]
+    IDLE --> RADIO["Start radio, listen, STATUS every 30 s"]
+    ELAP --> RADIO
+    SAME --> RADIO
+    RADIO --> GPSFIX{"GPS fix?"}
+    GPSFIX -- yes --> ANC["TIME_ANCHOR source 0"]
+    GPSFIX -- no --> WT["time valid = 0 until GPS or a companion TIME/START"]
+```
+
+### 9.13 Device game states
+
+```mermaid
+stateDiagram-v2
+    [*] --> idle
+    idle --> ready: START (log GAME_START)
+    ready --> running: capture begins
+    running --> ready: interval done or aborted
+    running --> ended: blocks depleted
+    ready --> ended: STOP (log GAME_END)
+    running --> ended: STOP
+    ended --> idle: RESET (log GAME_END)
+    ready --> idle: RESET
+    running --> idle: RESET
+    ready --> fault: servo fault (flag kind)
+    fault --> ready: fault cleared
+```
+
+START for the running game is acknowledged with no change; START for a different `game_id` while a game
+runs is answered `busy`.
+
+### 9.14 Companion buttons and power
+
+```mermaid
+stateDiagram-v2
+    [*] --> deep_sleep
+    deep_sleep --> oled_off: PRG or RST press
+    deep_sleep --> uvlo_check: 30 min timer (after UVLO)
+    uvlo_check --> oled_off: cell above 3.70 V
+    uvlo_check --> deep_sleep: still low
+    oled_off --> oled_on: PRG short, same page
+    oled_on --> oled_off: 30 s without a press
+    oled_on --> oled_on: PRG short, next page (devices page auto-scrolls)
+    oled_on --> shutting_down: hold 3 s on a normal page
+    shutting_down --> oled_on: released before 0
+    shutting_down --> deep_sleep: SHUTDOWN event, save ctr, windows, duty, rails off
+    oled_on --> pairing: hold 3 s on the Setup page
+    pairing --> oled_on: success, cancel press, 60 s, or phone disconnect
+    oled_off --> uvlo: cell below 3.60 V (median, radio idle)
+    oled_on --> uvlo: cell below 3.60 V
+    uvlo --> deep_sleep: BATERIA!, SHUTDOWN low_batt, timer wake set
+```
+
+The key switch cuts the cell in any state (0 µA); RST reboots from any state.
+
+### 9.15 Rekey
+
+```mermaid
+flowchart TD
+    WHY{"Why rekey?"} -->|"lost or stolen device"| NEW
+    WHY -->|"SF change"| NEW
+    WHY -->|"a ctr may have reset: reflash, factory reset, replaced device"| NEW
+    NEW["App: new key AND new net_id (SecureRandom), between games"] --> DEV["Every device: admin card, WiFi page, enter the new network"]
+    DEV --> COMP["Companion: SET_NET over the paired, authenticated link"]
+    COMP --> CHECK["App: every device sends STATUS on the new network"]
+    CHECK --> OLD["A device still on the old key is simply not in the new network"]
+```
 
 ## Milestones (P2-28)
 
@@ -709,6 +1088,7 @@ Protocol version 1. Values not listed are reserved; a receiver ignores an unknow
 | 0x14 | FLAG | companion → device |
 | 0x15 | LOG_GET | companion → device |
 | 0x16 | CONFIG_GET | companion → device |
+| 0x17 | TIME | companion → device |
 
 ACK bit (0x80): set on EVENT and every companion → device class; never on STATUS, ACK, LOG or
 CONFIG replies (LOG and CONFIG replies are themselves the answer).
@@ -737,11 +1117,12 @@ CONFIG replies (LOG and CONFIG replies are themselves the answer).
 | 3 | fault (details in the kind tail) |
 | 4 | FLAG override active |
 | 5 | config changed since boot |
+| 6 | time valid (an anchor taken in this boot) |
 
 | `event` | Name | `team` / `player` / `extra` |
 |---|---|---|
 | 0x01 | BOOT | — / — / `boot_seq u16, fw_ver u8, proto_ver u8` |
-| 0x02 | GPS_ANCHOR | — / — / `unix_s u32` |
+| 0x02 | TIME_ANCHOR | source (0 GPS, 1 direct, 2 via relay) / ms 0-999 / `unix_s u32` |
 | 0x03 | GAME_START | — / — / `game_id u16, mode u8, flags u8` |
 | 0x04 | GAME_END | — / — / `game_id u16, reason u8 (0 STOP, 1 RESET), 0` |
 | 0x05 | CONFIG_SET | — / — / `param_id u8, 0, value i16` (low 16 bits; the full value via `CONFIG_GET`) |
