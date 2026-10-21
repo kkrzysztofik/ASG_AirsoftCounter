@@ -55,6 +55,13 @@ no battery or board space.
 - Each shell is one watertight body. Both shells get the identical transform, so the screw holes need
   no separate check.
 
+## Electrical rating (open)
+
+The SWT-06357 has no published electrical rating. The LoRa companion design (Part 5) requires a
+documented ≥ 1 A DC rating at 3.7 V (2 A preferred), or a hot-switch bench test at 1 A, before the
+switch is used in the cell lead. The real load is ~0.14 A RMS; TX peaks are well under 1 A at the
+≤ 25.5 dBm conducted setpoint.
+
 ## Assumptions
 
 - The board sits at the USB end (y -40..+12), and nothing that locates it crosses y = +20.5.

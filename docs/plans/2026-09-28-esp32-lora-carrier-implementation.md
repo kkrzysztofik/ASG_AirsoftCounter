@@ -1154,7 +1154,7 @@ next to the model's prediction in the power-efficiency design doc.
 
 Write a new plan (superpowers:writing-plans) at the start of each one, using the design doc parts 4 and 5 as the spec:
 
-4. **LoRa:** `asg-core::protocol` (encode/decode + AES-CCM auth + replay counter, all host-tested), lora-phy SX1262 with TCXO 1.8V, DIO2 as RF switch, and the FEM pins 7/2/5 driven manually. 869.525 MHz, TX power set explicitly. PING/STATUS, then START/STOP/CONFIG and capture events with ACK and retry.
+4. **LoRa:** *(replaced: plan it from `2026-10-21-lora-protocol-companion-app-design.md`, P1 + P3; the module is `asg_core::proto`)* `asg-core::protocol` (encode/decode + AES-CCM auth + replay counter, all host-tested), lora-phy SX1262 with TCXO 1.8V, DIO2 as RF switch, and the FEM pins 7/2/5 driven manually. 869.525 MHz, TX power set explicitly. PING/STATUS, then START/STOP/CONFIG and capture events with ACK and retry.
 5. **GPS:** UART1 on 38/39, `nmea` crate, position in STATUS.
 6. **WiFi setup page:** esp-radio AP, embassy-net and picoserve. Config form plus the admin card list.
-7. **HQ bridge:** a bare V4, USB serial ↔ LoRa, line protocol for a laptop.
+7. **HQ bridge:** *(replaced by the BLE companion, 10-21 design P4)* a bare V4, USB serial ↔ LoRa, line protocol for a laptop.

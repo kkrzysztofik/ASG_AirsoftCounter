@@ -157,10 +157,12 @@ firmware/
 1. LCD + buttons + outputs: port Airsoftcoin mode, no radio
 2. Config storage + battery reading
 3. RFID: player captures, admin menu, first-admin enrollment
-4. LoRa PING/STATUS between two V4s, then authenticated commands and capture events
-5. GPS in STATUS
-6. WiFi AP config page (incl. admin card list/remove)
-7. HQ firmware: USB-serial ↔ LoRa bridge on a bare V4
+4. ~~LoRa PING/STATUS between two V4s, then authenticated commands and capture events~~ replaced by P3 of
+   `2026-10-21-lora-protocol-companion-app-design.md`
+5. GPS in STATUS (feeds the STATUS position of the 10-21 design; P3 sends zeros until then)
+6. WiFi AP config page (incl. admin card list/remove; per 10-21: network key/net_id/SF, write-only key
+   field, WPA2 with a per-device password, only in admin-card setup mode). Prerequisite of 10-21 P5
+7. ~~HQ firmware: USB-serial ↔ LoRa bridge on a bare V4~~ replaced by the BLE companion (10-21 design, P4)
 
 Out of scope for now: laptop HQ app, OTA updates, additional game modes.
 

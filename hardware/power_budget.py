@@ -42,9 +42,10 @@ def from_5v(ma_5v):
 # Heltec board (ESP32-S3 awake, CPU clock as shipped, no light sleep)
 HELTEC_RX = 75.0  # datasheet: LoRa RX on, TX off
 HELTEC_TX_27DBM = 750.0  # datasheet 27 dBm row; an upper bound on the TX setpoint, not a target.
-                         # 27 dBm conducted + the 3.6 dBi antenna (OFFBOARD_PARTS #15) is ~0.6 W ERP,
-                         # over the g3 500 mW ERP limit, so cap the setpoint at ~26 dBm (the datasheet
-                         # has no 26 dBm row; Heltec's own V4 test measured ~1 A peaks at 27 dBm).
+                         # 27 dBm conducted + the 3.6 dBi antenna (OFFBOARD_PARTS #15) is 30.6 dBm EIRP
+                         # = 28.45 dBm (~0.7 W) ERP, over the g3 500 mW ERP limit (29.15 dBm EIRP), so
+                         # firmware clamps the setpoint to 29.15 - gain = 25.5 dBm conducted (the
+                         # datasheet has no 25 dBm row; Heltec's own V4 test measured ~1 A peaks at 27 dBm).
 HELTEC_WIFI_AP = 170.0  # datasheet
 HELTEC_SLEEP = 0.020  # datasheet: 20 uA, battery powered
 # Optimized firmware targets (power-efficiency design, table 2). EST until measured.
