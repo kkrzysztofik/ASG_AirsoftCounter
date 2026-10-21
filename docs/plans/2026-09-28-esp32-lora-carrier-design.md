@@ -142,6 +142,9 @@ firmware/
 
 ### Radio protocol (raw LoRa, star)
 
+**Superseded 2026-10-21:** the protocol, the HQ companion (BLE + OLED) and the Android app are in
+`docs/plans/2026-10-21-lora-protocol-companion-app-design.md`; that also replaces milestone 7 below.
+
 - Packet: `[net_id, dev_id, seq, type, payload, tag]`, AES-CCM authenticated.
 - HQ → device: START, STOP, CONFIG, PING. Device → HQ: STATUS (state, score, battery, GPS), ACK.
 - Commands are ACKed and retried.
