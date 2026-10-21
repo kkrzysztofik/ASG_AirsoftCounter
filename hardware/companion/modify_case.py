@@ -20,6 +20,16 @@ BORE = 13.5                      # 12.5 antenna base + 0.5/side FDM clearance
 STRETCH_X = 1.6                  # left wall grows by this much
 SPLIT_X = -28.2                  # cuts only outer skin: left of the bay (-27.7), screw boss (-23.7), nut pocket (-27.1)
 
+# Key switch (Blow SWT-06357): double-D barrel 11.2 round / 10.5 across flats, 15.9 deep, 14 collar.
+SPLIT_Y = 20.5                   # clean section: 2 mm plate + compartment walls/floor + antenna tunnel only
+LENGTHEN_Y = 20.0
+KEY_X, KEY_Y = 8.0, SPLIT_Y + LENGTHEN_Y / 2
+KEY_ROUND, KEY_FLATS, KEY_CLEAR = 11.2, 10.5, 0.2
+KEY_DEPTH, KEY_COLLAR = 15.9, 14.0
+KEY_GRIP = 2.0                   # push-in, locking tab grips a 2 mm panel (measured)
+PLATE_UNDER = 9.58               # front-plate underside at SPLIT_Y; its top is FK's max z
+GROOVE_FILL_X = (-5.0, 21.0)     # decorative 1 mm grooves on the plate top, filled flat in the new strip
+
 NS = {'m': 'http://schemas.microsoft.com/3dmanufacturing/core/2015/02'}
 PARTS = {'3D/Objects/object_1.model': (0.0, True), '3D/Objects/object_7.model': (BK_DZ, False)}  # FK, BK
 
@@ -64,11 +74,26 @@ def bore(dz):
     c.apply_translation([AXIS_X, (y0 + y1) / 2, AXIS_Z - dz])
     return to_mf(c)
 
+def key_hole():
+    """Double-D through the front plate: round top/bottom, flats left/right (normal to x) stop it turning."""
+    r, h = (KEY_ROUND + KEY_CLEAR) / 2, (KEY_FLATS + KEY_CLEAR) / 2
+    z0 = PLATE_UNDER - 1.0
+    cyl = mf.Manifold.cylinder(6.0, r, circular_segments=96).translate((KEY_X, KEY_Y, z0))
+    flats = mf.Manifold.cube((2 * h, 2 * r + 2, 6.0)).translate((KEY_X - h, KEY_Y - r - 1, z0))
+    return cyl ^ flats
+
 def modify(m, dz, fk):
     M = to_mf(m)
     assert M.status() == mf.Error.NoError, M.status()
     M = stretch(M, 0, SPLIT_X, -STRETCH_X)
-    return M - bore(dz)
+    M = stretch(M, 1, SPLIT_Y, LENGTHEN_Y)
+    M = M - bore(dz)
+    if fk:
+        top = m.bounds[1][2]
+        x0, x1 = GROOVE_FILL_X
+        fill = mf.Manifold.cube((x1 - x0, LENGTHEN_Y, top - PLATE_UNDER - 0.5)).translate((x0, SPLIT_Y, PLATE_UNDER + 0.5))
+        M = M + fill - key_hole()
+    return M
 
 def free_dia(meshes, y):
     """Largest circle about the antenna axis that clears both shells at section y (FK frame)."""
@@ -88,9 +113,10 @@ for name, (dz, fk) in PARTS.items():
     n = from_mf(modify(m, dz, fk))
     print(f'{name}: bodies {m.body_count} -> {n.body_count}, bounds {m.bounds.round(2).tolist()} -> {n.bounds.round(2).tolist()}')
     assert n.is_watertight and n.body_count == 1, f'{name}: broken or split'  # FK's overlapping hood body merges in
+    assert abs(n.bounds[0][0] - (m.bounds[0][0] - STRETCH_X)) < 0.05 and abs(n.bounds[1][1] - (m.bounds[1][1] + LENGTHEN_Y)) < 0.05
     before.append((m, dz)); after.append((n, dz)); out[name] = write_mesh(t, n)
 
-BAY_YS = (3, 5, 10, 20, 30, 36)
+BAY_YS = (3, 5, 10, 20, 30, 40, 50, 56)
 for y in (1.5,) + BAY_YS:
     print(f'y={y:4}: antenna free dia {free_dia(before, y):5.2f} -> {free_dia(after, y):5.2f}')
 assert all(free_dia(after, y) >= BORE - 0.05 for y in BAY_YS)
@@ -98,6 +124,27 @@ assert free_dia(after, 1.5) == 0  # bulkhead wall kept
 wall = AXIS_X - BORE / 2 - (OUTER_X - STRETCH_X)
 print(f'side wall beside the bore: {wall:.2f} mm')
 assert wall >= 1.6, 'wall under 4 perimeters of a 0.4 nozzle'
+
+def first_hit_down(mesh, x, y):
+    loc, _, _ = mesh.ray.intersects_location([[x, y, 40.0]], [[0, 0, -1.0]])
+    return loc[:, 2].max() if len(loc) else None
+
+fk_n = after[0][0]
+top = fk_n.bounds[1][2]
+env = trimesh.creation.cylinder(radius=KEY_COLLAR / 2, height=KEY_DEPTH + 0.3, sections=96)
+env.apply_translation([KEY_X, KEY_Y, PLATE_UNDER - (KEY_DEPTH + 0.3) / 2 - 0.01])
+clash = 0.0
+for mesh, dz in after:
+    e = env.copy(); e.apply_translation([0, 0, -dz])
+    clash += (to_mf(mesh) ^ to_mf(e)).volume()
+hole = first_hit_down(fk_n, KEY_X, KEY_Y)
+seat = [first_hit_down(fk_n, KEY_X + r * np.cos(a), KEY_Y + r * np.sin(a))
+        for r in ((KEY_ROUND + KEY_CLEAR) / 2 + 1.6, KEY_COLLAR / 2 + 0.3) for a in np.linspace(0, 2 * np.pi, 16, endpoint=False)]
+print(f'key switch: body clash {clash:.2f} mm3, hole first hit {hole}, seat z {min(s or -99 for s in seat):.2f}..{max(s or -99 for s in seat):.2f} (top {top:.2f})')
+assert clash < 0.01, 'switch body hits the case'
+assert hole is None or hole < PLATE_UNDER - 1, 'key hole not open'
+assert all(s is not None and abs(s - top) < 0.02 for s in seat), 'collar seat / wall around the hole not flat full-thickness plate'
+assert abs(top - PLATE_UNDER - KEY_GRIP) < 0.1, f'plate {top - PLATE_UNDER:.2f} mm, the locking tab grips {KEY_GRIP} mm'
 
 with zipfile.ZipFile(sys.argv[2], 'w', zipfile.ZIP_DEFLATED) as zo:
     for i in zin.infolist():
