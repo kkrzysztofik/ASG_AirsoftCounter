@@ -6,6 +6,7 @@
 - key switch: lengthen the antenna end and cut a double-D hole in the front plate.
 usage: modify_case.py IN.3mf OUT.3mf"""
 import re, sys, zipfile, numpy as np, trimesh, manifold3d as mf
+from functools import reduce
 from lxml import etree
 from shapely.geometry import Point, Polygon
 
@@ -13,7 +14,6 @@ from shapely.geometry import Point, Polygon
 AXIS_X, AXIS_Z = -22.51, -2.14   # SMA hole centre
 WALL_FACE_Y = 2.06               # bulkhead wall face, antenna side
 BK_DZ = -2.14 - 6.0              # BK rim (z=6) meets FK parting plane (z=-2.14)
-OUTER_X = -29.71                 # original left outer face
 
 # Antenna bay.
 BORE = 13.5                      # 12.5 antenna base + 0.5/side FDM clearance
@@ -101,9 +101,10 @@ def free_dia(meshes, y):
     for m, dz in meshes:
         s = m.section(plane_origin=[0, y, 0], plane_normal=[0, 1, 0])
         if s is None: continue
-        for e in s.discrete:
-            pg = Polygon(np.c_[e[:, 0], e[:, 2] + dz]).buffer(0)
-            best = min(best, 0.0 if pg.contains(c) else 2 * pg.distance(c))
+        # XOR the loops so a hole loop (e.g. the SMA hole) counts as empty, not solid
+        pg = reduce(lambda a, b: a.symmetric_difference(b),
+                    [Polygon(np.c_[e[:, 0], e[:, 2] + dz]).buffer(0) for e in s.discrete])
+        best = min(best, 0.0 if pg.contains(c) else 2 * pg.distance(c))
     return best
 
 zin = zipfile.ZipFile(sys.argv[1]); out = {}; before, after = [], []
@@ -120,8 +121,8 @@ BAY_YS = (3, 5, 10, 20, 30, 40, 50, 56)
 for y in (1.5,) + BAY_YS:
     print(f'y={y:4}: antenna free dia {free_dia(before, y):5.2f} -> {free_dia(after, y):5.2f}')
 assert all(free_dia(after, y) >= BORE - 0.05 for y in BAY_YS)
-assert free_dia(after, 1.5) == 0  # bulkhead wall kept
-wall = AXIS_X - BORE / 2 - (OUTER_X - STRETCH_X)
+assert abs(free_dia(after, 1.5) - free_dia(before, 1.5)) < 0.05, 'bore reached the bulkhead wall'
+wall = AXIS_X - BORE / 2 - min(n.bounds[0][0] for n, _ in after)
 print(f'side wall beside the bore: {wall:.2f} mm')
 assert wall >= 1.6, 'wall under 4 perimeters of a 0.4 nozzle'
 
@@ -139,7 +140,7 @@ for mesh, dz in after:
     clash += (to_mf(mesh) ^ to_mf(e)).volume()
 hole = first_hit_down(fk_n, KEY_X, KEY_Y)
 seat = [first_hit_down(fk_n, KEY_X + r * np.cos(a), KEY_Y + r * np.sin(a))
-        for r in ((KEY_ROUND + KEY_CLEAR) / 2 + 1.6, KEY_COLLAR / 2 + 0.3) for a in np.linspace(0, 2 * np.pi, 16, endpoint=False)]
+        for r in ((KEY_ROUND + KEY_CLEAR) / 2 + 0.3, KEY_COLLAR / 2 + 0.3) for a in np.linspace(0, 2 * np.pi, 16, endpoint=False)]
 print(f'key switch: body clash {clash:.2f} mm3, hole first hit {hole}, seat z {min(s or -99 for s in seat):.2f}..{max(s or -99 for s in seat):.2f} (top {top:.2f})')
 assert clash < 0.01, 'switch body hits the case'
 assert hole is None or hole < PLATE_UNDER - 1, 'key hole not open'
