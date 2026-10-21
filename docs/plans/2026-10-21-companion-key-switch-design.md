@@ -27,28 +27,34 @@ no battery or board space.
 
 ## Design
 
-1. **Lengthen.** Cut both shells at y = +31.5 (past the vent slots at y 23..30, before the end screw
-   bosses at y = 36 and past the board at the USB end). Move everything beyond the plane +20 mm in y and
-   fill the gap with the extruded cross-section. The plane cuts only the compartment's side walls and
-   floor, the flat front plate, and the antenna tunnel. Both shells take the same shift, so the end
-   screws still line up. Length becomes 84.4 -> 104.4 mm.
-2. **Hole.** A D-shaped hole (11.2 mm round, 10.5 mm across the flats, plus 0.2 mm clearance) through
-   FK's front plate at about (x +8, y +41.5), centred in the new strip and right of the antenna arc.
-   The flat stops the switch turning under the key. The collar sits on the outside and the nut clamps
-   from inside.
-3. **Space behind.** About 22 mm of inside height (FK plate underside 9.6 to BK floor -12.3) leaves about
-   4 mm below the 15.9 mm body for wires.
+1. **Lengthen.** Cut both shells at y = +20.5 and move everything beyond the plane +20 mm in y,
+   filling the gap with the extruded cross-section. A scan of the switch column (x 1..15,
+   z -6.6..9.5) at 1 mm steps found it clear for y 19..22.5. At y = 20.5 the section is only the 2 mm
+   front plate (underside 9.58, top 11.58), the compartment's side walls and floor, and the antenna
+   tunnel. The display pocket ends by y 18.5 and the vent slots start at about 23. y = +31.5 was
+   rejected: an internal pocket hangs from the plate there (x -7..14, down to z -6.3), and extruding
+   it would put walls through the switch. Both shells take the same shift, so the end screws still line
+   up. Length becomes 84.4 -> 104.4 mm.
+2. **Hole.** A D-shaped hole (11.2 mm round, 10.5 mm across the flats, plus 0.2 mm clearance) through the
+   front plate at (x +8, y +30.5), centred in the new strip. The section at y = 20.5 carries 1 mm-deep
+   decorative grooves on the plate top (x about -4..20). Extruded, they would become 20 mm ribs under
+   the 14 mm collar, so the new strip is filled flat over x -5..21. The flat stops the switch turning
+   under the key. The collar sits on the outside and the nut clamps from inside the 2 mm plate.
+3. **Space behind.** The body reaches z -6.3, and BK's floor is at -12.3, so about 6 mm is left below
+   for wires. A pouch can still run under the switch if it is 5 mm thick or less.
 4. **Wiring.** Battery + -> switch -> Heltec SH1.25 battery socket, the same as the carrier's J_KEY.
 
 ## Checks (in the script, failing on violation)
 
-- The switch envelope (14 mm diameter x 20 mm cylinder below the plate) does not intersect FK or BK.
+- The switch envelope (14 mm diameter x 16.2 mm cylinder below the plate) does not intersect FK or BK.
 - At least 1.6 mm of plate around the D-hole, and the plate is no thicker than the switch's thread allows.
 - The antenna bay is still clear at 13.5 mm over its full (now longer) length.
-- Each shell is one watertight body, and the FK/BK screw holes still line up.
+- The hole is open, and the plate is flat at full height on a ring just outside the collar.
+- Each shell is one watertight body. Both shells get the identical transform, so the screw holes need
+  no separate check.
 
 ## Assumptions
 
-- The board sits at the USB end (y -40..+12), and nothing that locates it crosses y = +31.5.
+- The board sits at the USB end (y -40..+12), and nothing that locates it crosses y = +20.5.
 - The battery pouch lies in BK's compartment.
 - Placement is checked against the mesh, not a real-board assembly. Print a test before the final part.
