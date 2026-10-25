@@ -182,7 +182,7 @@ def make_lid():
         ry = P.COLUMN_SIZE[1] / 2 + P.FIT / 2
         panel -= box(cx - rx, cx + rx, cy - ry, cy + ry, z0 - 1, z1 + 1)
 
-    lx0, lx1, ly0, ly1 = P.lcd_box()
+    lx0, lx1, ly0, ly1 = P.lcd_window()
     panel -= box(lx0, lx1, ly0, ly1, z0 - 1, z1 + 1)
     for bx0, bx1, by0, by1 in P.button_boxes():
         panel -= cyl_z((bx0 + bx1) / 2, (by0 + by1) / 2, z0 - 1, z1 + 1, (bx1 - bx0) / 2 + 0.15)
@@ -195,12 +195,12 @@ def make_lid():
         panel += cyl_z(cx, cy, z0 - P.button_boss_h(), z0, P.BUTTON_BOSS_R)
         panel -= cyl_z(cx, cy, z0 - P.button_boss_h() - 1, z0 + 1, P.BUTTON_D / 2 + 0.15)
 
-    # LCD mounting bosses on the 93 x 55 grid
+    # LCD mounting bosses on the module's hole grid, in solid panel outside the window
     for sx in (-1, 1):
         for sy in (-1, 1):
             px = P.LCD_CENTRE[0] + sx * P.LCD_HOLES[0] / 2
             py = P.LCD_CENTRE[1] + sy * P.LCD_HOLES[1] / 2
-            panel += cyl_z(px, py, z0 - P.LCD_BOSS_H, z0, 3.5)
+            panel += cyl_z(px, py, z0 - P.LCD_BOSS_H, z0, P.LCD_BOSS_R)
             panel -= cyl_z(px, py, z0 - P.LCD_BOSS_H - 1, z0 + 1, P.LCD_PILOT / 2)
     return panel
 
@@ -287,7 +287,7 @@ def template_sheets():
     to_centre = Pos(-cx, -cy, 0)
 
     lid = [Rectangle(P.BOX_IN[0] - 2 * P.FIT, P.BOX_IN[1] - 2 * P.FIT)]
-    lx0, lx1, ly0, ly1 = P.lcd_box()
+    lx0, lx1, ly0, ly1 = P.lcd_window()
     lid.append(to_centre * (Pos((lx0 + lx1) / 2, (ly0 + ly1) / 2, 0) * Rectangle(lx1 - lx0, ly1 - ly0)))
     nx0, nx1, ny0, ny1 = P.nfc_box()
     lid.append(to_centre * (Pos((nx0 + nx1) / 2, (ny0 + ny1) / 2, 0) * Rectangle(nx1 - nx0, ny1 - ny0)))
@@ -594,7 +594,7 @@ def make_coupon():
     gw, gd = P.ORING_GROOVE
     part -= box(42, 62, 18 - gw / 2, 18 + gw / 2, t - gd, t + 1)
     # LCD boss, as make_lid builds it
-    part += cyl_z(80, 18, t, t + P.LCD_BOSS_H, 3.5)
+    part += cyl_z(80, 18, t, t + P.LCD_BOSS_H, P.LCD_BOSS_R)
     part -= cyl_z(80, 18, -1, t + P.LCD_BOSS_H + 1, P.LCD_PILOT / 2)
     return part
 

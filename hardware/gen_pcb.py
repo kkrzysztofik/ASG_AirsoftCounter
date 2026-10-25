@@ -203,7 +203,7 @@ def label(board, fp, name, pins):
     half_row = ((len(pins.split()) or len(fp.Pads())) - 1) * 1.25
     if rot == 180:  # bottom edge: J2 sits right above, so the label goes left of the body;
         # pin 1 is the right pad here, so list pins right-to-left to read in pad order
-        text(board, f"{name}\n{' '.join(reversed(pins.split()))}", x - 21, y - 1.3, 0, 0.8, left=True, top=True)
+        text(board, f"{name}\n{' '.join(reversed(pins.split()))}", x - 23, y - 1.3, 0, 0.8, left=True, top=True)
         return
     at = (x + half_row, y + 3.9) if rot == 0 else (x + 3.9, y - half_row)
     text(board, f"{name}\n{pins}".strip(), *at, rot, size=0.8, top=True)

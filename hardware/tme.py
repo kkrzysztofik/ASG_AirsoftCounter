@@ -31,6 +31,7 @@ TME = {
     "C12891": "CL31A226KAHNNNE",
     "C144395": "B4B-XH-A (LF)(SN)",
     "C144397": "B6B-XH-A",
+    "C157972": "B8B-XH-A",  # J_LCD1 (carrier), 2026-10-24: 2406 in stock
     "C149504": "SMD0805-100K-1%",       # Uni-Royal is Royalohm at TME
     "C15008": "CL31A107MQHNNNE",
     "C15127": "AO3401A",

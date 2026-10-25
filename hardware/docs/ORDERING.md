@@ -88,7 +88,7 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/carrier/jl
 **Setup fees.** Economic PCBA charges a setup (feeder loading) fee, about $3 per order, for each **SMD Extended** part type. Basic and Preferred Extended parts don't have it, and through-hole parts don't either (JLC lists them as Extended, but they are wave-soldered). This board has:
 
 - **2 SMD Extended types (fee):** U2 (TCA9534PWR, C783615) and U3 (NS4168, C910588). About $6 per order. (U4, U1, L1 and F1 moved to the pack board in P5; see section 7.)
-- **4 through-hole Extended types (no loading fee, per-joint THT charge instead):** J2/J3 socket (C2905422), the JST-XH 4-pin (C144395: LCD, NFC, BTN_R, BTN_B) and 2-pin (C158012: HELTEC_BAT, BUZ, SPK) off-board connectors, and J_PWR1 (JST-XH 6-pin, C144397).
+- **4 through-hole Extended types (no loading fee, per-joint THT charge instead):** J2/J3 socket (C2905422), the JST-XH 8-pin (C157972: LCD), 4-pin (C144395: NFC, BTN_R, BTN_B) and 2-pin (C158012: HELTEC_BAT, BUZ, SPK) off-board connectors, and J_PWR1 (JST-XH 6-pin, C144397).
 - None of the two SMD Extended types has a Basic or Preferred replacement (JLC parts API, 2026-09-30: I2C expanders and I2S/class-D amps were searched). The only ways to cut the
   fee are the Budget variant (no U3) or hand-soldering some of them yourself.
 - Cheaper alternatives for U2 and U3 that were considered are in `PART_ALTERNATIVES.md`; other review findings are in `PARTS_REVIEW.md`.
@@ -107,7 +107,7 @@ JLC can assemble every on-board part, SMD and through-hole, from `fab/carrier/jl
 | U4 (XB8089D, SOIC-8-EP) | gone: the protector is on the pack board now (section 7). |
 | J2, J3 | Pin 1 is on the square pad at the USB end, and the socket covers all 18 holes. |
 | J_PWR1 (6-pin XH) | The latch/key side faces the board edge, and pin 1 is at the left (see the silkscreen "PACK" label: GND GND BAT 5V SDA SCL). |
-| JST-XH headers | The latch/key side faces the same way as the silkscreen outline, and each header's pin count matches its label (2-pin HELTEC_BAT/BUZ/SPK, 4-pin LCD/NFC/BTN_*). |
+| JST-XH headers | The latch/key side faces the same way as the silkscreen outline, and each header's pin count matches its label (2-pin HELTEC_BAT/BUZ/SPK, 4-pin NFC/BTN_*, 8-pin LCD). |
 
 If a part is wrong, fix its `Rotation` in `fab/carrier/jlc_cpl.csv` (degrees, counter-clockwise positive) and upload the file again. You can also leave it and note it in the order, because JLC's engineers follow the silkscreen polarity marks. Don't edit the CSVs by hand as a long-term fix: `make all` rewrites them.
 
@@ -129,7 +129,7 @@ Off-board parts (details in `docs/plans/2026-09-28-esp32-lora-carrier-design.md`
 
 - Heltec WiFi LoRa 32 V4 (no display, EU868) and an L76K GNSS module
 - PN532 NFC module ("NFC V3", I2C mode)
-- 20x4 serial LCD Newhaven NHD-0420D3Z-FL-GBW-V3 (bridge R1 for I2C)
+- 3.5" ILI9488 SPI TFT (AliExpress 1005001999296476; see OFFBOARD_PARTS #5 for the checks on arrival)
 - 2x ONPOW LAS1-AGQ-11E/x/6V IP67 pushbuttons (6 V ring LED with a built-in resistor, so R_LLR1/R_LLB1 are 0 Ω jumpers; fit a resistor there to dim an LED)
 - Active 5 V buzzer
 - Weatherproof **8 Ω, 2 W speaker** on J_SPK (see below)
@@ -290,7 +290,7 @@ BH-18650-A6AJ012) and bead NTCs, plus the off-board parts in `fab/offboard/`.
 **Schematic.** `fab/carrier_tme/schematic.pdf` is multi-page. Page 1 is the system sheet: the Heltec V4
 with named pins, every connector with the off-board part it plugs into (pack board, LCD, PN532, buttons,
 buzzer, speaker) drawn as a cable, the board-edge parts beside their connectors (power-entry caps, I2C
-level shifter and bus pull-ups, D_FLY1, the UART/I2C headers and test pads), and one box per function
+bus pull-ups, the LCD backlight pull-down, D_FLY1, the I2C header and test pads), and one box per function
 sheet. Pages 2-4: expander + buttons, LED/buzzer drivers, DAC + amp. The off-board `#X_*` symbols are
 virtual (documentation only): not on the board, not in the netlist or any BOM. All six boards are now
 multi-page; each board's own section describes its pages.

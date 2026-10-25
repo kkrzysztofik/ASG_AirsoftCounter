@@ -171,7 +171,8 @@ PACK_OVERLAP = 0.0            # MEASURE how far the cell's top rises past the pa
 SADDLE_T = 6.0                # saddle rail thickness along X (v2: was 8, 6 is plenty)
 SADDLE_INSET = 22.0           # saddle rails sit this far either side of the cell centres
 SADDLE_CLEAR = 0.4
-LCD_DEPTH = 13.5              # Newhaven NHD-0420D3Z-FL-GBW-V3, 13.5 max depth, hangs below the panel
+LCD_DEPTH = 11.5              # 3.5" ILI9488 TFT (LCDWiki MSP3520 drawing): 5.8 module + 2.5 header body + ~3 cut
+                              # pins with the lead soldered on, below the panel (13.5 is the most the Heltec allows)
 BUTTON_DEPTH = 25.0           # MEASURE behind-panel depth of a 16 mm IP65 button
 NFC_DEPTH = 5.0               # PN532 module thickness
 
@@ -179,10 +180,13 @@ NFC_DEPTH = 5.0               # PN532 module thickness
 BUTTON_D = 16.0               # budget generic 16 mm (Deluxe is 19)
 BUTTON_BOSS_R = BUTTON_D / 2 + 5  # lid boss that clamps the button
 SPEAKER_D = 50.0              # VISATON K 50
-LCD = (98.0, 60.0)            # 20x4 module
-LCD_HOLES = (93.0, 55.0)      # M2.5 grid (Newhaven: 4x Ø2.5 holes)
-LCD_PILOT = 2.2               # M2.5 self-tapping pilot in the lid bosses
-LCD_BOSS_H = 5.0              # lid bosses the LCD board hangs from
+LCD = (98.0, 56.34)           # 3.5" ILI9488 SPI TFT PCB, LCDWiki MSP3520 drawing (MEASURE the delivered module)
+LCD_HOLES = (92.0, 49.5)      # 4x Ø3.2 (M3) on this grid, same drawing
+LCD_WINDOW = (80.0, 51.0)     # panel opening: touch VA 77.84 x 50.56, centred so the off-centre active area
+                              # (73.44 x 48.96) shows with the module either way round
+LCD_PILOT = POST_PILOT        # M3 self-tapping pilot in the lid bosses
+LCD_BOSS_R = 3.0              # the backlight unit edge is 3.5 mm from a hole centre: r3.5 would touch it
+LCD_BOSS_H = 4.5              # glass stack in front of the PCB is 4.2 (5.8 - 1.6): touch panel just off the lid
 LCD_CENTRE = (95.0, 105.0)    # pushed to the top edge, leaving the buttons a clear band below
 BUTTON_XY = [(56.0, 20.0), (96.0, 20.0)]    # below the carrier's footprint, so a 25 mm body fits
 NFC_CENTRE = (133.5, 27.0)    # between button 2's lid boss and the (x1, y0) corner column, 20+ mm off
@@ -352,6 +356,10 @@ def _centre_box(centre, size):
 
 def lcd_box():
     return _centre_box(LCD_CENTRE, LCD)
+
+
+def lcd_window():
+    return _centre_box(LCD_CENTRE, LCD_WINDOW)
 
 
 def nfc_box():

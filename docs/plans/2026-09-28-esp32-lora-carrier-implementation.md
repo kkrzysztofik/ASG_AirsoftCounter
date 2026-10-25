@@ -1003,6 +1003,8 @@ pub mod exp {
 
 ### Task C3: Newhaven LCD driver, probe and backlight policy
 
+*(**Superseded 2026-10-24:** the display is now a 3.5" ILI9488 SPI TFT: SPI3 on GPIO43/44, PWM backlight on GPIO6, DC/RST on expander P6/P7, buttons polled. See `docs/plans/2026-10-24-tft-display-design.md`; this task needs rewriting before firmware work.)*
+
 *(Revised for the Newhaven NHD-0420D3Z-FL-GBW-V3: a serial LCD with its own controller, I2C on its header J2 after bridging jumper R1. No HD44780/PCF8574 code.)*
 
 **Files:**

@@ -59,12 +59,11 @@ NFC_POLL = 20.0  # design doc: PN532 RF bursts ~50 ms on / 300 ms, average. Data
                  # field-on and ~20-30 mA idle, so one of the two is under-counted.
 NFC_IDLE = 3.0  # EST: module power LED + PN532 PowerDown command (45 uA). A chip left running
                 # idles ~20 mA, which makes the parked figure ~19 days instead of ~47.
-LCD_ON_5V = 32.0  # Newhaven NHD-0420D3Z-FL-GBW-V3, LCD + backlight at level 8: 21/32/44 mA
-                  # min/typ/max (datasheet). Its PIC PWMs the backlight (0xFE 0x53, levels 1-8).
-LCD_IDLE_5V = 5.0  # EST: PIC16F690 + ST7066U with the backlight at level 1 (off). Measure it
-                   # (docs/OFFBOARD_PARTS.md item 5).
-BACKLIGHT_DUTY = 0.05  # EST: firmware lights it for a button, card or game event, then times out.
-                       # Transflective panel, so it reads in daylight with the backlight off.
+LCD_ON_5V = 80.0  # EST: 3.5" ILI9488 SPI TFT, panel + backlight at full PWM (no datasheet). Measure it
+                  # (docs/OFFBOARD_PARTS.md item 5).
+LCD_IDLE_5V = 5.0  # EST: ILI9488 + the module's 3.3 V regulator with the backlight off (PWM 0). Measure it.
+BACKLIGHT_DUTY = 0.5  # EST: mean PWM level (GPIO6) in a game: bright for a button, card or game event, then
+                      # dimmed, never off (transmissive panel, unreadable without the backlight).
 LED_RING_5V = 15.0  # one ONPOW 6 V ring run at 5 V; carrier.py's figure, ONPOW publishes none.
                     # Two rings are fitted (LR + LB), so scenario() counts this twice (once with opt).
 BUZZER_5V = 8.0  # BZ-38: TME's spec page, piezo with generator, 3-28 V, 8 mA
@@ -164,7 +163,7 @@ def main():
     show("Deluxe, game running, backlight off", scenario(True, True, 0.0))
     show("Budget, game running, backlight on", scenario(False, True, 1.0))
     show("Deluxe, key on, waiting for HQ (no game, backlight off)", scenario(True, False, 0.0, status_s=60))
-    show("Deluxe, game, optimized firmware, backlight on a timeout",
+    show("Deluxe, game, optimized firmware, backlight dimmed between events",
          scenario(True, True, BACKLIGHT_DUTY, opt=True))
     show("WiFi setup (AP on, backlight on)", {"Heltec WiFi AP": HELTEC_WIFI_AP,
                                              "5 V rail": from_5v(LCD_ON_5V) + BOOST_IDLE})
@@ -184,8 +183,8 @@ def main():
     print(f"\nWeekend ({DAYS} x {GAME_H} h game + {NIGHT_H} h parked, 0 C, cells at {AGED:.0%}): "
           f"game current must stay under {budget:.0f} mA")
     for name, backlight, opt in (("today's firmware, backlight on", 1.0, False),
-                                 ("today's firmware, backlight on a timeout", BACKLIGHT_DUTY, False),
-                                 ("optimized firmware, backlight on a timeout", BACKLIGHT_DUTY, True)):
+                                 ("today's firmware, backlight dimmed", BACKLIGHT_DUTY, False),
+                                 ("optimized firmware, backlight dimmed", BACKLIGHT_DUTY, True)):
         total = sum(scenario(True, True, backlight, opt=opt).values())
         print(f"  {name:44} {total:4.0f} mA  {'PASS' if total < budget else 'FAIL'}"
               f"  ({100 * (budget / total - 1):+.0f} % margin)")
@@ -204,6 +203,6 @@ if __name__ == "__main__":
     assert 300 < weekend_ma() < 400, weekend_ma()
     # The optimized firmware (design doc table 2) must pass with 30 % margin, backlight duty included.
     assert sum(scenario(True, True, BACKLIGHT_DUTY, opt=True).values()) * 1.3 < weekend_ma()
-    # A backlight left on must cost more than one on a timeout.
+    # Full brightness must cost more than a dimmed backlight.
     assert sum(scenario(True, True, 1.0).values()) > sum(scenario(True, True, BACKLIGHT_DUTY).values())
     main()

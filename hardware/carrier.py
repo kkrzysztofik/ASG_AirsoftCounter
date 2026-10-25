@@ -14,13 +14,14 @@ lookup) and KiCad ERC catch those.
 # Footprints (and symbol + footprint pairs) shared by PARTS and LCSC below
 R0805 = ("Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder")
 C0805 = ("Device:C", "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder")
-BSS138 = ("Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23")  # I2C shifter and low-side drivers
+BSS138 = ("Transistor_FET:BSS138", "Package_TO_SOT_SMD:SOT-23")  # low-side drivers
 C1206 = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
 TSSOP16 = "Package_SO:TSSOP-16_4.4x5mm_P0.65mm"
 ESOP8 = "Package_SO:HSOP-8-1EP_3.9x4.9mm_P1.27mm_EP2.3x2.3mm_ThermalVias"  # NS4168 eSOP-8, EP 2.0 mm
 XH2 = "Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical"
 XH4 = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 XH6 = "Connector_JST:JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical"
+XH8 = "Connector_JST:JST_XH_B8B-XH-A_1x08_P2.50mm_Vertical"
 HDR3 = "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
 HDR4 = "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
 TP = "TestPoint:TestPoint_Pad_D1.5mm"
@@ -38,16 +39,17 @@ PARTS = {
     # Power from the pack board (the cell protector, key switch and 5 V boost moved there in P5).
     # 1-2 GND, 3 VBAT_SW, 4 +5V, 5 SDA_3V3, 6 SCL_3V3.
     "J_PWR1": ("PWR", "Connector_Generic:Conn_01x06", XH6),
-    "J_LCD1": ("LCD", "Connector_Generic:Conn_01x04", XH4),
+    # 3.5" ILI9488 SPI TFT (docs/plans/2026-10-24-tft-display-design.md). Pin order = the module's own
+    # header (VCC GND CS RST DC MOSI SCK LED), so the cable is straight. CS is tied low: only device on SPI3.
+    "J_LCD1": ("LCD", "Connector_Generic:Conn_01x08", XH8),
     "J_NFC1": ("NFC", "Connector_Generic:Conn_01x04", XH4),
     "J_BTN_R1": ("BTN_R", "Connector_Generic:Conn_01x04", XH4),
     "J_BTN_B1": ("BTN_B", "Connector_Generic:Conn_01x04", XH4),
     "J_BUZ1": ("BUZ", "Connector_Generic:Conn_01x02", XH2),
     "J_SPK1": ("SPK", "Connector_Generic:Conn_01x02", XH2),
-    # Bring-up aids, all hand-soldered (NOT_ASSEMBLED): ESP32 UART0 (GND, Heltec TX, Heltec RX), the
-    # I2C bus and rail test pads. No ammeter jumper: J_HBAT1 and J_PWR1 are pluggable, so current is
-    # measured by putting the meter in the cable.
-    "J_UART1": ("UART", "Connector_Generic:Conn_01x03", HDR3),
+    # Bring-up aids, all hand-soldered (NOT_ASSEMBLED): the I2C bus and rail test pads. No UART header:
+    # GPIO43/44 drive the display and the V4 logs over native USB. No ammeter jumper: J_HBAT1 and J_PWR1
+    # are pluggable, so current is measured by putting the meter in the cable.
     "J_I2C1": ("I2C", "Connector_Generic:Conn_01x04", HDR4),
     "TP_3V3": ("3V3", "Connector:TestPoint", TP),
     "TP_5V": ("5V", "Connector:TestPoint", TP),
@@ -67,18 +69,13 @@ PARTS = {
     "U3": ("NS4168", "local:NS4168", ESOP8),
     # Datasheet asks for ~100 uF + 1 uF at VDD; the 100 uF 6.3 V part is fine on a <= 4.2 V rail
     "C_AMP1": ("100uF 6.3V", "Device:C", C1206),
-    # I2C level shifter (5V-side pull-ups DNP: LCD backpack has its own)
-    "Q_SDA1": ("BSS138", *BSS138),
-    "Q_SCL1": ("BSS138", *BSS138),
+    # I2C bus pull-ups (3.3 V only: the 5 V level shifter left with the Newhaven LCD)
     "R_SDA3": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
     "R_SCL3": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
-    "R_SDA5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
-    "R_SCL5": ("4k7", "Device:R", "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder"),
 }
-# Do not populate: the LCD backpack has its own 5V-side pull-ups.
-DNP = {"R_SDA5", "R_SCL5"}
+DNP = set()
 # Hand-soldered: not in the JLCPCB BOM/CPL, so no LCSC number.
-NOT_ASSEMBLED = {"J_UART1", "J_I2C1", "TP_3V3", "TP_5V", "TP_VSW", "TP_GND"}
+NOT_ASSEMBLED = {"J_I2C1", "TP_3V3", "TP_5V", "TP_VSW", "TP_GND"}
 
 
 # Low-side drivers (loads are ~15 mA LED rings and an ~8 mA buzzer, well inside a BSS138): name -> load resistor value or None. The ONPOW LAS1-AGQ-11E/x/6V button LEDs
@@ -98,7 +95,8 @@ for t in ("R", "B"):
     PARTS[f"R_S{t}1"] = ("1k", *R0805)
     PARTS[f"C_B{t}1"] = ("100nF", *C0805)
 PARTS["C_EXP1"] = ("100nF", *C0805)  # U2 decoupling
-PARTS["R_INT1"] = ("10k", *R0805)  # U2 INT pull-up
+# LCD backlight PWM (GPIO6) pull-down: dark until firmware drives it. U2's INT is unused (buttons polled).
+PARTS["R_BLPD1"] = ("10k", *R0805)
 PARTS["C_AMP2"] = ("1uF", *C0805)  # U3 VDD decoupling (next to C_AMP1); NS4168 datasheet 10.4: 100 uF || 1 uF
 # +5V arrives over the pack cable from the MT3608 boost (its 2x 22 uF stay on the pack board): a local
 # reservoir at J_PWR1 for the LCD, button LEDs and buzzer. 10 uF, not 47 uF, to keep the boost's output load small.
@@ -135,35 +133,38 @@ LCSC = {
     ("Heltec_J3", SOCKET18): "C2905422",
 }
 # Connector values are names, so every name maps to the part for its pin count.
-LCSC |= {(v, XH4): "C144395" for v in ("LCD", "NFC", "BTN_R", "BTN_B")}  # E JST B4B-XH-A(LF)(SN)
+LCSC |= {(v, XH4): "C144395" for v in ("NFC", "BTN_R", "BTN_B")}  # E JST B4B-XH-A(LF)(SN)
 LCSC |= {(v, XH2): "C158012" for v in ("HELTEC_BAT", "BUZ", "SPK")}  # E JST B2B-XH-A(LF)(SN)
 LCSC[("PWR", XH6)] = "C144397"  # E JST B6B-XH-A(LF)(SN), power in from the pack board
+LCSC[("LCD", XH8)] = "C157972"  # E JST B8B-XH-A(LF)(SN), 2026-10-24: 4798 stock
 
 # net: [ "REF.pin", ... ]
 NETS = {
-    "GND": ["J2.1", "J3.1", "J_HBAT1.2", "J_LCD1.1", "J_NFC1.1", "J_BTN_R1.2", "J_BTN_B1.2",
+    "GND": ["J2.1", "J3.1", "J_HBAT1.2", "J_LCD1.2", "J_LCD1.3", "J_NFC1.1", "J_BTN_R1.2", "J_BTN_B1.2",
             "J_PWR1.1", "J_PWR1.2", "C_BULK1.2", "C_BULK2.2", "C_NFC1.2",
             "Q_LR1.2", "Q_LB1.2", "Q_BZ1.2", "R_PDLR1.2", "R_PDLB1.2", "R_PDBZ1.2", "C_BR1.2", "C_BB1.2",
-            "J_UART1.1", "J_I2C1.1", "TP_GND.1",
+            "J_I2C1.1", "TP_GND.1", "R_BLPD1.2",
             "U2.1", "U2.2", "U2.3", "U2.8", "C_EXP1.2",  # A0-A2 low: address 0x20
             "U3.7", "U3.9", "C_AMP1.2", "C_AMP2.2", "R_SDPD1.2", "C_5V1.2", "C_5V2.2"],
-    "+3V3": ["J3.2", "J3.3", "J_NFC1.2", "C_NFC1.1", "Q_SDA1.1", "Q_SCL1.1", "R_SDA3.1", "R_SCL3.1", "R_PUR1.1", "R_PUB1.1",
-             "U2.16", "C_EXP1.1", "R_INT1.1", "J_I2C1.2", "TP_3V3.1"],
+    "+3V3": ["J3.2", "J3.3", "J_NFC1.2", "C_NFC1.1", "R_SDA3.1", "R_SCL3.1", "R_PUR1.1", "R_PUB1.1",
+             "U2.16", "C_EXP1.1", "J_I2C1.2", "TP_3V3.1"],
     "VBAT_SW": ["J_HBAT1.1", "C_BULK1.1", "C_BULK2.1", "U3.6", "C_AMP1.1", "C_AMP2.1", "J_PWR1.3", "TP_VSW.1"],
-    "UART_TX": ["J2.6", "J_UART1.2"],           # GPIO43, U0TXD
-    "UART_RX": ["J2.5", "J_UART1.3"],           # GPIO44, U0RXD
-    "+5V": ["J_PWR1.4", "J_LCD1.2", "TP_5V.1", "J_BTN_R1.3", "J_BTN_B1.3", "J_BUZ1.1",
-            "D_FLY1.1", "R_SDA5.1", "R_SCL5.1", "C_5V1.1", "C_5V2.1"],
+    "+5V": ["J_PWR1.4", "J_LCD1.1", "TP_5V.1", "J_BTN_R1.3", "J_BTN_B1.3", "J_BUZ1.1",
+            "D_FLY1.1", "C_5V1.1", "C_5V2.1"],
+    # Display on SPI3 (GPIO matrix): clock and data on the ex-UART0 pins, backlight PWM (LEDC) on GPIO6,
+    # DC and reset on the expander (DC only toggles between command and data phases)
+    "LCD_SCK": ["J2.6", "J_LCD1.7"],            # GPIO43 (ROM boot log toggles it: harmless, CS-less reset follows)
+    "LCD_MOSI": ["J2.5", "J_LCD1.6"],           # GPIO44
+    "LCD_BL": ["J3.17", "R_BLPD1.1", "J_LCD1.8"],  # GPIO6
+    "LCD_DC": ["U2.11", "J_LCD1.5"],            # expander P6
+    "LCD_RST": ["U2.12", "J_LCD1.4"],           # expander P7
     # I2C
-    "SDA_3V3": ["J3.15", "Q_SDA1.2", "R_SDA3.2", "J_NFC1.3", "U2.15", "J_PWR1.5", "J_I2C1.3"],
-    "SCL_3V3": ["J3.14", "Q_SCL1.2", "R_SCL3.2", "J_NFC1.4", "U2.14", "J_PWR1.6", "J_I2C1.4"],
-    "EXP_INT": ["J3.17", "U2.13", "R_INT1.2"],  # open drain, active low
+    "SDA_3V3": ["J3.15", "R_SDA3.2", "J_NFC1.3", "U2.15", "J_PWR1.5", "J_I2C1.3"],
+    "SCL_3V3": ["J3.14", "R_SCL3.2", "J_NFC1.4", "U2.14", "J_PWR1.6", "J_I2C1.4"],
     # I2S to the amp; CTRL from the expander (high = right slot, low = shutdown)
     "I2S_BCLK": ["J2.13", "U3.3"], "I2S_LRCLK": ["J2.14", "U3.2"], "I2S_DIN": ["J2.16", "U3.4"],
     "AMP_SD": ["U2.10", "R_SD1.1", "R_SDPD1.1"], "AMP_SD_R": ["R_SD1.2", "U3.1"],
     "SPK_N": ["U3.5", "J_SPK1.1"], "SPK_P": ["U3.8", "J_SPK1.2"],
-    "SDA_5V": ["Q_SDA1.3", "R_SDA5.2", "J_LCD1.3"],
-    "SCL_5V": ["Q_SCL1.3", "R_SCL5.2", "J_LCD1.4"],
     # Drivers: expander P2-P4 -> gate resistor -> gate (pull-down) ; drain -> load
     "LED_R_G": ["U2.6", "R_GLR1.1"], "Q_LR_G": ["R_GLR1.2", "Q_LR1.1", "R_PDLR1.1"],
     "LED_R_K": ["Q_LR1.3", "R_LLR1.1"], "BTN_R_LEDK": ["R_LLR1.2", "J_BTN_R1.4"],
@@ -200,8 +201,8 @@ HELTEC_GPIO = {
 # GPIO3 is a strapping pin (JTAG source select), but only if the STRAP_JTAG_SEL
 # efuse is burned. With default efuses it is safe for SCL, so it is not forbidden.
 FORBIDDEN_GPIO = {0, 1, 2, 5, 7, 19, 20, 26, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 45, 46, None}
-EXPECTED_GPIO = {"SCL_3V3": 3, "SDA_3V3": 4, "EXP_INT": 6,
-                 "I2S_BCLK": 47, "I2S_LRCLK": 48, "I2S_DIN": 21, "UART_TX": 43, "UART_RX": 44}
+EXPECTED_GPIO = {"SCL_3V3": 3, "SDA_3V3": 4, "LCD_BL": 6,
+                 "I2S_BCLK": 47, "I2S_LRCLK": 48, "I2S_DIN": 21, "LCD_SCK": 43, "LCD_MOSI": 44}
 HEADER_POWER = {"J2.1": "GND", "J3.1": "GND", "J3.2": "+3V3", "J3.3": "+3V3"}
 HEADER_NC = {"J2.2", "J2.3", "J2.4"}  # 5V charger input, Vext x2: must stay unconnected
 
@@ -257,7 +258,7 @@ RAILS = ("GND", "+3V3", "+5V", "VBAT_SW")
 # symbol keeps ERC's library check (lib_symbol_issues) clean with no ignore.
 PORT_LIB = {"GND": "power:GND", "+3V3": "power:+3V3", "+5V": "power:+5V", "VBAT_SW": "power:+BATT"}
 NC_PARTS = {"J2", "J3"}  # every unconnected pin gets a no-connect flag
-NC_PINS = {"U2.11", "U2.12"}  # TCA9534 P6/P7 spare
+NC_PINS = {"U2.13"}  # TCA9534 INT: buttons are polled, GPIO6 went to the LCD backlight
 
 
 # --- Layout: blocks of hand-placed parts ---
@@ -297,35 +298,29 @@ BLOCKS = [
     {"title": "Heltec V4 headers", "at": (317.5, 12.7), "size": (86.36, 76.2),
      "parts": {"J2": (30.48, 38.1, 0, None), "J3": (73.66, 38.1, 0, None)},
      "flags": [("+3V3", 40.64, 68.58)]},
-    {"title": "I2C level shifter, LCD (5 V), NFC (3.3 V)", "at": (12.7, 81.28), "size": (111.76, 76.2),
+    {"title": "I2C pull-ups, LCD (SPI), NFC (3.3 V)", "at": (12.7, 81.28), "size": (111.76, 76.2),
      "parts": {"J_NFC1": (7.62, 38.1, 0, "y"), "C_NFC1": (7.62, 60.96, 0, None),
-               "R_SDA3": (33.02, 24.13, 0, None), "Q_SDA1": (45.72, 25.4, 270, None),
-               "R_SDA5": (62.23, 24.13, 0, None),
-               "R_SCL3": (33.02, 46.99, 0, None), "Q_SCL1": (45.72, 48.26, 270, None),
-               "R_SCL5": (62.23, 46.99, 0, None), "J_LCD1": (91.44, 25.4, 0, None)},
-     "tags": {"SDA_3V3": [(22.86, 20.32, "U")], "SCL_3V3": [(22.86, 60.96, "D")]},
-     "fields": {"Q_SDA1": {"Reference": (3.81, -5.08, "left"), "Value": (3.81, -2.54, "left")},
-                "Q_SCL1": {"Reference": (3.81, -5.08, "left"), "Value": (3.81, -2.54, "left")}}},
+               "R_SDA3": (33.02, 24.13, 0, None), "R_SCL3": (33.02, 46.99, 0, None),
+               "R_BLPD1": (62.23, 46.99, 0, None), "J_LCD1": (91.44, 30.48, 0, None)},
+     "tags": {"SDA_3V3": [(22.86, 20.32, "U")], "SCL_3V3": [(22.86, 60.96, "D")]}},
     {"title": "GPIO expander (0x20), button inputs", "at": (129.54, 81.28), "size": (182.88, 76.2),
      "parts": {"U2": (55.88, 50.8, 0, None), "C_EXP1": (38.1, 30.48, 0, None),
-               "R_INT1": (25.4, 40.64, 0, None),
                "R_SR1": (82.55, 22.86, 270, None), "R_PUR1": (114.3, 15.24, 0, None),
                "C_BR1": (121.92, 30.48, 0, None), "J_BTN_R1": (152.4, 25.4, 0, None),
                "R_SB1": (99.06, 43.18, 270, None), "R_PUB1": (111.76, 35.56, 0, None),
                "C_BB1": (119.38, 50.8, 0, None), "J_BTN_B1": (152.4, 45.72, 0, None)},
-     "tags": {"EXP_INT": [(15.24, 48.26, "L")]}},
+     "tags": {}},
     {"title": "Low-side drivers: button LEDs, buzzer", "at": (12.7, 162.56), "size": (190.5, 60.96),
      "parts": {**_driver(12.7, "LR", True), **_driver(71.12, "LB", True), **_driver(129.54, "BZ", False),
                "D_FLY1": (165.1, 20.32, 270, None), "J_BUZ1": (182.88, 25.4, 0, None)},
      "tags": {"LED_R_G": [(12.7, 38.1, "L")], "LED_B_G": [(71.12, 38.1, "L")], "BUZ_G": [(129.54, 38.1, "L")],
               "BTN_R_LEDK": [(50.8, 10.16, "R")], "BTN_B_LEDK": [(109.22, 10.16, "R")]}},
-    {"title": "Debug: UART, I2C, test pads", "at": (261.62, 162.56), "size": (114.3, 88.9),
-     "parts": {"J_UART1": (38.1, 12.7, 0, None), "J_I2C1": (38.1, 50.8, 0, None),
+    {"title": "Debug: I2C, test pads", "at": (261.62, 162.56), "size": (114.3, 88.9),
+     "parts": {"J_I2C1": (38.1, 50.8, 0, None),
                "TP_3V3": (63.5, 38.1, 0, None), "TP_5V": (63.5, 50.8, 0, None),
                "TP_VSW": (88.9, 38.1, 0, None), "TP_GND": (88.9, 50.8, 0, None)},
      # Tagged, not auto-labelled: the GND port under pin 1 of a header would sit on pin 2's label.
-     "tags": {"UART_TX": [(25.4, 20.32, "L")], "UART_RX": [(25.4, 25.4, "L")],
-              "SDA_3V3": [(25.4, 60.96, "L")], "SCL_3V3": [(25.4, 66.04, "L")]},
+     "tags": {"SDA_3V3": [(25.4, 60.96, "L")], "SCL_3V3": [(25.4, 66.04, "L")]},
      "fields": {r: {"Reference": (5.08, -2.54, "left"), "Value": (5.08, 2.54, "left")}
                 for r in ("TP_3V3", "TP_5V", "TP_VSW", "TP_GND")}},
     {"title": "Mounting holes", "at": (208.28, 162.56), "size": (50.8, 25.4),
@@ -356,7 +351,9 @@ ROOT = {
         # Connector pins face their off-board part: left-side connectors as drawn (pins left), right-side
         # ones mirrored (pins right); the cable gap between holds the rail ports.
         "J_PWR1": (81.28, 50.8, 0, None), "J_HBAT1": (81.28, 88.9, 0, None),
-        "J_LCD1": (337.82, 45.72, 0, "y"), "J_NFC1": (337.82, 76.2, 0, "y"),
+        "J_NFC1": (337.82, 76.2, 0, "y"),
+        # The display sits under the audio box: its SPI wires leave J2 downwards
+        "J_LCD1": (213.36, 220.98, 0, "y"),
         "J_BTN_R1": (337.82, 106.68, 0, "y"), "J_BTN_B1": (337.82, 137.16, 0, "y"),
         "J_BUZ1": (337.82, 165.1, 0, "y"), "J_SPK1": (337.82, 190.5, 0, "y"),
         "H1": (25.4, 238.76, 0, None), "H2": (35.56, 238.76, 0, None),
@@ -365,20 +362,20 @@ ROOT = {
         "C_BULK1": (106.68, 50.8, 0, None), "C_BULK2": (116.84, 50.8, 0, None),
         "C_5V1": (127.0, 50.8, 0, None), "C_5V2": (137.16, 50.8, 0, None),
         "C_NFC1": (314.96, 88.9, 0, None),
-        # bring-up: UART / I2C headers and rail test pads, pins towards the Heltec
-        "J_UART1": (101.6, 182.88, 0, "y"), "J_I2C1": (101.6, 203.2, 0, "y"),
+        # bring-up: I2C header and rail test pads, pins towards the Heltec
+        "J_I2C1": (101.6, 203.2, 0, "y"),
         "TP_3V3": (129.54, 182.88, 0, None), "TP_5V": (139.7, 182.88, 0, None),
         "TP_VSW": (129.54, 200.66, 0, None), "TP_GND": (139.7, 200.66, 0, None),
-        # I2C level shifter and bus pull-ups (the flat block-3 layout, moved beside J_LCD1)
-        "R_SDA3": (283.21, 44.45, 0, None), "Q_SDA1": (295.91, 45.72, 270, None), "R_SDA5": (312.42, 44.45, 0, None),
-        "R_SCL3": (283.21, 67.31, 0, None), "Q_SCL1": (295.91, 68.58, 270, None), "R_SCL5": (312.42, 67.31, 0, None),
+        # I2C bus pull-ups, and the backlight pull-down beside J_LCD1
+        "R_SDA3": (283.21, 44.45, 0, None), "R_SCL3": (283.21, 67.31, 0, None),
+        "R_BLPD1": (195.58, 233.68, 0, None),
         "D_FLY1": (325.12, 160.02, 270, None),
     },
     "flags": [("GND", 106.68, 68.58), ("VBAT_SW", 121.92, 68.58), ("+5V", 137.16, 68.58),
               ("+3V3", 152.4, 68.58)],
     # The 2.54 mm headers (Heltec, debug) take rail ports along their stubs, which stay in the pin's own
     # row; the cable connectors' rail ports hang off their cables instead (gen_sch.tee_port).
-    "port_modes": {r: "along" for r in ("J2", "J3", "J_UART1", "J_I2C1")},
+    "port_modes": {r: "along" for r in ("J2", "J3", "J_I2C1")},
     "sheets": {
         "expander": (271.78, 101.6, 38.1, 50.8), "drivers": (271.78, 160.02, 38.1, 38.1),
         "audio": (203.2, 165.1, 50.8, 25.4),
@@ -394,7 +391,8 @@ OFFBOARD = {
                {str(i): str(i) for i in range(1, 7)}, "XH-6", (27.94, 50.8, 0, "y")),
     "#X_HBAT": ("Heltec V4 battery", "local:Conn_W_02", "J_HBAT1",
                {"1": "1", "2": "2"}, "XH-2 to the module's SH1.25", (40.64, 88.9, 0, "y")),
-    "#X_LCD": ("LCD 1602 + PCF8574", "local:Module_I2C_4", "J_LCD1", _PINS4, "XH-4", (386.08, 45.72, 0, None)),
+    "#X_LCD": ('3.5" ILI9488 SPI TFT', "local:Conn_W_08", "J_LCD1", {str(i): str(i) for i in range(1, 9)},
+               "XH-8, straight", (261.62, 220.98, 0, None)),
     "#X_NFC": ("PN532 (I2C)", "local:Module_I2C_4", "J_NFC1", _PINS4, "XH-4", (386.08, 76.2, 0, None)),
     "#X_BTN_R": ("ONPOW LAS1-AGQ-11E/R/6V", "local:Button_LED_4", "J_BTN_R1", _PINS4, "XH-4",
                 (386.08, 106.68, 0, None)),
@@ -447,7 +445,9 @@ PLACE = {
     # the courtyard widths (2-pin 8.5 mm, 4-pin 13.5, 6-pin 18.5) with ~2 mm gaps; J_BTN_R1 is back on
     # the top edge now that J_HBAT1 is 2-pin (it sat on the bottom edge only for the 4-pin width)
     "J_PWR1": (10, 6, 0), "J_HBAT1": (30.5, 6, 0), "J_BTN_R1": (41, 6, 0),
-    "J_LCD1": (56.5, 6, 0), "J_NFC1": (72, 6, 0),
+    "J_LCD1": (56.5, 6, 0),
+    # Bottom edge, open side out (rot 180, pin 1 right), in the strip below the J2 row
+    "J_NFC1": (51, 55.6, 180),
     # Left edge: rotated so the open side faces -X, pin 1 at the bottom
     "J_SPK1": (6, 20.5, 90), "J_BTN_B1": (6, 35, 90), "J_BUZ1": (6, 49.5, 90),
     # I2S amp beside J_SPK1 (outputs face up at 90 deg), VDD caps above it; C_AMP2 at 180 puts its
@@ -457,11 +457,10 @@ PLACE = {
     "C_BULK1": (37, 17, 90), "C_BULK2": (40.5, 17, 90),
     # +5V reservoir below the PACK label, a short hop from J_PWR1.4
     "C_5V1": (25, 14.5, 0), "C_5V2": (29.5, 14.5, 0),
-    # I2C level shifter, NFC bulk cap and GPIO expander, under their connectors
-    "Q_SDA1": (44, 16, 0), "R_SDA3": (44, 20, 0), "R_SDA5": (44, 23.3, 0),
-    "Q_SCL1": (49.5, 16, 0), "R_SCL3": (49.5, 20, 0), "R_SCL5": (49.5, 23.3, 0),
+    # I2C pull-ups, NFC bulk cap and GPIO expander
+    "R_SDA3": (44, 20, 0), "R_SCL3": (49.5, 20, 0),
     "C_NFC1": (55.5, 15.3, 0), "R_SD1": (54.5, 21.5, 90),
-    "U2": (60.2, 21, 0), "R_SDPD1": (75.5, 13.0, 0), "C_EXP1": (60.5, 15.6, 0), "R_INT1": (66, 22.8, 0),
+    "U2": (60.2, 21, 0), "R_SDPD1": (75.5, 13.0, 0), "C_EXP1": (60.5, 15.6, 0), "R_BLPD1": (66, 22.8, 0),
     # Low-side drivers, one column each (top to bottom R_G, R_PD, Q, R_L): gate pads on one
     # vertical line at x+1, GND pads at x-1, drain straight down into R_L
     "R_GLB1": (16, 29, 0), "R_PDLB1": (16, 32, 180), "Q_LB1": (16, 35.5, 270), "R_LLB1": (16, 39.5, 270),
@@ -470,7 +469,7 @@ PLACE = {
     "D_FLY1": (15, 45, 0),
     # Bring-up aids: header strip below the Heltec's J2 row (the module ends above it), test pads at
     # the right end. Headers lie along X (rot 90, pin 1 left).
-    "J_UART1": (47, 55.5, 90), "J_I2C1": (56, 55.5, 90),
+    "J_I2C1": (56, 55.5, 90),
     "TP_3V3": (68, 55.5, 0), "TP_5V": (70.5, 55.5, 0), "TP_VSW": (73, 55.5, 0), "TP_GND": (75.5, 55.5, 0),
     # Button RC: BTN_B near its connector, BTN_R near J_BTN_R1 and the expander
     "R_PUB1": (20, 49, 0), "C_BB1": (20, 52.5, 0), "R_SB1": (25, 50.75, 0),
@@ -481,6 +480,7 @@ PLACE = {
 REF_AT = {
     "U3": (13.45, 23.2, 90),  # inside U3's outline, left of the exposed pad (the SPK label is outside)
     "R_SDPD1": (75.5, 14.7, 0),
+    "R_BLPD1": (66, 24.6, 0),
 }
 
 # Connector silk labels (name, pins in pin-1-first order). Pin 1 is the left pad at rot 0 and
@@ -488,15 +488,15 @@ REF_AT = {
 # (at rot 180 pin 1 is the right pad; label() reverses the list).
 LABELS = {
     "J_PWR1": ("PACK", "GND GND BAT 5V SDA SCL"), "J_HBAT1": ("HELTEC BAT", "+  -"),
-    "J_LCD1": ("LCD", "GND 5V SDA SCL"), "J_NFC1": ("NFC", "GND 3V3 SDA SCL"),
+    "J_LCD1": ("LCD", "5V GND CS0 RST DC MOSI SCK BL"), "J_NFC1": ("NFC", "GND 3V3 SDA SCL"),
     "J_BTN_R1": ("BTN_R", "SW GND L+ L-"), "J_BTN_B1": ("BTN_B", "SW GND L+ L-"), "J_BUZ1": ("BUZ", "+  -"),
     "J_SPK1": ("SPK (BTL, not GND)", "OUT- OUT+"),
 }
-HIDE_REF = ("TP_3V3", "TP_5V", "TP_VSW", "TP_GND", "J_UART1", "J_I2C1")
+HIDE_REF = ("TP_3V3", "TP_5V", "TP_VSW", "TP_GND", "J_I2C1", "J_NFC1")  # J_NFC1: its NFC label names it
 # free text: (text, x, y, rot, size, left-justified)
 TEXTS = [
     ("AirsoftCounter v2 carrier", 9, 56.5, 0, 1.0, True), ("2026-09", 9, 58.3, 0, 1.0, True),
-    ("UART\nGND TX RX", 49.5, 58.4, 0, 0.8, False), ("I2C\nGND 3V3 SDA SCL", 61.5, 58.4, 0, 0.8, False),
+    ("I2C\nGND 3V3 SDA SCL", 61.5, 58.4, 0, 0.8, False),
     ("3V3", 68, 58.6, 90, 0.8, False), ("5V", 70.5, 58.4, 90, 0.8, False),
     ("VSW", 73, 58.6, 90, 0.8, False), ("GND", 75.5, 58.6, 90, 0.8, False),
     ("USB", 40.5, 38.43, 90, 1.0, False), ("ANT →", 84, 38.43, 0, 1.0, False),

@@ -13,7 +13,7 @@ Variants are defined in `hardware/carrier.py` (`MODULES`, `VARIANTS`); `make fab
 | Line | Deluxe | Budget | Basis |
 |---|---|---|---|
 | Heltec V4 (863–870 MHz, no display) | 85 | 85 | V: $17.90–27.50 range, exact option price shown only at checkout |
-| LCD 20x4 I2C | 34.90 | 34.90 | V Botland |
+| LCD 3.5" ILI9488 SPI TFT | ? | ? | AliExpress 1005001999296476, price from the user's order (not recorded) |
 | Buttons, 2x | ~93 | ~42 | Deluxe: ONPOW 19 mm IP67, blue 46.46 V, red not stocked (est. same). Budget: generic 16 mm IP65 metal, 5 V LED (Allegro ~20.99 each), IP rating unverified |
 | Buzzer | 22 | ~15 | Deluxe: 3–28 V piezo, 13.45–22.22 V (the BZ-38 URL redirected to this part, code unconfirmed) |
 | Key switch | 53.33 | 53.33 | V TME AUSPICIOUS KS22-1O/C, 38.11–53.33, 322 in stock; maintained, IP65 |

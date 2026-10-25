@@ -199,6 +199,8 @@ Out of scope for now: laptop HQ app, OTA updates, additional game modes.
 
 ## Part 6: Audio, GPIO expander, fewer Extended parts (approved 2026-09-29)
 
+*(**2026-10-24:** the LCD, level shifter, EXP_INT and UART header changed: GPIO43/44/6 now drive a 3.5" SPI TFT and expander P6/P7 its DC/RST. See `docs/plans/2026-10-24-tft-display-design.md`.)*
+
 ### Why
 The user asked for a real loudspeaker in addition to the buzzer, and for Basic JLCPCB
 parts wherever possible. I2S needs 3 fast GPIOs and none are free on both V4 variants,
