@@ -78,6 +78,7 @@ TME = {
     "C8598": "1N5819HW-7-F",            # sub: Diodes 1 A 40 V Schottky SOD-123 (B5819W not at TME)
     "C8678": "SSA34-E3/61T",            # sub: Vishay SMA 40 V 3 A (TME's SS34s are SMC or out)
     "C96123": "CL31A476MPHNNNE",
+    "C49851": "INA226AIDGSR",           # pack_xiao_jlc; pack_tme already buys this symbol
 }
 # Not at TME (searched 2026-10-02): buy at LCSC. Maker part for the tme_other list.
 OTHER = {
@@ -86,12 +87,14 @@ OTHER = {
     "C720477": "TS-1088-AR02016",       # no 2-pad 3.9 x 3 mm tact switch at TME
     "C84817": "MT3608",                 # no SOT-23-6 boost with its pinout at TME
     "C910588": "NS4168",                # no pin-compatible I2S amp at TME
+    "C456012": "TYPE-C 6P (SHOU HAN)",  # pack_xiao_jlc power-only USB-C: own land pattern, not checked at TME
 }
 # Hand-soldered parts (NOT_ASSEMBLED, so not in the JLC BOM) that TME sells, per board (FAB dir name).
 HAND = {
     # TH_CHG: 10k NTC (B3380, the TS network was sized for B3435: ~1 C off). TME has no 0805 one;
     # the 0603 hand-solders onto the 0805 pads.
     "pack": [("NCU18XH103J6SRB", 1)],
+    "pack_xiao_jlc": [("NCU18XH103J6SRB", 1)],
 }
 
 

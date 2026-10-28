@@ -2,4 +2,5 @@
   (version 7)
   (lib (name "local")(type "KiCad")(uri "${KIPRJMOD}/local.pretty")(options "")(descr "Project footprints not in the KiCad library (18650 holder, bead NTC)"))
   (lib (name "xiao")(type "KiCad")(uri "${KIPRJMOD}/xiao.pretty")(options "")(descr "XIAO footprint variants, apart from local so adding them does not renumber the other boards"))
+  (lib (name "usbc6p")(type "KiCad")(uri "${KIPRJMOD}/usbc6p.pretty")(options "")(descr "Power-only 6-pin USB-C (SHOU HAN TYPE-C 6P, LCSC C456012, land pattern from easyeda2kicad); own lib so it renumbers no other board"))
 )

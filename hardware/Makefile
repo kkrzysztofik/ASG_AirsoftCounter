@@ -77,6 +77,7 @@ boards:
 	$(MAKE) BOARD=pack_tme all
 	$(MAKE) BOARD=lipo_tme all
 	$(MAKE) BOARD=pack_xiao all
+	$(MAKE) BOARD=pack_xiao_jlc all
 	$(MAKE) BOARD=lipo_xiao all
 
 # Printed insert for the Pawbol S-BOX 416-P. check.py is deliberately run on the system
