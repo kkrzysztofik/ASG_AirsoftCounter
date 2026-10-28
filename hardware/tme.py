@@ -94,7 +94,13 @@ HAND = {
     # TH_CHG: 10k NTC (B3380, the TS network was sized for B3435: ~1 C off). TME has no 0805 one;
     # the 0603 hand-solders onto the 0805 pads.
     "pack": [("NCU18XH103J6SRB", 1)],
-    "pack_xiao_jlc": [("NCU18XH103J6SRB", 1)],
+    # pack_xiao_jlc also hand-solders its big-pad Extended types (pack_xiao_jlc.HAND_EXTENDED) to save
+    # their JLC setup fees. L1: Ferrocore DJNR6045-100-S, 10 uH, Isat 3.1 A, 6x6x4.5, MOQ 5, 1870 in stock
+    # 2026-10-28 (TME's SRN6045-100M is 1000 pcs minimum); the MT3608 here peaks far below 1 A. Not for
+    # the LiPo board, which wants Isat 4.6 A.
+    "pack_xiao_jlc": [("NCU18XH103J6SRB", 1), (TME["C144397"], 1), (TME["C158012"], 1),
+                      (TME["C48332"], 4), (TME["C22374899"], 1), (TME["C105362"], 4),
+                      ("DJNR6045-100-S", 1), (TME["C703084"], 1)],
 }
 
 

@@ -40,7 +40,11 @@ for _n, _mem in pack.NETS.items():
 NC_PINS = (pack_xiao.NC_PINS - _USB_GONE) | {p for p in pack.NC_PINS if p.split(".")[0] in BOOST}
 
 DNP = set(pack_xiao.DNP)
-NOT_ASSEMBLED = set(pack_xiao.NOT_ASSEMBLED) | {"U_MCU", "TH_CHG"}
+# Big-pad Extended types are hand-soldered too (TME parts, tme.HAND): each one off the JLC BOM
+# saves its setup fee. No Basic/Preferred fuse, PTC, power inductor or 10 mOhm shunt existed (2026-10-28).
+HAND_EXTENDED = {"J_PWR1", "J_KEY1", "F_SYS1", "L1", "L_CHG",
+                 *(f"F{i}" for i in range(1, 5)), *(f"R_SH{i}" for i in range(1, 5))}
+NOT_ASSEMBLED = set(pack_xiao.NOT_ASSEMBLED) | {"U_MCU", "TH_CHG"} | HAND_EXTENDED
 LCSC = {**pack.LCSC,
         ("INA226AIDGSR", pack_tme.VSSOP10): "C49851",   # TI, Extended, 46k stock 2026-10-28
         USB6P[::2]: "C456012"}                           # SHOU HAN TYPE-C 6P, Extended, 705k stock
