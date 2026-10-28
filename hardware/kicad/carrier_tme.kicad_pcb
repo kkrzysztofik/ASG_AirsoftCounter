@@ -20220,7 +20220,7 @@
 	(zone
 		(net "GND")
 		(layer "F.Cu")
-		(uuid "56af6275-7924-4af5-9ff0-303e6580abaf")
+		(uuid "2e8ca7e8-0e1c-4b59-98c8-03e76a95681c")
 		(name "GND_F")
 		(hatch edge 0.5)
 		(connect_pads yes

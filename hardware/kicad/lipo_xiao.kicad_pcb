@@ -14040,7 +14040,7 @@
 	(zone
 		(net "GND")
 		(layer "F.Cu")
-		(uuid "b6ebb84c-7e86-4be2-b901-10da6c2e6cc5")
+		(uuid "329def7f-4b9c-457f-8d5e-90e90613b3b3")
 		(name "GND_F")
 		(hatch edge 0.5)
 		(connect_pads yes

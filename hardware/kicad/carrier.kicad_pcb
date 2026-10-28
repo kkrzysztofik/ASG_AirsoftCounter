@@ -15151,7 +15151,7 @@
 	(zone
 		(net "GND")
 		(layer "F.Cu")
-		(uuid "e4ffcc4f-d18d-4e21-b217-e6943cc791dd")
+		(uuid "e3cb7783-4a72-4e62-a8a6-b4d704dacbb7")
 		(name "GND_F")
 		(hatch edge 0.5)
 		(connect_pads yes
